@@ -34,10 +34,23 @@ Official sources:
 - https://mapa-indicadores.agricultura.gov.br/publico/extensions/Zarc/Zarc.html
 - https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico
 
-### Stage B — Water balance
-Implement FAO-56 reference evapotranspiration (FAO Penman–Monteith) only when all required meteorological variables and units are available and quality checked. Apply crop coefficients (Kc) by growth stage, rooting depth and depletion fraction, and a documented soil-water capacity. Maintain a daily root-zone water balance with effective rainfall, irrigation, runoff/drainage assumptions and stress coefficient. Never equate gross rainfall with effective rainfall or crop water use.
-Reference:
+### Stage B — Water balance (implemented as an exploratory module)
+
+The application now calculates daily FAO-56 reference evapotranspiration (ET0) with the Penman–Monteith equation from NASA POWER T2M, T2M_MAX, T2M_MIN, T2MDEW, WS2M and ALLSKY_SFC_SW_DWN. Solar radiation is converted from kWh/m²/day to MJ/m²/day. User-entered site elevation and selected latitude are used for atmospheric pressure and extraterrestrial/clear-sky radiation terms. Missing required weather inputs are not imputed; a season is excluded if the required daily values are incomplete.
+
+Crop evapotranspiration is estimated as ETc = Kc × ET0 using a user-configurable four-stage Kc curve (initial, development, mid-season and late-season). Generic FAO-56 reference Kc values are offered as editable starting points, not cultivar-specific recommendations.
+
+A one-layer root-zone bucket tracks total available water (TAW = available water × effective root depth), readily available water (RAW = p × TAW), depletion and the FAO stress coefficient Ks. It reports potential ETc, estimated actual ETa, water deficit, depletion and an idealized supplemental-irrigation trigger/refill scenario. Soil available water, effective rooting depth, p, initial storage and irrigation efficiency are explicit user inputs.
+
+**Important simplifications:** precipitation is treated as infiltrating until field capacity; runoff is not separately modeled. The current model omits capillary rise, lateral flow, salinity, changing root depth, layered soil, measured hydraulic properties and crop-specific stress response. The irrigation trigger is a scenario, not an irrigation prescription. This is not the official ZARC SARRA model and has not been calibrated against field observations.
+
+The ZARC section links to the current MAPA SISZARC and risk-indication panel. It allows a user to transcribe the official municipality/crop/cultivar/soil/risk/dekadal result and checks crop + sowing-dekad consistency with the water-balance scenario. It does not query an official API or independently verify the transcribed publication. MAPA explains that ZARC evaluates climate, soil water availability and crop phenology, and publishes soil available-water classes; those local details must be confirmed before interpreting the scenario.
+
+References:
 - Allen et al. (1998), FAO Irrigation and Drainage Paper 56: https://www.fao.org/4/X0490E/X0490E00.htm
+- FAO Penman–Monteith method: https://www.fao.org/4/x0490e/x0490e06.htm
+- MAPA ZARC/SISZARC: https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/siszarc
+- MAPA soil available-water classes: https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/classificacao-de-solo
 
 ### Stage C — Field validation
 Build a versioned, independent dataset with observed planting/harvest dates, cultivar, management, soil test, irrigation, weather, phenology and measured yield. Split by location and year (not random rows) into calibration and holdout sets to avoid spatial/temporal leakage. Report sample size, missingness, bias, MAE, RMSE, R² and uncertainty intervals by crop, region and season. Compare against a simple baseline. Do not publish performance claims until holdout results are reproducible.
@@ -47,7 +60,7 @@ Evaluate multi-season sequences with measured soil indicators and field outcomes
 
 ## 4. Current automated tests
 
-The tests/test_validation.py suite checks perfect agreement, positive bias/missing-pair handling and the minimum paired sample requirement. These are software unit tests for metric calculations; they are not agronomic validation.
+The tests/test_validation.py suite checks validation metrics. The tests/test_agronomy.py suite checks FAO-56 ET0 behavior, Kc curve length/stages, water-bucket bounds and irrigation-trigger behavior. These are software unit tests; they are not field validation or proof of agronomic accuracy.
 
 GitHub Actions compiles the application and runs these tests on pushes and pull requests.
 
