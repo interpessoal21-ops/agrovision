@@ -54,8 +54,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def supabase_settings():
+    """Read Supabase credentials from Streamlit Secrets.
+
+    Prefer the modern publishable-key name; keep the legacy anon-key name
+    as a backwards-compatible fallback for existing deployments.
+    """
     try:
-        return st.secrets.get("SUPABASE_URL", "").rstrip("/"), st.secrets.get("SUPABASE_ANON_KEY", "")
+        base_url = st.secrets.get("SUPABASE_URL", "").rstrip("/")
+        api_key = (
+            st.secrets.get("SUPABASE_PUBLISHABLE_KEY", "")
+            or st.secrets.get("SUPABASE_ANON_KEY", "")
+        )
+        return base_url, api_key
     except Exception:
         return "", ""
 
