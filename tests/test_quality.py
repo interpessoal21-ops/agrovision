@@ -18,7 +18,7 @@ class ClimateQualityTests(unittest.TestCase):
         self.assertEqual(report["observed_days"], 2)
         self.assertEqual(report["missing_dates"], 1)
         self.assertEqual(report["duplicate_dates"], 2)
-        self.assertEqual(report["missing_cells"], 1)
+        self.assertEqual(report["missing_cells"], 10)  # one missing cell plus three absent 3-day variables
         self.assertGreaterEqual(report["out_of_range_cells"], 2)
 
     def test_empty_climate_frame_is_reported_without_failure(self):
