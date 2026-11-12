@@ -20,3 +20,26 @@ The crop-rotation comparison is an explicitly provisional, rule-based demonstrat
 ## Deploy
 
 Deploy this repository on Streamlit Community Cloud using `app.py` as the main file.
+
+## Access and authentication
+
+The app supports two access modes:
+
+- **Visitor:** opens the prototype without creating an account.
+- **Email account:** uses Supabase Auth for email/password registration and sign-in. Email confirmation depends on the Supabase project's authentication settings.
+
+To enable email authentication on Streamlit Community Cloud:
+
+1. Create a Supabase project and open **Project Settings → API**.
+2. Copy the project URL and the **publishable/anon key**. Never use or expose the service-role key.
+3. In the Streamlit app, open **Settings → Secrets** and add:
+
+```toml
+SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
+SUPABASE_ANON_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY"
+```
+
+4. In Supabase **Authentication → URL Configuration**, add the deployed Streamlit app URL to the allowed redirect/site URLs as appropriate for the project.
+5. In **Authentication → Providers / Email**, configure email sign-up and confirmation to match the intended access policy.
+
+Until these secrets are configured, visitor access remains available and the email forms stay disabled. Passwords are sent directly to Supabase Auth over HTTPS; the app does not store passwords or put private keys in the repository. The current prototype keeps the signed-in session in Streamlit session state and does not yet save user profiles or farm projects to a database.
