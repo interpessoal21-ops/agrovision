@@ -742,11 +742,12 @@ with tab2:
                         f"Representative cycle: {cycle_days} days, beginning {sowing_month:02d}/{water_sowing_day:02d}/{water_year}. The midpoint cycle is a screening assumption, not cultivar phenology.",
                         f"Ciclo representativo: {cycle_days} dias, iniciando em {water_sowing_day:02d}/{sowing_month:02d}/{water_year}. A duração intermediária é uma hipótese de triagem, não a fenologia da cultivar."
                     ))
+                    crop_widget_key = water_crop.lower().replace(" ", "_").replace("(", "").replace(")", "")
                     with st.expander(tx("Crop and soil parameters", "Parâmetros da cultura e do solo"), expanded=True):
                         c1,c2,c3=st.columns(3)
-                        initial_days = c1.number_input(tx("Initial stage (days)", "Fase inicial (dias)"), 1, cycle_days-3, max(1, round(cycle_days*0.2)), key="kc_initial_days")
-                        development_days = c2.number_input(tx("Development (days)", "Desenvolvimento (dias)"), 1, cycle_days-2, max(1, round(cycle_days*0.25)), key="kc_development_days")
-                        midseason_days = c3.number_input(tx("Mid-season (days)", "Meia-estação (dias)"), 1, cycle_days-1, max(1, round(cycle_days*0.35)), key="kc_mid_days")
+                        initial_days = c1.number_input(tx("Initial stage (days)", "Fase inicial (dias)"), 1, cycle_days-3, max(1, round(cycle_days*0.2)), key=f"kc_initial_days_{crop_widget_key}")
+                        development_days = c2.number_input(tx("Development (days)", "Desenvolvimento (dias)"), 1, cycle_days-2, max(1, round(cycle_days*0.25)), key=f"kc_development_days_{crop_widget_key}")
+                        midseason_days = c3.number_input(tx("Mid-season (days)", "Meia-estação (dias)"), 1, cycle_days-1, max(1, round(cycle_days*0.35)), key=f"kc_mid_days_{crop_widget_key}")
                         end_days = cycle_days - int(initial_days) - int(development_days) - int(midseason_days)
                         st.caption(tx(f"Late season is calculated as the remaining {end_days} days.", f"A fase final será calculada com os {end_days} dias restantes."))
                         kc_defaults = {
@@ -756,9 +757,9 @@ with tab2:
                         }
                         k0, km, ke = kc_defaults[water_crop]
                         k1,k2,k3=st.columns(3)
-                        kc_ini = k1.number_input("Kc initial", 0.0, 2.0, k0, 0.05, key="kc_ini")
-                        kc_mid = k2.number_input("Kc mid-season", 0.0, 2.0, km, 0.05, key="kc_mid")
-                        kc_end = k3.number_input("Kc end-season", 0.0, 2.0, ke, 0.05, key="kc_end")
+                        kc_ini = k1.number_input("Kc initial", 0.0, 2.0, k0, 0.05, key=f"kc_ini_{crop_widget_key}")
+                        kc_mid = k2.number_input("Kc mid-season", 0.0, 2.0, km, 0.05, key=f"kc_mid_{crop_widget_key}")
+                        kc_end = k3.number_input("Kc end-season", 0.0, 2.0, ke, 0.05, key=f"kc_end_{crop_widget_key}")
                         st.caption(tx(
                             "Kc starting values are generic FAO-56 reference values. Adjust them to cultivar, climate, planting density, ground cover and local technical guidance.",
                             "Os Kc iniciais são valores genéricos de referência FAO-56. Ajuste-os conforme cultivar, clima, densidade, cobertura do solo e orientação técnica local."
@@ -809,13 +810,13 @@ with tab2:
                                 irrigation_efficiency=irrigation_efficiency
                             )
                             st.session_state["latest_water_balance"] = {
-                                "crop": water_crop, "year": int(water_year), "sowing_month": int(sowing_month),
+                                "crop": water_crop, "year": int(water_year), "coords": (float(lat), float(lon)), "sowing_month": int(sowing_month),
                                 "sowing_day": int(water_sowing_day), "table": balance, "parameters": current_parameters
                             }
                         except Exception as exc:
                             st.error(tx("Water-balance calculation failed: ", "Falha no cálculo do balanço hídrico: ") + str(exc))
                     saved_balance = st.session_state.get("latest_water_balance")
-                    if saved_balance and saved_balance.get("crop") == water_crop and saved_balance.get("year") == int(water_year) and saved_balance.get("sowing_month") == int(sowing_month) and saved_balance.get("sowing_day") == int(water_sowing_day) and saved_balance.get("parameters") == current_parameters:
+                    if saved_balance and saved_balance.get("crop") == water_crop and saved_balance.get("year") == int(water_year) and saved_balance.get("coords") == (float(lat), float(lon)) and saved_balance.get("sowing_month") == int(sowing_month) and saved_balance.get("sowing_day") == int(water_sowing_day) and saved_balance.get("parameters") == current_parameters:
                         balance = saved_balance["table"]
                         total_etc = balance["ETc potential (mm)"].sum()
                         total_eta = balance["ETa actual estimate (mm)"].sum()
