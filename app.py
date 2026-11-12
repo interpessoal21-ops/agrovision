@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from agrovision_validation import paired_validation_metrics
+from agrovision_modis import parse_modis_subset
 from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
 from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
 import requests
@@ -302,10 +303,8 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
         }
         response = requests.get(f"{api_root}/subset", params=params, timeout=90)
         response.raise_for_status()
-        for item in response.json().get("subset", []):
-            day, band, vals = item.get("calendar_date"), item.get("band"), item.get("data", [])
-            if day and vals:
-                records.setdefault(day, {})[band] = vals[0]
+        for day, bands in parse_modis_subset(response.json()).items():
+            records.setdefault(day, {}).update(bands)
     rows = []
     for day, bands in records.items():
         nir = bands.get("250m_16_days_NIR_reflectance")
@@ -322,7 +321,7 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
             else None
         )
         rows.append({
-            "Date": pd.to_datetime(day),
+            "Date": pd.Timestamp(day),
             "Quality": quality,
             "Quality label": {0: "Good", 1: "Marginal", 2: "Snow/ice", 3: "Cloudy"}.get(quality, "Unknown"),
             "NDVI": ndvi
