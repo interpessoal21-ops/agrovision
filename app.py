@@ -113,7 +113,7 @@ st.markdown("""
 <div class="hero">
   <div class="eyebrow">NASA Earth observation · Agricultural insights</div>
   <h1>🌱 AGROVISION</h1>
-  <p>Explore climate and vegetation data for your study area, then compare illustrative crop-rotation strategies in one place.</p>
+  <p>Explore climate, vegetation and crop-water indicators for your selected study area.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -379,7 +379,7 @@ with st.sidebar:
 tab_help, tab1, tab2, tab3, tab4, tab5 = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
     tx("Environmental dashboard", "Painel ambiental"),
-    tx("Rotation scenarios", "Cenários de rotação"),
+    tx("Crop analysis", "Análise de culturas"),
     tx("Data & limitations", "Dados e limitações"),
     tx("Saved projects", "Projetos salvos"),
     tx("Scientific validation", "Validação científica")
@@ -394,7 +394,7 @@ with tab_help:
         <div><div class="step-number">1</div><strong>Locate</strong><span>Enter farm coordinates</span></div>
         <div><div class="step-number">2</div><strong>Describe</strong><span>Add local farm context</span></div>
         <div><div class="step-number">3</div><strong>Explore</strong><span>Load NASA indicators</span></div>
-        <div><div class="step-number">4</div><strong>Compare</strong><span>Review rotation scenarios</span></div>
+        <div><div class="step-number">4</div><strong>Compare</strong><span>Review crop-specific climate and water-balance scenarios</span></div>
         <div><div class="step-number">5</div><strong>Interpret</strong><span>Check limits and assumptions</span></div>
       </div>
     </div>
@@ -413,7 +413,7 @@ with tab_help:
 
     with st.expander("2. Describe the farm context"):
         st.markdown("""
-        These options help frame the exploratory rotation comparison:
+        These options provide local context for the crop and water-balance analysis:
         - **Rainfed:** crops depend mainly on rainfall.
         - **Supplemental irrigation:** irrigation is used to complement rainfall when needed.
         - **Irrigated:** irrigation is a regular part of the production system.
@@ -444,15 +444,15 @@ with tab_help:
         """)
         st.caption("Clouds, mixed land cover, pixel size, observation dates, and data quality can affect satellite indicators. Interpret them together with field information.")
 
-    with st.expander("5. Compare crop-rotation scenarios"):
+    with st.expander("5. Analyze crops and water balance"):
         st.markdown("""
         1. First load the environmental data in the dashboard.
-        2. Open **Rotation scenarios**.
+        2. Open **Crop analysis**.
         3. Select maize, soybean and/or common bean, then choose an assumed sowing month.
         4. Review observed rainfall and temperature during complete historical crop-cycle windows.
         5. Compare those observations with published indicative crop-cycle and water-need ranges.
 
-        The analysis does not rank crops. It is an initial climate-screening layer, not a calibrated crop model, yield forecast, soil-water balance or agronomic recommendation.
+        The crop screen does not rank crops. The FAO-56 water balance is a simplified, uncalibrated root-zone estimate, not a yield forecast or agronomic recommendation.
         """)
 
     with st.expander("6. Common questions and troubleshooting"):
@@ -481,7 +481,7 @@ with tab_help:
         st.markdown("- Explore climate indicators for a selected location.\n- View satellite-derived vegetation observations.\n- Compare historical climate during representative cycles of maize, soybean and common bean.\n- Review the reference ranges and assumptions behind each crop screen.")
     with right:
         st.markdown("**AGROVISION does not currently:**")
-        st.markdown("- Measure soil properties directly.\n- Calculate effective rainfall or a complete soil-water balance.\n- Predict crop yield or farm profit.\n- Provide a certified planting recommendation.\n- Display SMAP data in this public deployment.")
+        st.markdown("- Measure soil properties directly.\n- Reproduce the full official ZARC/SARRA model.\n- Predict crop yield or farm profit.\n- Provide a certified planting or irrigation recommendation.\n- Display SMAP data in this public deployment.")
     st.caption("AGROVISION · " + tx("First-visit guide · Agricultural climate analysis", "Guia inicial · Análise climática agrícola"))
 
 with tab1:
