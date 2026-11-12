@@ -85,7 +85,11 @@ def supabase_auth(endpoint, payload):
         data = {}
     if not response.ok:
         message = data.get("msg") or data.get("message") or data.get("error_description") or data.get("error") or "Authentication failed."
-        raise RuntimeError(message)
+        # Include the HTTP status and any safe provider error code so setup
+        # problems can be diagnosed without ever displaying the API key.
+        error_code = data.get("code")
+        detail = f" (code: {error_code})" if error_code else ""
+        raise RuntimeError(f"Supabase returned HTTP {response.status_code}: {message}{detail}")
     return data
 
 auth_mode = st.session_state.get("agrovision_auth_mode")
