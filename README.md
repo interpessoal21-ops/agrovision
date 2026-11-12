@@ -1,6 +1,18 @@
 # AGROVISION
 
-Agricultural decision-support prototype using NASA Earth-observation and climate data.
+**Agricultural decision-support prototype using NASA Earth-observation and climate data.** Built for the NASA Space Apps Challenge 2026.
+
+## Current capabilities
+
+- Bilingual interface: English and Portuguese.
+- Interactive study-area map with latitude/longitude input.
+- NASA POWER daily climate data for 2020–2025.
+- MODIS/Terra MOD13Q1 16-day vegetation observations for a selectable year range (2020–2025), with pixel-reliability filtering.
+- Annual climate summaries and rainfall/temperature anomalies relative to the 2020–2025 baseline.
+- Transparent, illustrative crop-rotation screening comparison with visible score components.
+- CSV export and PDF environmental report.
+- Supabase email authentication and optional per-user project persistence.
+- Saved projects include the queried climate and MODIS series and can be restored in the app.
 
 ## Run locally
 
@@ -8,40 +20,44 @@ Create a Python virtual environment, install dependencies with `pip install -r r
 
 ## Data sources
 
-- NASA POWER Daily API: daily air temperature, precipitation and solar radiation.
-- MODIS MOD13Q1 through the ORNL DAAC subset API: 16-day NDVI observations.
+- **NASA POWER Daily API:** daily near-surface air temperature, precipitation and solar radiation for the Agroclimatology community.
+- **MODIS/Terra MOD13Q1 via ORNL DAAC:** 16-day vegetation-index composites and pixel-reliability data.
 
-SMAP is not yet connected in this public deployment because the earlier SMAP workflow required authenticated NASA Earthdata access. The single SMAP sample from the notebook should not be interpreted as a field measurement.
+The MODIS endpoint is queried for the selected period. NDVI is computed from NIR and red reflectance using the ratio (NIR − red) / (NIR + red); the common reflectance scale factor cancels in this ratio. Only reliability flags 0 (good) and 1 (marginal) are retained for NDVI calculations.
 
-## Important limitations
+SMAP is **not connected** in this deployment. Do not interpret any previous isolated SMAP sample as a field measurement.
 
-The crop-rotation comparison is an explicitly provisional, rule-based demonstration. Its scores are not calibrated crop models, yield predictions, profitability estimates, or agronomic recommendations. Local soil and management inputs are user-supplied. Satellite observations represent regional pixels and should be validated with local field data.
+## Scientific limitations
+
+- NASA POWER and MODIS are gridded / satellite-derived products, not field sensors. A point query does not represent every part of a farm.
+- NDVI is a vegetation-greenness indicator. It does not identify crop species, diagnose plant disease, or directly measure yield.
+- Climate anomalies are calculated against the queried 2020–2025 period; this short baseline is not a formal climatological normal.
+- Crop-rotation scores are transparent, provisional demonstration weights. They are **not calibrated crop models, yield predictions, profitability estimates, or agronomic recommendations**.
+- Soil texture, fertility and irrigation context are user-entered assumptions.
+- Validate any real-world decision with local soil tests, crop calendars, field observations and qualified agronomic advice.
+
+## Supabase setup: save projects
+
+Email authentication uses the Supabase Auth REST API. To enable saving and restoring projects:
+
+1. Configure Streamlit Community Cloud → **Settings → Secrets** with the Supabase **Project URL** and **Publishable key**:
+
+   ```toml
+   SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
+   SUPABASE_PUBLISHABLE_KEY = "sb_publishable_YOUR_KEY"
+   ```
+
+   Never put a Supabase Secret or service-role key in Streamlit secrets for this app or in GitHub.
+
+2. Open the Supabase project's **SQL Editor**.
+3. Copy and run the complete script in `supabase/schema.sql`.
+4. In Supabase **Authentication → URL Configuration**, configure the deployed Streamlit URL as appropriate.
+5. Confirm email sign-up / verification settings under **Authentication → Providers → Email**.
+
+The SQL creates `public.farm_projects`, enables Row Level Security (RLS), and limits each signed-in user to their own rows. The app uses the signed-in user's access token for database requests. Visitor sessions cannot save projects.
+
+Saved project payloads include the selected coordinates, user-entered farm context, climate time series and MODIS observations. These records are stored in the user's Supabase project; review your data-retention and privacy requirements before collecting real farm data.
 
 ## Deploy
 
-Deploy this repository on Streamlit Community Cloud using `app.py` as the main file.
-
-## Access and authentication
-
-The app supports two access modes:
-
-- **Visitor:** opens the prototype without creating an account.
-- **Email account:** uses Supabase Auth for email/password registration and sign-in. Email confirmation depends on the Supabase project's authentication settings.
-
-To enable email authentication on Streamlit Community Cloud:
-
-1. Create a Supabase project and open **Project Settings → API**.
-2. Copy the **Project URL** and the **Publishable key** (starts with `sb_publishable_`). Never use or expose the Secret key (`sb_secret_`) or the legacy service-role key.
-3. In the Streamlit app, open **Settings → Secrets** and add:
-
-```toml
-SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
-SUPABASE_PUBLISHABLE_KEY = "sb_publishable_YOUR_KEY"
-```
-
-   For older projects that still use an anon key, the app also accepts `SUPABASE_ANON_KEY` as a backwards-compatible setting. Keep either key only in Streamlit Secrets, never in GitHub.
-
-4. In Supabase **Authentication → URL Configuration**, add the deployed Streamlit app URL to the allowed redirect/site URLs as appropriate for the project.
-5. In **Authentication → Providers / Email**, configure email sign-up and confirmation to match the intended access policy.
-
-Until these secrets are configured, visitor access remains available and the email forms stay disabled. Passwords are sent directly to Supabase Auth over HTTPS; the app does not store passwords or put private keys in the repository. The current prototype keeps the signed-in session in Streamlit session state and does not yet save user profiles or farm projects to a database.
+Deploy this repository on Streamlit Community Cloud using `app.py` as the main file. Streamlit Community Cloud automatically rebuilds after commits to the connected GitHub branch.
