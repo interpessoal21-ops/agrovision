@@ -45,6 +45,14 @@ def climate_quality_report(frame: pd.DataFrame) -> dict:
 
     for column, (lower, upper) in CLIMATE_RANGES.items():
         if column not in frame.columns:
+            missing = len(frame)
+            missing_cells += missing
+            variables.append({
+                "Variable": column,
+                "Missing": missing,
+                "Outside broad physical range": 0,
+                "Expected range": f"{lower:g} to {upper:g} (column absent)",
+            })
             continue
         values = pd.to_numeric(frame[column], errors="coerce").replace([np.inf, -np.inf], np.nan)
         missing = int(values.isna().sum())
