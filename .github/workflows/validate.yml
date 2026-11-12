@@ -18,6 +18,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Compile application and validation module
-        run: python -m py_compile app.py agrovision_validation.py agrovision_agronomy.py
+        run: python -m py_compile app.py agrovision_validation.py agrovision_agronomy.py agrovision_zarc.py
       - name: Run scientific-validation metric tests
         run: python -m unittest discover -s tests -v
