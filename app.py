@@ -236,6 +236,12 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
         })
     return pd.DataFrame(rows).sort_values("Date") if rows else pd.DataFrame()
 
+# Restore a saved project's coordinates before the sidebar widgets are instantiated.
+if "pending_study_coords" in st.session_state:
+    pending_lat, pending_lon = st.session_state.pop("pending_study_coords")
+    st.session_state["lat_value"] = pending_lat
+    st.session_state["lon_value"] = pending_lon
+
 st.subheader(tx("🗺️ Select your study area on the map", "🗺️ Selecione a área de estudo no mapa"))
 st.caption(tx("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.", "Clique no mapa para escolher um ponto ou informe as coordenadas no painel Área de estudo."))
 map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
@@ -455,6 +461,9 @@ with tab2:
             default=list(scenario_catalog)[:3]
         )
         scenarios = [(name, scenario_catalog[name]) for name in selected_scenarios]
+        if not scenarios:
+            st.warning(tx("Select at least one rotation system; showing the first option for now.", "Selecione ao menos um sistema de rotação; exibindo a primeira opção por enquanto."))
+            scenarios = [(next(iter(scenario_catalog)), next(iter(scenario_catalog.values())))]
         rows = []
         for name, adjustment in scenarios:
             climate_component = 0.55 * rain_score + 0.45 * heat_score
@@ -587,8 +596,7 @@ with tab4:
                     restored = restored.set_index("Date")
                     st.session_state["climate"] = restored
                     st.session_state["coords"] = (float(selected["latitude"]), float(selected["longitude"]))
-                    st.session_state["lat_value"] = float(selected["latitude"])
-                    st.session_state["lon_value"] = float(selected["longitude"])
+                    st.session_state["pending_study_coords"] = (float(selected["latitude"]), float(selected["longitude"]))
                     vegetation_records = payload.get("modis_data", [])
                     restored_modis = pd.DataFrame(vegetation_records)
                     if not restored_modis.empty:
