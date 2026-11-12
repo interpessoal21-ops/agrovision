@@ -16,44 +16,93 @@ st.set_page_config(page_title="AGROVISION", page_icon="🌱", layout="wide")
 
 st.markdown("""
 <style>
-    :root { --agro-green: #2f855a; --agro-deep: #103b2b; --agro-light: #eaf5ee; --agro-gold: #d6b36a; }
-    .stApp { background: radial-gradient(ellipse at 85% 0%, rgba(214,179,106,.12) 0%, transparent 34%), linear-gradient(180deg, #f1f7f2 0%, #fbfcfa 340px); }
-    [data-testid="stSidebar"] { background: linear-gradient(180deg, #edf5ee 0%, #e5efe7 100%); border-right: 1px solid #d5e3d8; }
-    [data-testid="stHeader"] { background: rgba(251,252,250,.86); }
+    :root {
+        --agro-bg: #0b1712; --agro-panel: #14251d; --agro-panel-2: #1a3025;
+        --agro-green: #56a878; --agro-deep: #08130e; --agro-gold: #d6b36a;
+        --agro-text: #e6eee8; --agro-muted: #a8b9ae; --agro-border: #2b4436;
+    }
+    .stApp {
+        background:
+          radial-gradient(ellipse at 85% 0%, rgba(76,139,98,.16) 0%, transparent 35%),
+          linear-gradient(180deg, #102219 0%, #0b1712 420px);
+        color: var(--agro-text);
+    }
+    [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainBlockContainer"] {
+        background: transparent;
+    }
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #102219 0%, #0d1b14 100%);
+        border-right: 1px solid var(--agro-border);
+    }
+    [data-testid="stHeader"] { background: rgba(11,23,18,.88); }
+    [data-testid="stToolbar"], [data-testid="stDecoration"] { background: transparent; }
     .block-container { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1440px; }
-    div.stButton > button[kind="primary"] { background: linear-gradient(105deg, #164b35, #2f855a); border: 0; box-shadow: 0 5px 16px rgba(22,75,53,.18); }
-    div.stButton > button { border-radius: 11px; font-weight: 650; }
-    [data-testid="stMetric"] { border-radius: 16px !important; }
-    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #164b35; }
+    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown, [data-testid="stCaptionContainer"] {
+        color: var(--agro-text);
+    }
+    [data-testid="stCaptionContainer"], .stCaption, small { color: var(--agro-muted) !important; }
+    a { color: #86d5a5 !important; }
+    div.stButton > button[kind="primary"], .stFormSubmitButton > button {
+        background: linear-gradient(105deg, #20583c, #347b52);
+        color: #fff; border: 1px solid #4c9569;
+        box-shadow: 0 5px 16px rgba(0,0,0,.22);
+    }
+    div.stButton > button {
+        border-radius: 11px; font-weight: 650; color: var(--agro-text);
+        background: #1b3025; border: 1px solid #385542;
+    }
+    div.stButton > button:hover { border-color: #79bd91; color: #fff; }
+    [data-testid="stMetric"], div[data-testid="stMetric"] {
+        background: #172b21; border: 1px solid var(--agro-border);
+        padding: 1rem 1.1rem; border-radius: 14px;
+        box-shadow: 0 3px 12px rgba(0,0,0,.16);
+    }
+    [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {
+        color: var(--agro-text) !important;
+    }
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #c4e6cf; }
     .hero {
         padding: 2rem 2.1rem; border-radius: 22px; color: white; position: relative; overflow: hidden;
-        background: radial-gradient(circle at 88% 18%, rgba(214,179,106,.32), transparent 23%), linear-gradient(118deg, #103b2b 0%, #1d6343 58%, #57936b 100%);
-        margin: .25rem 0 1.35rem 0; box-shadow: 0 14px 34px rgba(16,59,43,.18); border: 1px solid rgba(255,255,255,.13);
+        background: radial-gradient(circle at 88% 18%, rgba(214,179,106,.27), transparent 23%), linear-gradient(118deg, #081b12 0%, #174b31 58%, #286b46 100%);
+        margin: .25rem 0 1.35rem 0; box-shadow: 0 14px 34px rgba(0,0,0,.28);
+        border: 1px solid rgba(151,201,164,.18);
     }
     .hero h1 { color: white; font-size: 2.35rem; margin: 0 0 .35rem 0; letter-spacing: -.04em; }
-    .hero p { color: #e5f4e9; font-size: 1.02rem; margin: 0; max-width: 850px; }
-    .eyebrow { color: #c5e8d0; text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 700; margin-bottom: .55rem; }
+    .hero p { color: #d5e9db; font-size: 1.02rem; margin: 0; max-width: 850px; }
+    .eyebrow { color: #d6c18f; text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 700; margin-bottom: .55rem; }
     .step-card {
-        background: white; border: 1px solid #dce9df; border-radius: 15px;
-        padding: 1rem; min-height: 142px; box-shadow: 0 3px 12px rgba(20,65,43,.045);
+        background: #172b21; border: 1px solid var(--agro-border); border-radius: 15px;
+        padding: 1rem; min-height: 142px; box-shadow: 0 3px 12px rgba(0,0,0,.16);
     }
     .step-number {
         display: inline-flex; width: 30px; height: 30px; border-radius: 50%;
-        align-items: center; justify-content: center; background: #e3f2e8;
-        color: #1d6843; font-weight: 800; margin-bottom: .55rem;
+        align-items: center; justify-content: center; background: #244a34;
+        color: #bce7c9; font-weight: 800; margin-bottom: .55rem;
     }
-    .step-card strong { display: block; color: #194d35; margin-bottom: .3rem; }
-    .step-card span { color: #52665a; font-size: .88rem; line-height: 1.4; }
-    div[data-testid="stMetric"] {
-        background: white; border: 1px solid #e0ebe3; padding: 1rem 1.1rem;
-        border-radius: 14px; box-shadow: 0 3px 12px rgba(20,65,43,.04);
+    .step-card strong { display: block; color: #d4eadb; margin-bottom: .3rem; }
+    .step-card span { color: #afc2b5; font-size: .88rem; line-height: 1.4; }
+    div[data-testid="stTabs"] button { color: #b9cabe; }
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        color: #a8e0b9; border-bottom-color: #65b783;
     }
-    div[data-testid="stMetricLabel"] { color: #547160; }
-    div[data-testid="stTabs"] button[aria-selected="true"] { color: #1e7048; border-bottom-color: #2f855a; }
     .section-note {
-        padding: .8rem 1rem; border-left: 4px solid #55a477; background: #edf6ef;
-        border-radius: 0 10px 10px 0; color: #315b42; margin: .5rem 0 1rem 0;
+        padding: .8rem 1rem; border-left: 4px solid #65b783; background: #193426;
+        border-radius: 0 10px 10px 0; color: #c7dfce; margin: .5rem 0 1rem 0;
     }
+    [data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div,
+    [data-testid="stDateInput"] input, [data-testid="stNumberInput"] input {
+        background: #172b21 !important; color: #e6eee8 !important;
+        border-color: #385542 !important;
+    }
+    input, textarea { color: #e6eee8 !important; }
+    [data-baseweb="popover"], [data-baseweb="menu"], [role="listbox"] {
+        background: #172b21 !important; color: #e6eee8 !important;
+    }
+    [data-testid="stDataFrame"], [data-testid="stTable"] {
+        background: #14251d; border: 1px solid var(--agro-border); border-radius: 12px;
+    }
+    [data-testid="stAlert"] { background: #1b3025; color: #e6eee8; border: 1px solid #385542; }
+    hr { border-color: #2b4436 !important; }
     @media (max-width: 700px) {
         .hero { padding: 1.2rem; border-radius: 14px; }
         .hero h1 { font-size: 1.8rem; }
@@ -286,7 +335,7 @@ if "pending_study_coords" in st.session_state:
 st.subheader(tx("🗺️ Select your study area on the map", "🗺️ Selecione a área de estudo no mapa"))
 st.caption(tx("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.", "Clique no mapa para escolher um ponto ou informe as coordenadas no painel Área de estudo."))
 map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
-study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
+study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="CartoDB dark_matter")
 folium.CircleMarker(
     location=map_center, radius=8, color="#176b45", weight=3,
     fill=True, fill_color="#4da978", fill_opacity=0.9,
