@@ -1251,7 +1251,7 @@ def fetch_saved_projects():
         raise RuntimeError(f"Project list failed (HTTP {response.status_code}): {response.text[:300]}")
     return response.json()
 
-def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude):
+def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water_balance=None, zarc_reference=None):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
     styles = getSampleStyleSheet()
@@ -1276,7 +1276,40 @@ def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude):
         story.append(Paragraph(f"Valid observations: {len(valid)} · Mean NDVI: {valid.mean():.3f}" if len(valid) else "No quality-screened NDVI observations were available.", styles["Normal"]))
     else:
         story.append(Paragraph("No MODIS observations available for this analysis.", styles["Normal"]))
-    story.extend([Spacer(1, 16), Paragraph("Scientific note: this report summarizes historical environmental observations. NDVI is not a direct measure of yield or crop health. Rainfall totals alone are not a soil-water balance or crop water deficit estimate. Crop reference ranges are indicative and must be checked against cultivar, local ZARC calendar, soil tests, management and field observations.", styles["Italic"])])
+    if water_balance and water_balance.get("table") is not None and not water_balance["table"].empty:
+        wb = water_balance["table"]
+        story.extend([Spacer(1, 12), Paragraph("Crop-water scenario — exploratory FAO-56 balance", styles["Heading2"])])
+        water_rows = [
+            ["Scenario field", "Value"],
+            ["Crop / season", f"{water_balance.get('crop', 'Not recorded')} / {water_balance.get('year', 'Not recorded')}"],
+            ["Daily steps", str(len(wb))],
+            ["Accumulated ET0", f"{wb['ET0 FAO-56 (mm)'].sum():.1f} mm"],
+            ["Potential ETc", f"{wb['ETc potential (mm)'].sum():.1f} mm"],
+            ["Estimated actual ETa", f"{wb['ETa actual estimate (mm)'].sum():.1f} mm"],
+            ["Cycle precipitation", f"{wb['Precipitation (mm)'].sum():.1f} mm"],
+            ["Days with modeled stress", str(int((wb['Stress coefficient Ks'] < 0.999).sum()))],
+            ["Net irrigation scenario", f"{wb['Net irrigation (mm)'].sum():.1f} mm"],
+        ]
+        water_table = Table(water_rows, colWidths=[270, 180])
+        water_table.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), colors.HexColor("#164b35")), ("TEXTCOLOR", (0,0), (-1,0), colors.white), ("GRID", (0,0), (-1,-1), .4, colors.HexColor("#cbd5ce")), ("PADDING", (0,0), (-1,-1), 6)]))
+        story.append(water_table)
+    else:
+        story.extend([Spacer(1, 8), Paragraph("No current-coordinate water-balance scenario was attached.", styles["Normal"])])
+    story.extend([Spacer(1, 12), Paragraph("Official MAPA ZARC reference", styles["Heading2"])])
+    if zarc_reference:
+        zarc_rows = [["Field", "Selected official record"]]
+        for key in ("Crop", "UF", "Municipality", "Soil code", "Cultivar group / cycle", "Management", "Climate", "Ordinance", "Season dataset"):
+            value = zarc_reference.get(key)
+            if value not in (None, ""):
+                zarc_rows.append([key, str(value)])
+        zarc_table = Table(zarc_rows, colWidths=[170, 280])
+        zarc_table.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), colors.HexColor("#164b35")), ("TEXTCOLOR", (0,0), (-1,0), colors.white), ("GRID", (0,0), (-1,-1), .4, colors.HexColor("#cbd5ce")), ("PADDING", (0,0), (-1,-1), 5)]))
+        story.append(zarc_table)
+        story.append(Paragraph("Official source: " + str(zarc_reference.get("Source URL", "MAPA ZARC open-data portal")), styles["Normal"]))
+    else:
+        story.append(Paragraph("No official MAPA ZARC row was attached to this project.", styles["Normal"]))
+
+        story.extend([Spacer(1, 16), Paragraph("Scientific note: this report summarizes historical environmental observations. NDVI is not a direct measure of yield or crop health. Rainfall totals alone are not a soil-water balance or crop water deficit estimate. Crop reference ranges are indicative and must be checked against cultivar, local ZARC calendar, soil tests, management and field observations.", styles["Italic"])])
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
@@ -1421,7 +1454,14 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
         if not modis_for_export.empty:
             st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="agrovision_modis_ndvi.csv", mime="text/csv", use_container_width=True)
     with export_col2:
-        pdf_bytes = build_pdf_report(climate_for_export, modis_for_export, lat, lon)
+        water_for_export = st.session_state.get("latest_water_balance")
+        if water_for_export and water_for_export.get("coords") != (float(lat), float(lon)):
+            water_for_export = None
+        pdf_bytes = build_pdf_report(
+            climate_for_export, modis_for_export, lat, lon,
+            water_balance=water_for_export,
+            zarc_reference=st.session_state.get("zarc_reference")
+        )
         st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="agrovision_report.pdf", mime="application/pdf", use_container_width=True)
     with export_col3:
         if st.button(tx("Save project to account", "Salvar projeto na conta"), use_container_width=True):
