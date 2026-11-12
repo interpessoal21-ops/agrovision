@@ -2,6 +2,13 @@ import streamlit as st
 import pandas as pd
 import requests
 import folium
+import io
+import json
+from datetime import datetime, timezone
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from streamlit_folium import st_folium
 
 st.set_page_config(page_title="AGROVISION", page_icon="🌱", layout="wide")
@@ -52,6 +59,13 @@ st.markdown("""
   <p>Explore climate and vegetation data for your study area, then compare illustrative crop-rotation strategies in one place.</p>
 </div>
 """, unsafe_allow_html=True)
+
+# Language preference is stored in the Streamlit session and works for visitors too.
+if "agrovision_language" not in st.session_state:
+    st.session_state["agrovision_language"] = "English"
+
+def tx(en, pt):
+    return pt if st.session_state.get("agrovision_language") == "Português" else en
 
 def supabase_settings():
     """Read Supabase credentials from Streamlit Secrets without exposing them."""
@@ -111,6 +125,9 @@ def supabase_auth(endpoint, payload):
         detail = f" (code: {error_code})" if error_code else ""
         raise RuntimeError(f"Supabase returned HTTP {response.status_code}: {message}{detail}")
     return data
+
+with st.sidebar:
+    st.selectbox("Language / Idioma", ["English", "Português"], key="agrovision_language")
 
 auth_mode = st.session_state.get("agrovision_auth_mode")
 if auth_mode not in ("guest", "email"):
@@ -189,9 +206,16 @@ def get_nasa_power(lat, lon):
     return frame.replace(-999, pd.NA)
 
 @st.cache_data(ttl=86400, show_spinner=False)
-def get_modis(lat, lon):
+def get_modis(lat, lon, start_year=2020, end_year=2025):
+    """Retrieve MOD13Q1 observations for a selectable year range."""
     url = "https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset"
-    params = {"latitude":lat,"longitude":lon,"startDate":"A2024001","endDate":"A2024091","kmAboveBelow":0,"kmLeftRight":0}
+    end_day = 366 if end_year % 4 == 0 else 365
+    params = {
+        "latitude": lat, "longitude": lon,
+        "startDate": f"A{int(start_year)}001",
+        "endDate": f"A{int(end_year)}{end_day:03d}",
+        "kmAboveBelow": 0, "kmLeftRight": 0
+    }
     response = requests.get(url, params=params, timeout=90)
     response.raise_for_status()
     records = {}
@@ -205,11 +229,15 @@ def get_modis(lat, lon):
         red = bands.get("250m_16_days_red_reflectance")
         quality = bands.get("250m_16_days_pixel_reliability")
         ndvi = (nir-red)/(nir+red) if nir is not None and red is not None and quality in (0,1) and nir+red != 0 else None
-        rows.append({"Date":pd.to_datetime(day),"Quality":quality,"NDVI":ndvi})
+        rows.append({
+            "Date": pd.to_datetime(day), "Quality": quality,
+            "Quality label": {0: "Good", 1: "Marginal", 2: "Snow/ice", 3: "Cloudy"}.get(quality, "Unknown"),
+            "NDVI": ndvi
+        })
     return pd.DataFrame(rows).sort_values("Date") if rows else pd.DataFrame()
 
-st.subheader("🗺️ Select your study area on the map")
-st.caption("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.")
+st.subheader(tx("🗺️ Select your study area on the map", "🗺️ Selecione a área de estudo no mapa"))
+st.caption(tx("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.", "Clique no mapa para escolher um ponto ou informe as coordenadas no painel Área de estudo."))
 map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
 study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
 folium.CircleMarker(
@@ -229,19 +257,33 @@ if map_event and map_event.get("last_clicked"):
         st.rerun()
 
 with st.sidebar:
-    st.header("Study area")
-    st.caption("Enter the coordinates of the area you want to investigate.")
+    st.header(tx("Study area", "Área de estudo"))
+    st.caption(tx("Enter the coordinates of the area you want to investigate.", "Informe as coordenadas da área que deseja investigar."))
     lat = st.number_input("Latitude", -90.0, 90.0, -15.8, 0.01, format="%.4f", key="lat_value", help="Decimal degrees. Locations south of the Equator use negative values.")
     lon = st.number_input("Longitude", -180.0, 180.0, -47.0, 0.01, format="%.4f", key="lon_value", help="Decimal degrees. Locations west of Greenwich use negative values.")
     st.divider()
-    st.header("Farm context")
-    irrigation = st.selectbox("Water availability", ["Rainfed","Supplemental irrigation","Irrigated"], help="Choose the water supply used or planned for the study area.")
-    soil = st.selectbox("Soil texture (local input)", ["Unknown","Sandy","Loamy","Clayey"], help="This is information supplied by you; it is not measured by NASA in this prototype.")
-    fertility = st.select_slider("Soil fertility (local input)", ["Low","Medium","High"], value="Medium", help="A qualitative local estimate, not a satellite measurement.")
-    st.caption("Soil and management inputs are supplied by the user, not measured by NASA.")
+    st.header(tx("Farm context", "Contexto da propriedade"))
+    irrigation_options = ["Rainfed", "Supplemental irrigation", "Irrigated"]
+    irrigation_labels = [tx("Rainfed", "Sequeiro"), tx("Supplemental irrigation", "Irrigação suplementar"), tx("Irrigated", "Irrigado")]
+    irrigation_label = st.selectbox(tx("Water availability", "Disponibilidade de água"), irrigation_labels, help=tx("Choose the water supply used or planned for the study area.", "Selecione o regime hídrico da área."))
+    irrigation = dict(zip(irrigation_labels, irrigation_options))[irrigation_label]
+    soil_options = ["Unknown", "Sandy", "Loamy", "Clayey"]
+    soil_labels = [tx("Unknown", "Desconhecida"), tx("Sandy", "Arenosa"), tx("Loamy", "Franca"), tx("Clayey", "Argilosa")]
+    soil_label = st.selectbox(tx("Soil texture (local input)", "Textura do solo (dado local)"), soil_labels, help=tx("This is information supplied by you; it is not measured by NASA in this prototype.", "Informação fornecida pelo usuário; não é medida pela NASA."))
+    soil = dict(zip(soil_labels, soil_options))[soil_label]
+    fertility_labels = [tx("Low", "Baixa"), tx("Medium", "Média"), tx("High", "Alta")]
+    fertility_label = st.select_slider(tx("Soil fertility (local input)", "Fertilidade do solo (dado local)"), fertility_labels, value=tx("Medium", "Média"), help=tx("A qualitative local estimate, not a satellite measurement.", "Estimativa qualitativa local, não é medição por satélite."))
+    fertility = dict(zip(fertility_labels, ["Low", "Medium", "High"]))[fertility_label]
+    st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info("First visit? Open the Start here tab for a short walkthrough.")
 
-tab_help, tab1, tab2, tab3 = st.tabs(["👋 Start here · Help","Environmental dashboard","Rotation scenarios","Data & limitations"])
+tab_help, tab1, tab2, tab3, tab4 = st.tabs([
+    tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
+    tx("Environmental dashboard", "Painel ambiental"),
+    tx("Rotation scenarios", "Cenários de rotação"),
+    tx("Data & limitations", "Dados e limitações"),
+    tx("Saved projects", "Projetos salvos")
+])
 
 with tab_help:
     st.header("Your first steps")
@@ -343,41 +385,51 @@ with tab_help:
     st.caption("AGROVISION · First-visit guide · Prototype for NASA Space Apps Challenge 2026")
 
 with tab1:
-    st.subheader("Your study area, from space")
-    st.caption("Live climate data from NASA POWER and vegetation observations from MODIS.")
+    st.subheader(tx("Your study area, from space", "Sua área de estudo vista do espaço"))
+    st.caption(tx("Live climate data from NASA POWER and vegetation observations from MODIS.", "Dados climáticos da NASA POWER e observações de vegetação do MODIS."))
+    modis_years = st.slider(tx("MODIS observation period", "Período de observação MODIS"), 2020, 2025, (2023, 2025))
     if st.button("🛰️ Load environmental data", type="primary", use_container_width=True):
         try:
-            with st.spinner("Requesting NASA POWER and MODIS data..."):
+            with st.spinner(tx("Requesting NASA POWER and MODIS data...", "Consultando dados NASA POWER e MODIS...")):
                 climate = get_nasa_power(lat, lon)
-                modis = get_modis(lat, lon)
+                modis = get_modis(lat, lon, modis_years[0], modis_years[1])
             st.session_state["climate"], st.session_state["modis"] = climate, modis
             st.session_state["coords"] = (lat, lon)
-            st.success("Environmental data loaded.")
+            st.session_state["modis_years"] = modis_years
+            st.success(tx("Environmental data loaded.", "Dados ambientais carregados."))
         except Exception as exc:
             st.error(f"Data request failed: {exc}")
     if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
         climate = st.session_state["climate"]
         c1,c2,c3 = st.columns(3)
-        c1.metric("Mean air temperature", f"{climate['T2M'].mean():.1f} °C")
-        c2.metric("Total precipitation, 2020–2025", f"{climate['PRECTOTCORR'].sum():,.0f} mm")
-        c3.metric("Mean solar radiation", f"{climate['ALLSKY_SFC_SW_DWN'].mean():.1f} kWh/m²/day")
-        annual = climate[["PRECTOTCORR","T2M"]].resample("YE").agg({"PRECTOTCORR":"sum","T2M":"mean"})
+        c1.metric(tx("Mean air temperature", "Temperatura média do ar"), f"{climate['T2M'].mean():.1f} °C")
+        c2.metric(tx("Total precipitation, 2020–2025", "Precipitação acumulada, 2020–2025"), f"{climate['PRECTOTCORR'].sum():,.0f} mm")
+        c3.metric(tx("Mean solar radiation", "Radiação solar média"), f"{climate['ALLSKY_SFC_SW_DWN'].mean():.1f} kWh/m²/day")
+        annual = climate[["PRECTOTCORR", "T2M"]].resample("YE").agg({"PRECTOTCORR": "sum", "T2M": "mean"})
         annual.index = annual.index.year
-        st.markdown("**Annual climate series**")
-        st.line_chart(annual)
-        st.caption("Source: NASA POWER Daily API, Agroclimatology community, 2020–2025.")
+        annual["Rainfall anomaly (%)"] = ((annual["PRECTOTCORR"] / annual["PRECTOTCORR"].mean()) - 1) * 100
+        annual["Temperature anomaly (°C)"] = annual["T2M"] - annual["T2M"].mean()
+        st.markdown("**" + tx("Annual climate series", "Série climática anual") + "**")
+        st.line_chart(annual[["PRECTOTCORR", "T2M"]])
+        anomaly_col1, anomaly_col2 = st.columns(2)
+        anomaly_col1.markdown("**" + tx("Rainfall anomaly vs. 2020–2025 mean", "Anomalia de chuva vs. média 2020–2025") + "**")
+        anomaly_col1.bar_chart(annual[["Rainfall anomaly (%)"]])
+        anomaly_col2.markdown("**" + tx("Temperature anomaly vs. 2020–2025 mean", "Anomalia de temperatura vs. média 2020–2025") + "**")
+        anomaly_col2.bar_chart(annual[["Temperature anomaly (°C)"]])
+        st.caption("Source: NASA POWER Daily API · Agroclimatology community · 2020–2025. Anomalies are relative to this six-year baseline.")
         modis = st.session_state.get("modis", pd.DataFrame())
         st.markdown("**MODIS vegetation index (NDVI)**")
         if not modis.empty and modis["NDVI"].notna().any():
             st.line_chart(modis.set_index("Date")[["NDVI"]])
-            st.caption("MODIS/Terra MOD13Q1, 16-day composites, 2024-01-01 to 2024-03-31; quality flags 0 and 1.")
+            st.caption(f"MODIS/Terra MOD13Q1 · 16-day composites · {st.session_state.get('modis_years', (2023, 2025))[0]}–{st.session_state.get('modis_years', (2023, 2025))[1]} · QA reliability 0 (good) and 1 (marginal).")
+            st.dataframe(modis[["Date", "NDVI", "Quality label"]], use_container_width=True, hide_index=True)
         else:
             st.info("No usable MODIS observations were returned for this point and period.")
     else:
         st.info("Enter coordinates and click Load environmental data to query NASA.")
 
 with tab2:
-    st.subheader("🌾 Explore crop-rotation strategies")
+    st.subheader(tx("🌾 Explore crop-rotation strategies", "🌾 Explore estratégias de rotação de culturas"))
     st.markdown('<div class="section-note">Compare three illustrative approaches using the same climate baseline and the farm context entered in the sidebar.</div>', unsafe_allow_html=True)
     st.warning("Prototype screening only: this transparent rule-based comparison is not a calibrated crop model, yield forecast, or agronomic prescription.")
     if "climate" not in st.session_state or st.session_state.get("coords") != (lat, lon):
@@ -391,20 +443,171 @@ with tab2:
         water_bonus = {"Rainfed":0,"Supplemental irrigation":8,"Irrigated":15}[irrigation]
         soil_bonus = {"Unknown":0,"Sandy":-5,"Loamy":8,"Clayey":2}[soil]
         fertility_bonus = {"Low":-8,"Medium":0,"High":6}[fertility]
-        scenarios = [("A — Maize / common bean",0),("B — Soybean / sorghum",8),("C — Diversified rotation with cover crop",5)]
+        scenario_catalog = {
+            "A — Maize / common bean": 0,
+            "B — Soybean / sorghum": 8,
+            "C — Diversified rotation with cover crop": 5,
+            "D — Soybean / maize / cover crop": 6,
+        }
+        selected_scenarios = st.multiselect(
+            tx("Select rotation systems to compare", "Selecione os sistemas de rotação para comparar"),
+            list(scenario_catalog),
+            default=list(scenario_catalog)[:3]
+        )
+        scenarios = [(name, scenario_catalog[name]) for name in selected_scenarios]
         rows = []
         for name, adjustment in scenarios:
-            score = max(0,min(100,0.55*rain_score+0.45*heat_score+water_bonus+soil_bonus+fertility_bonus+adjustment))
-            rows.append({"Scenario":name,"Screening score":round(score,1)})
+            climate_component = 0.55 * rain_score + 0.45 * heat_score
+            local_context_component = water_bonus + soil_bonus + fertility_bonus
+            score = max(0, min(100, climate_component + local_context_component + adjustment))
+            rows.append({
+                "Scenario": name, "Screening score": round(score, 1),
+                "Climate component": round(climate_component, 1),
+                "Local context adjustment": round(local_context_component, 1),
+                "Scenario adjustment": adjustment
+            })
         results = pd.DataFrame(rows).sort_values("Screening score",ascending=False)
-        st.dataframe(results,use_container_width=True,hide_index=True)
-        st.bar_chart(results.set_index("Scenario"))
+        st.session_state["rotation_results"] = results
+        st.dataframe(results, use_container_width=True, hide_index=True)
+        st.bar_chart(results.set_index("Scenario")[["Screening score"]])
+        with st.expander(tx("How is the screening score constructed?", "Como a pontuação exploratória é calculada?")):
+            st.write(tx(
+                "Climate component = 55% rainfall screening + 45% temperature screening. Local context adds transparent adjustments for irrigation, soil texture and fertility. Each illustrative rotation has a small demonstration adjustment. These weights are not calibrated against field outcomes.",
+                "Componente climático = 55% da triagem de chuva + 45% da triagem de temperatura. O contexto local adiciona ajustes explícitos para irrigação, textura e fertilidade. Cada rotação ilustrativa recebe um pequeno ajuste demonstrativo. Esses pesos não foram calibrados com resultados de campo."
+            ))
+            st.dataframe(results.set_index("Scenario"), use_container_width=True)
         st.caption(f"Climate baseline: mean annual precipitation {rain_year:.0f} mm; mean temperature {temp:.1f} °C. Local inputs: {irrigation.lower()}, {soil.lower()} soil, {fertility.lower()} fertility.")
-        st.info("Scenario adjustments are provisional demonstration weights. Validate with local agronomic data before real-world decisions.")
+        st.info(tx("Scenario adjustments are provisional demonstration weights. Validate with local agronomic data before real-world decisions.", "Os ajustes dos cenários são pesos demonstrativos provisórios. Valide-os com dados agronômicos locais antes de qualquer decisão real."))
 
 with tab3:
-    st.subheader("Data sources and limitations")
+    st.subheader(tx("Data sources and limitations", "Fontes de dados e limitações"))
     st.markdown("- **NASA POWER:** daily temperature, precipitation and solar radiation; queried live for selected coordinates.\n- **MODIS MOD13Q1:** vegetation index (NDVI) composites for Q1 2024; queried live.\n- **SMAP:** not yet connected in this public deployment. The earlier prototype used authenticated Earthdata access; its single snapshot is not a field measurement.\n- Satellite pixels represent broader areas and do not replace field sampling.\n- Rotation scores are exploratory; they do not estimate yield, profit, or crop suitability.")
     st.markdown("[NASA POWER API](https://power.larc.nasa.gov/) · [MODIS/ORNL DAAC](https://modis.ornl.gov/) · [NASA SMAP](https://smap.jpl.nasa.gov/)")
+# Data export and persistence tools are shared across authenticated users.
+def supabase_rest_headers():
+    base_url, public_key, _ = supabase_settings()
+    token = st.session_state.get("agrovision_access_token", "")
+    if not base_url or not public_key or not token:
+        return None, None
+    return base_url, {
+        "apikey": public_key, "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json", "Prefer": "return=representation"
+    }
+
+def save_project_record(project_name, payload):
+    base_url, headers = supabase_rest_headers()
+    if not headers:
+        raise RuntimeError("Sign in with an email account to save projects. Visitor sessions are temporary.")
+    response = requests.post(
+        f"{base_url}/rest/v1/farm_projects",
+        headers=headers,
+        json={"project_name": project_name, "latitude": float(lat), "longitude": float(lon), "payload": payload},
+        timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Project save failed (HTTP {response.status_code}): {response.text[:300]}")
+    return response.json()
+
+def fetch_saved_projects():
+    base_url, headers = supabase_rest_headers()
+    if not headers:
+        return []
+    response = requests.get(
+        f"{base_url}/rest/v1/farm_projects?select=id,project_name,latitude,longitude,created_at&order=created_at.desc",
+        headers=headers, timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Project list failed (HTTP {response.status_code}): {response.text[:300]}")
+    return response.json()
+
+def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, score_frame=None):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("AGROVISION — Environmental assessment", styles["Title"]),
+        Paragraph(f"Study coordinates: {latitude:.4f}, {longitude:.4f}", styles["Normal"]),
+        Paragraph(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", styles["Normal"]),
+        Spacer(1, 12),
+        Paragraph("NASA POWER climate summary (2020–2025)", styles["Heading2"])
+    ]
+    summary = [
+        ["Indicator", "Value"],
+        ["Mean air temperature", f"{climate_frame['T2M'].mean():.2f} °C"],
+        ["Accumulated precipitation", f"{climate_frame['PRECTOTCORR'].sum():.1f} mm"],
+        ["Mean solar radiation", f"{climate_frame['ALLSKY_SFC_SW_DWN'].mean():.2f} kWh/m²/day"]
+    ]
+    table = Table(summary, colWidths=[270, 180])
+    table.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), colors.HexColor("#164b35")), ("TEXTCOLOR", (0,0), (-1,0), colors.white), ("GRID", (0,0), (-1,-1), .4, colors.HexColor("#cbd5ce")), ("PADDING", (0,0), (-1,-1), 7)]))
+    story.extend([table, Spacer(1, 12), Paragraph("MODIS/Terra MOD13Q1 vegetation observations", styles["Heading2"])])
+    if vegetation_frame is not None and not vegetation_frame.empty:
+        valid = vegetation_frame["NDVI"].dropna()
+        story.append(Paragraph(f"Valid observations: {len(valid)} · Mean NDVI: {valid.mean():.3f}" if len(valid) else "No quality-screened NDVI observations were available.", styles["Normal"]))
+    else:
+        story.append(Paragraph("No MODIS observations available for this analysis.", styles["Normal"]))
+    if score_frame is not None and not score_frame.empty:
+        story.extend([Spacer(1, 12), Paragraph("Illustrative crop-rotation screening", styles["Heading2"])])
+        rows = [["Scenario", "Screening score"]] + [[str(row["Scenario"]), str(row["Screening score"])] for _, row in score_frame.iterrows()]
+        score_table = Table(rows, colWidths=[320, 130])
+        score_table.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), colors.HexColor("#164b35")), ("TEXTCOLOR", (0,0), (-1,0), colors.white), ("GRID", (0,0), (-1,-1), .4, colors.HexColor("#cbd5ce")), ("PADDING", (0,0), (-1,-1), 7)]))
+        story.append(score_table)
+    story.extend([Spacer(1, 16), Paragraph("Scientific note: this report is exploratory. NDVI is not a direct measure of yield or crop health. Rotation screening scores are provisional, not calibrated crop models or agronomic recommendations. Verify findings with local field data.", styles["Italic"])])
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+with tab4:
+    st.subheader(tx("Saved projects", "Projetos salvos"))
+    if st.session_state.get("agrovision_auth_mode") != "email":
+        st.info(tx("Sign in with an email account to save and retrieve projects. Visitor analyses remain in this browser session only.", "Entre com uma conta de e-mail para salvar e recuperar projetos. Análises de visitantes ficam apenas nesta sessão."))
+    else:
+        if st.button(tx("Refresh project list", "Atualizar lista de projetos")):
+            try:
+                st.session_state["saved_projects"] = fetch_saved_projects()
+            except Exception as exc:
+                st.error(str(exc))
+        if "saved_projects" not in st.session_state:
+            try:
+                st.session_state["saved_projects"] = fetch_saved_projects()
+            except Exception as exc:
+                st.warning(tx("The project table may not be configured yet. Run the SQL setup described in the README.", "A tabela ainda pode não estar configurada. Execute o SQL descrito no README."))
+                st.caption(str(exc))
+        saved = st.session_state.get("saved_projects", [])
+        if saved:
+            st.dataframe(pd.DataFrame(saved), use_container_width=True, hide_index=True)
+        else:
+            st.caption(tx("No saved projects found yet.", "Nenhum projeto salvo ainda."))
+
+if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
+    climate_for_export = st.session_state["climate"]
+    modis_for_export = st.session_state.get("modis", pd.DataFrame())
+    st.divider()
+    st.subheader(tx("Export and save this analysis", "Exportar e salvar esta análise"))
+    export_col1, export_col2, export_col3 = st.columns(3)
+    with export_col1:
+        csv_frame = climate_for_export.copy()
+        csv_frame.index.name = "Date"
+        st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="agrovision_nasa_power.csv", mime="text/csv", use_container_width=True)
+    with export_col2:
+        pdf_bytes = build_pdf_report(climate_for_export, modis_for_export, lat, lon, st.session_state.get("rotation_results"))
+        st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="agrovision_report.pdf", mime="application/pdf", use_container_width=True)
+    with export_col3:
+        if st.button(tx("Save project to account", "Salvar projeto na conta"), use_container_width=True):
+            project_name = st.session_state.get("project_name", f"Study {lat:.3f}, {lon:.3f}")
+            payload = {
+                "climate_rows": len(climate_for_export),
+                "modis_rows": len(modis_for_export),
+                "modis_years": st.session_state.get("modis_years"),
+                "irrigation": irrigation, "soil": soil, "fertility": fertility,
+                "saved_at": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                save_project_record(project_name, payload)
+                st.success(tx("Project saved to your account.", "Projeto salvo na sua conta."))
+                st.session_state.pop("saved_projects", None)
+            except Exception as exc:
+                st.error(str(exc))
+    st.text_input(tx("Project name", "Nome do projeto"), key="project_name", value=f"Study {lat:.3f}, {lon:.3f}")
+
 st.divider()
 st.caption("AGROVISION · Prototype for NASA Space Apps Challenge 2026")
