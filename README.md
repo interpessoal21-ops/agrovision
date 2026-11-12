@@ -1,6 +1,6 @@
 # AGROVISION
 
-**Agricultural decision-support prototype using NASA Earth-observation and climate data.** Built for the NASA Space Apps Challenge 2026.
+**Early-stage agricultural climate-screening platform using NASA Earth-observation data and published crop references.** Built for the NASA Space Apps Challenge 2026; scientific validation is in progress.
 
 ## Current capabilities
 
@@ -9,7 +9,7 @@
 - NASA POWER daily climate data for 2020–2025.
 - MODIS/Terra MOD13Q1 16-day vegetation observations for a selectable year range (2020–2025), with pixel-reliability filtering.
 - Annual climate summaries and rainfall/temperature anomalies relative to the 2020–2025 baseline.
-- Transparent, illustrative crop-rotation screening comparison with visible score components.
+- Crop-specific historical climate screening for maize, soybean and common bean, using a selected sowing month and complete daily crop-cycle windows.\n- Indicative crop-cycle durations and seasonal crop-water reference ranges sourced from FAO and Embrapa publications; no arbitrary crop ranking score.
 - CSV export and PDF environmental report.
 - Supabase email authentication and optional per-user project persistence.
 - Saved projects include the queried climate and MODIS series and can be restored in the app.
@@ -32,11 +32,11 @@ SMAP is **not connected** in this deployment. Do not interpret any previous isol
 - NASA POWER and MODIS are gridded / satellite-derived products, not field sensors. A point query does not represent every part of a farm.
 - NDVI is a vegetation-greenness indicator. It does not identify crop species, diagnose plant disease, or directly measure yield.
 - Climate anomalies are calculated against the queried 2020–2025 period; this short baseline is not a formal climatological normal.
-- Crop-rotation scores are transparent, provisional demonstration weights. They are **not calibrated crop models, yield predictions, profitability estimates, or agronomic recommendations**.
+- Crop screening uses the midpoint of published indicative crop-cycle duration ranges to define a historical weather window. It reports observed precipitation and temperature; it does not model phenology, effective rainfall, evapotranspiration, soil-water storage, irrigation demand, yield, profitability, or crop suitability.\n- FAO seasonal crop-water requirements are indicative evapotranspiration-based ranges under defined conditions. Comparing gross rainfall with those ranges is **not** a water-balance calculation.\n- Crop cycle and water-need ranges vary by cultivar, region, sowing date and management. Local ZARC calendars, soil analysis, field observations and agronomist review remain necessary before planting decisions.
 - Soil texture, fertility and irrigation context are user-entered assumptions.
 - Validate any real-world decision with local soil tests, crop calendars, field observations and qualified agronomic advice.
 
-## Supabase setup: save projects
+## Crop-screening method\n\nThe crop analysis supports maize (grain), soybean and common bean (dry grain). For each selected crop, it uses the midpoint of the published indicative cycle-duration range as a representative window beginning on day one of the user-selected sowing month. Only complete windows with sufficient daily NASA POWER records are summarized. It reports historical cycle rainfall and mean air temperature by season, plus a median across available seasons. It does not rank crops or produce a recommendation.\n\nReference sources:\n- [FAO — Crop Water Needs](https://www.fao.org/4/S2022E/s2022e07.htm): indicative crop-cycle durations, crop coefficients and seasonal water-need ranges.\n- [Embrapa — Maize climate requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/milho/pre-producao/caracteristicas-da-especie-e-relacoes-com-o-ambiente/relacoes-com-o-clima).\n- [Embrapa — Soybean water requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/soja/pre-producao/caracteristicas-da-especie-e-relacoes-com-o-ambiente/exigencias-climaticas/agua).\n- [Embrapa — Common bean climate requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/feijao/pre-producao/clima).\n\n## Supabase setup: save projects
 
 Email authentication uses the Supabase Auth REST API. To enable saving and restoring projects:
 
