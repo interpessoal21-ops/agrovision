@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from agrovision_validation import paired_validation_metrics
 from agrovision_modis import parse_modis_subset
+from agrovision_quality import climate_quality_report, modis_quality_report
 from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
 from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
 import requests
@@ -719,6 +720,34 @@ with tab1:
             st.error(f"Data request failed: {exc}")
     if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
         climate = st.session_state["climate"]
+        with st.expander(tx("🔎 Automatic data-quality checks", "🔎 Verificações automáticas de qualidade dos dados"), expanded=False):
+            climate_qc = climate_quality_report(climate)
+            q1, q2, q3, q4 = st.columns(4)
+            q1.metric(tx("Daily coverage", "Cobertura diária"), f"{climate_qc['coverage_pct']:.1f}%")
+            q2.metric(tx("Missing values", "Valores ausentes"), climate_qc["missing_cells"])
+            q3.metric(tx("Duplicate dates", "Datas duplicadas"), climate_qc["duplicate_dates"])
+            q4.metric(tx("Out-of-range values", "Valores fora da faixa"), climate_qc["out_of_range_cells"])
+            st.caption(tx(
+                f"Period: {climate_qc['start_date']} to {climate_qc['end_date']} · {climate_qc['observed_days']} observed dates of {climate_qc['expected_days']} expected calendar days.",
+                f"Período: {climate_qc['start_date']} a {climate_qc['end_date']} · {climate_qc['observed_days']} datas observadas de {climate_qc['expected_days']} dias corridos esperados."
+            ))
+            if climate_qc["duplicate_dates"] or climate_qc["missing_cells"] or climate_qc["out_of_range_cells"] or climate_qc["missing_dates"]:
+                st.warning(tx(
+                    "The checks found gaps or values that deserve review. Original observations are preserved; no automatic correction or imputation was applied.",
+                    "As verificações encontraram lacunas ou valores que merecem revisão. As observações originais foram preservadas; não houve correção ou imputação automática."
+                ))
+            else:
+                st.success(tx("No basic completeness or range issue was detected in the loaded climate table.", "Nenhum problema básico de completude ou faixa foi detectado na tabela climática carregada."))
+            st.dataframe(pd.DataFrame(climate_qc["variables"]), use_container_width=True, hide_index=True)
+            modis_qc = modis_quality_report(st.session_state.get("modis", pd.DataFrame()))
+            m1, m2, m3 = st.columns(3)
+            m1.metric(tx("MODIS observations", "Observações MODIS"), modis_qc["rows"])
+            m2.metric(tx("Usable NDVI", "NDVI utilizável"), modis_qc["valid_ndvi"])
+            m3.metric(tx("Poor/unknown QA", "QA ruim/desconhecida"), modis_qc["poor_or_unknown_quality"])
+            st.caption(tx(
+                "MODIS QA is reported separately from climate completeness. NDVI values outside [-1, 1] are flagged, not silently clipped.",
+                "A QA do MODIS é informada separadamente da completude climática. Valores de NDVI fora de [-1, 1] são sinalizados, não limitados silenciosamente."
+            ))
         c1,c2,c3 = st.columns(3)
         c1.metric(tx("Mean air temperature", "Temperatura média do ar"), f"{climate['T2M'].mean():.1f} °C")
         c2.metric(tx("Total precipitation, 2020–2025", "Precipitação acumulada, 2020–2025"), f"{climate['PRECTOTCORR'].sum():,.0f} mm")
