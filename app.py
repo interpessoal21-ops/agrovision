@@ -335,7 +335,7 @@ if "pending_study_coords" in st.session_state:
 st.subheader(tx("🗺️ Select your study area on the map", "🗺️ Selecione a área de estudo no mapa"))
 st.caption(tx("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.", "Clique no mapa para escolher um ponto ou informe as coordenadas no painel Área de estudo."))
 map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
-study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="CartoDB dark_matter")
+study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
 folium.CircleMarker(
     location=map_center, radius=8, color="#176b45", weight=3,
     fill=True, fill_color="#4da978", fill_opacity=0.9,
