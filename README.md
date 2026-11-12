@@ -31,13 +31,15 @@ The app supports two access modes:
 To enable email authentication on Streamlit Community Cloud:
 
 1. Create a Supabase project and open **Project Settings → API**.
-2. Copy the project URL and the **publishable/anon key**. Never use or expose the service-role key.
+2. Copy the **Project URL** and the **Publishable key** (starts with `sb_publishable_`). Never use or expose the Secret key (`sb_secret_`) or the legacy service-role key.
 3. In the Streamlit app, open **Settings → Secrets** and add:
 
 ```toml
 SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
-SUPABASE_ANON_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_YOUR_KEY"
 ```
+
+   For older projects that still use an anon key, the app also accepts `SUPABASE_ANON_KEY` as a backwards-compatible setting. Keep either key only in Streamlit Secrets, never in GitHub.
 
 4. In Supabase **Authentication → URL Configuration**, add the deployed Streamlit app URL to the allowed redirect/site URLs as appropriate for the project.
 5. In **Authentication → Providers / Email**, configure email sign-up and confirmation to match the intended access policy.
