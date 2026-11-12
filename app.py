@@ -429,7 +429,7 @@ with tab1:
     st.subheader(tx("Your study area, from space", "Sua área de estudo vista do espaço"))
     st.caption(tx("Live climate data from NASA POWER and vegetation observations from MODIS.", "Dados climáticos da NASA POWER e observações de vegetação do MODIS."))
     modis_years = st.slider(tx("MODIS observation period", "Período de observação MODIS"), 2020, 2025, (2023, 2025))
-    if st.button("🛰️ Load environmental data", type="primary", use_container_width=True):
+    if st.button(tx("🛰️ Load environmental data", "🛰️ Carregar dados ambientais"), type="primary", use_container_width=True):
         try:
             with st.spinner(tx("Requesting NASA POWER and MODIS data...", "Consultando dados NASA POWER e MODIS...")):
                 climate = get_nasa_power(lat, lon)
@@ -459,22 +459,22 @@ with tab1:
         anomaly_col2.bar_chart(annual[["Temperature anomaly (°C)"]])
         st.caption("Source: NASA POWER Daily API · Agroclimatology community · 2020–2025. Anomalies are relative to this six-year baseline.")
         modis = st.session_state.get("modis", pd.DataFrame())
-        st.markdown("**MODIS vegetation index (NDVI)**")
+        st.markdown("**" + tx("MODIS vegetation index (NDVI)", "Índice de vegetação MODIS (NDVI)") + "**")
         if not modis.empty and modis["NDVI"].notna().any():
             st.line_chart(modis.set_index("Date")[["NDVI"]])
             st.caption(f"MODIS/Terra MOD13Q1 · 16-day composites · {st.session_state.get('modis_years', (2023, 2025))[0]}–{st.session_state.get('modis_years', (2023, 2025))[1]} · QA reliability 0 (good) and 1 (marginal).")
             st.dataframe(modis[["Date", "NDVI", "Quality label"]], use_container_width=True, hide_index=True)
         else:
-            st.info("No usable MODIS observations were returned for this point and period.")
+            st.info(tx("No usable MODIS observations were returned for this point and period.", "Não foram encontradas observações MODIS válidas para este ponto e período."))
     else:
-        st.info("Enter coordinates and click Load environmental data to query NASA.")
+        st.info(tx("Enter coordinates and click Load environmental data to query NASA.", "Informe as coordenadas e clique em Carregar dados ambientais para consultar a NASA."))
 
 with tab2:
     st.subheader(tx("🌾 Explore crop-rotation strategies", "🌾 Explore estratégias de rotação de culturas"))
-    st.markdown('<div class="section-note">Compare three illustrative approaches using the same climate baseline and the farm context entered in the sidebar.</div>', unsafe_allow_html=True)
-    st.warning("Prototype screening only: this transparent rule-based comparison is not a calibrated crop model, yield forecast, or agronomic prescription.")
+    st.markdown('<div class="section-note">' + tx("Compare illustrative approaches using the same climate baseline and farm context.", "Compare estratégias ilustrativas usando a mesma linha de base climática e o contexto da propriedade.") + '</div>', unsafe_allow_html=True)
+    st.warning(tx("Prototype screening only: this transparent rule-based comparison is not a calibrated crop model, yield forecast, or agronomic prescription.", "Triagem experimental: esta comparação baseada em regras não é um modelo de culturas calibrado, previsão de produtividade ou recomendação agronômica."))
     if "climate" not in st.session_state or st.session_state.get("coords") != (lat, lon):
-        st.info("Load environmental data in the first tab before comparing scenarios.")
+        st.info(tx("Load environmental data in the first tab before comparing scenarios.", "Carregue os dados ambientais na primeira aba antes de comparar os cenários."))
     else:
         climate = st.session_state["climate"]
         rain_year = climate["PRECTOTCORR"].resample("YE").sum().mean()
@@ -525,7 +525,10 @@ with tab2:
 
 with tab3:
     st.subheader(tx("Data sources and limitations", "Fontes de dados e limitações"))
-    st.markdown("- **NASA POWER:** daily temperature, precipitation and solar radiation; queried live for selected coordinates.\n- **MODIS MOD13Q1:** vegetation index (NDVI) composites for Q1 2024; queried live.\n- **SMAP:** not yet connected in this public deployment. The earlier prototype used authenticated Earthdata access; its single snapshot is not a field measurement.\n- Satellite pixels represent broader areas and do not replace field sampling.\n- Rotation scores are exploratory; they do not estimate yield, profit, or crop suitability.")
+    st.markdown(tx(
+        "- **NASA POWER:** daily temperature, precipitation and solar radiation; queried live for selected coordinates.\\n- **MODIS MOD13Q1:** 16-day NDVI composites for the selected 2020–2025 period; queried live in batches that respect the ORNL request limit.\\n- **SMAP:** not yet connected in this public deployment; authenticated Earthdata access is still required.\\n- Satellite pixels represent broader areas and do not replace field sampling.\\n- Rotation scores are exploratory; they do not estimate yield, profit, or crop suitability.",
+        "- **NASA POWER:** temperatura diária, precipitação e radiação solar; consulta ao vivo para as coordenadas selecionadas.\\n- **MODIS MOD13Q1:** composições de NDVI a cada 16 dias no período selecionado entre 2020 e 2025; consultas divididas em lotes conforme o limite da ORNL.\\n- **SMAP:** ainda não conectado nesta versão pública; exige autenticação Earthdata.\\n- Pixels de satélite representam áreas mais amplas e não substituem amostragem de campo.\\n- As pontuações de rotação são exploratórias; não estimam produtividade, lucro ou aptidão agrícola."
+    ))
     st.markdown("[NASA POWER API](https://power.larc.nasa.gov/) · [MODIS/ORNL DAAC](https://modis.ornl.gov/) · [NASA SMAP](https://smap.jpl.nasa.gov/)")
 # Data export and persistence tools are shared across authenticated users.
 def supabase_rest_headers():
