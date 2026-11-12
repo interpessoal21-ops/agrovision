@@ -39,7 +39,13 @@ SMAP is **not connected** in this deployment. Do not interpret any previous isol
 - Soil texture, fertility and irrigation context are user-entered assumptions.
 - Validate any real-world decision with local soil tests, crop calendars, field observations and qualified agronomic advice.
 
-## Scientific validation\n\nThe platform includes a station-observation validation workflow: upload a CSV with daily station data, select the date and observed-value columns, and compare it with NASA POWER using paired bias, MAE, RMSE and R². Missing pairs are excluded. This does not constitute universal validation; station provenance, distance, units, quality control and representativeness must be documented. See [the scientific validation protocol](docs/SCIENTIFIC_VALIDATION.md).\n\nOfficial resources: [NASA POWER DAV Validate / PRUVE](https://power.larc.nasa.gov/docs/services/api/validate/), [MAPA SISZARC](https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/siszarc), and [FAO-56](https://www.fao.org/4/X0490E/X0490E00.htm).\n\n## Crop-screening method
+## Scientific validation
+
+The platform includes a station-observation validation workflow: upload a CSV with daily station data, select the date and observed-value columns, and compare it with NASA POWER using paired bias, MAE, RMSE and R². Missing pairs are excluded. This does not constitute universal validation; station provenance, distance, units, quality control and representativeness must be documented. See [the scientific validation protocol](docs/SCIENTIFIC_VALIDATION.md).
+
+Official resources: [NASA POWER DAV Validate / PRUVE](https://power.larc.nasa.gov/docs/services/api/validate/), [MAPA SISZARC](https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/siszarc), and [FAO-56](https://www.fao.org/4/X0490E/X0490E00.htm).
+
+## Crop-screening method
 
 The crop analysis supports maize (grain), soybean and common bean (dry grain). For each selected crop, it uses the midpoint of the published indicative cycle-duration range as a representative window beginning on day one of the user-selected sowing month. Only complete windows with sufficient daily NASA POWER records are summarized. It reports historical cycle rainfall and mean air temperature by season, plus a median across available seasons. It does not rank crops or produce a recommendation.
 
