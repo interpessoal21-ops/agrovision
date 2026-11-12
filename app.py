@@ -201,9 +201,11 @@ def get_nasa_power(lat, lon):
     response = requests.get(url, params=params, timeout=90)
     response.raise_for_status()
     values = response.json()["properties"]["parameter"]
-    frame = pd.DataFrame(values)
+    frame = pd.DataFrame(values).apply(pd.to_numeric, errors="coerce")
     frame.index = pd.to_datetime(frame.index, format="%Y%m%d")
-    return frame.replace(-999, pd.NA)
+    # NASA POWER uses -999 as a missing-value sentinel; convert it to NaN
+    # while keeping the climate columns numeric for aggregation and charts.
+    return frame.mask(frame == -999)
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_modis(lat, lon, start_year=2020, end_year=2025):
@@ -613,11 +615,14 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
     modis_for_export = st.session_state.get("modis", pd.DataFrame())
     st.divider()
     st.subheader(tx("Export and save this analysis", "Exportar e salvar esta análise"))
+    st.text_input(tx("Project name", "Nome do projeto"), key="project_name", value=f"Study {lat:.3f}, {lon:.3f}")
     export_col1, export_col2, export_col3 = st.columns(3)
     with export_col1:
         csv_frame = climate_for_export.copy()
         csv_frame.index.name = "Date"
         st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="agrovision_nasa_power.csv", mime="text/csv", use_container_width=True)
+        if not modis_for_export.empty:
+            st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="agrovision_modis_ndvi.csv", mime="text/csv", use_container_width=True)
     with export_col2:
         pdf_bytes = build_pdf_report(climate_for_export, modis_for_export, lat, lon, st.session_state.get("rotation_results"))
         st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="agrovision_report.pdf", mime="application/pdf", use_container_width=True)
@@ -639,7 +644,5 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
                 st.session_state.pop("saved_projects", None)
             except Exception as exc:
                 st.error(str(exc))
-    st.text_input(tx("Project name", "Nome do projeto"), key="project_name", value=f"Study {lat:.3f}, {lon:.3f}")
-
 st.divider()
 st.caption("AGROVISION · Prototype for NASA Space Apps Challenge 2026")
