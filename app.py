@@ -513,7 +513,7 @@ def fetch_saved_projects():
     if not headers:
         return []
     response = requests.get(
-        f"{base_url}/rest/v1/farm_projects?select=id,project_name,latitude,longitude,created_at&order=created_at.desc",
+        f"{base_url}/rest/v1/farm_projects?select=id,project_name,latitude,longitude,created_at,payload&order=created_at.desc",
         headers=headers, timeout=25
     )
     if not response.ok:
@@ -574,7 +574,29 @@ with tab4:
                 st.caption(str(exc))
         saved = st.session_state.get("saved_projects", [])
         if saved:
-            st.dataframe(pd.DataFrame(saved), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame([{k: row.get(k) for k in ("project_name", "latitude", "longitude", "created_at")} for row in saved]), use_container_width=True, hide_index=True)
+            project_options = {f"{row.get('project_name', 'Untitled')} · {row.get('created_at', '')[:10]}": row for row in saved}
+            chosen_project = st.selectbox(tx("Choose a saved analysis", "Escolha uma análise salva"), list(project_options))
+            if st.button(tx("Load selected analysis", "Carregar análise selecionada")):
+                selected = project_options[chosen_project]
+                payload = selected.get("payload") or {}
+                climate_records = payload.get("climate_data", [])
+                if climate_records:
+                    restored = pd.DataFrame(climate_records)
+                    restored["Date"] = pd.to_datetime(restored["Date"])
+                    restored = restored.set_index("Date")
+                    st.session_state["climate"] = restored
+                    st.session_state["coords"] = (float(selected["latitude"]), float(selected["longitude"]))
+                    st.session_state["lat_value"] = float(selected["latitude"])
+                    st.session_state["lon_value"] = float(selected["longitude"])
+                    vegetation_records = payload.get("modis_data", [])
+                    restored_modis = pd.DataFrame(vegetation_records)
+                    if not restored_modis.empty:
+                        restored_modis["Date"] = pd.to_datetime(restored_modis["Date"])
+                    st.session_state["modis"] = restored_modis
+                    st.session_state["modis_years"] = tuple(payload.get("modis_years", [2023, 2025]))
+                    st.success(tx("Saved analysis loaded. Open the dashboard tab to review it.", "Análise carregada. Abra o painel ambiental para revisá-la."))
+                    st.rerun()
         else:
             st.caption(tx("No saved projects found yet.", "Nenhum projeto salvo ainda."))
 
@@ -598,6 +620,8 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
                 "climate_rows": len(climate_for_export),
                 "modis_rows": len(modis_for_export),
                 "modis_years": st.session_state.get("modis_years"),
+                "climate_data": climate_for_export.reset_index().rename(columns={"index": "Date"}).assign(Date=lambda frame: frame["Date"].astype(str)).to_dict(orient="records"),
+                "modis_data": (modis_for_export.assign(Date=modis_for_export["Date"].astype(str)).to_dict(orient="records") if not modis_for_export.empty else []),
                 "irrigation": irrigation, "soil": soil, "fertility": fertility,
                 "saved_at": datetime.now(timezone.utc).isoformat()
             }
