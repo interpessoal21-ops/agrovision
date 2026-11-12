@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from agrovision_validation import paired_validation_metrics
+from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
 import requests
 import folium
 import io
@@ -253,7 +254,7 @@ with st.sidebar:
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_nasa_power(lat, lon):
     url = "https://power.larc.nasa.gov/api/temporal/daily/point"
-    params = {"parameters":"T2M,T2M_MAX,T2M_MIN,PRECTOTCORR,ALLSKY_SFC_SW_DWN","community":"AG","longitude":lon,"latitude":lat,"start":"20200101","end":"20251231","format":"JSON"}
+    params = {"parameters":"T2M,T2M_MAX,T2M_MIN,T2MDEW,WS2M,PRECTOTCORR,ALLSKY_SFC_SW_DWN","community":"AG","longitude":lon,"latitude":lat,"start":"20200101","end":"20251231","format":"JSON"}
     response = requests.get(url, params=params, timeout=90)
     response.raise_for_status()
     values = response.json()["properties"]["parameter"]
@@ -358,6 +359,7 @@ with st.sidebar:
     st.caption(tx("Enter the coordinates of the area you want to investigate.", "Informe as coordenadas da área que deseja investigar."))
     lat = st.number_input("Latitude", -90.0, 90.0, -15.8, 0.01, format="%.4f", key="lat_value", help="Decimal degrees. Locations south of the Equator use negative values.")
     lon = st.number_input("Longitude", -180.0, 180.0, -47.0, 0.01, format="%.4f", key="lon_value", help="Decimal degrees. Locations west of Greenwich use negative values.")
+    elevation_m = st.number_input(tx("Elevation (m above sea level)", "Altitude (m acima do nível do mar)"), -500.0, 9000.0, 100.0, 1.0, key="elevation_m", help=tx("Required by FAO-56 atmospheric pressure and clear-sky radiation calculations. Enter a reliable local elevation.", "Necessária nos cálculos de pressão atmosférica e radiação de céu claro FAO-56. Informe uma altitude local confiável."))
     st.divider()
     st.header(tx("Farm context", "Contexto da propriedade"))
     irrigation_options = ["Rainfed", "Supplemental irrigation", "Irrigated"]
@@ -688,6 +690,192 @@ with tab2:
                     "Important: the FAO crop-water requirement is an indicative evapotranspiration-based range under defined crop conditions. Comparing it with gross rainfall alone does not calculate water deficit, irrigation demand, yield, or crop suitability. Effective rainfall, reference evapotranspiration, soil water storage, cultivar, planting date and local ZARC rules are still needed.",
                     "Importante: a necessidade hídrica da FAO é uma faixa indicativa baseada na evapotranspiração em condições definidas de cultivo. Compará-la apenas com a chuva bruta não calcula déficit hídrico, demanda de irrigação, produtividade ou aptidão. Ainda são necessários chuva efetiva, evapotranspiração de referência, armazenamento de água no solo, cultivar, data de plantio e regras locais do ZARC."
                 ))
+
+        # Daily FAO-56 water-balance diagnostic. All crop and soil parameters
+        # are explicit user inputs; generic Kc defaults are not a recommendation.
+        st.divider()
+        st.subheader(tx("Daily water balance · FAO-56", "Balanço hídrico diário · FAO-56"))
+        st.markdown(tx(
+            "This diagnostic estimates reference evapotranspiration (ET0), crop evapotranspiration (ETc) and root-zone water depletion. It is a simplified single-layer bucket, not the official ZARC SARRA model.",
+            "Este diagnóstico estima evapotranspiração de referência (ET0), evapotranspiração da cultura (ETc) e depleção de água na zona radicular. É um reservatório simplificado de uma camada, não o modelo SARRA oficial do ZARC."
+        ))
+        if not selected_crops:
+            st.info(tx("Select a crop above to configure the water-balance scenario.", "Selecione uma cultura acima para configurar o balanço hídrico."))
+        else:
+            water_crop = st.selectbox(
+                tx("Crop for water-balance simulation", "Cultura para simulação do balanço hídrico"),
+                selected_crops,
+                format_func=lambda c: CROP_REFERENCE[c]["pt"] if st.session_state.get("agrovision_language") == "Português" else c,
+                key="water_balance_crop"
+            )
+            profile = CROP_REFERENCE[water_crop]
+            cycle_days = round((profile["cycle_min"] + profile["cycle_max"]) / 2)
+            try:
+                et0_all = fao56_reference_et0(climate, lat, elevation_m)
+                st.caption(tx(
+                    "ET0 uses NASA POWER T2M, daily maximum/minimum temperature, dew-point temperature, 2 m wind speed and solar radiation. Solar radiation is converted from kWh/m²/day to MJ/m²/day.",
+                    "A ET0 usa T2M, temperaturas máxima/mínima diárias, ponto de orvalho, vento a 2 m e radiação solar do NASA POWER. A radiação é convertida de kWh/m²/dia para MJ/m²/dia."
+                ))
+                candidate_years = []
+                for candidate_year in sorted(set(climate.index.year)):
+                    candidate_start = pd.Timestamp(year=int(candidate_year), month=int(sowing_month), day=1)
+                    candidate_end = candidate_start + pd.Timedelta(days=cycle_days - 1)
+                    candidate_weather = climate.loc[candidate_start:candidate_end]
+                    candidate_et0 = et0_all.loc[candidate_start:candidate_end]
+                    if (len(candidate_weather) == cycle_days
+                        and candidate_weather["PRECTOTCORR"].notna().all()
+                        and candidate_et0.notna().all()):
+                        candidate_years.append(int(candidate_year))
+                if not candidate_years:
+                    st.warning(tx(
+                        "No complete crop-cycle window has all required FAO-56 weather variables. Check data coverage, choose another sowing month or crop, or reload NASA POWER.",
+                        "Nenhuma janela completa do ciclo possui todas as variáveis meteorológicas exigidas pelo FAO-56. Verifique a cobertura, escolha outro mês ou cultura, ou recarregue o NASA POWER."
+                    ))
+                else:
+                    water_year = st.selectbox(tx("Historical season to simulate", "Safra histórica para simular"), candidate_years, index=len(candidate_years)-1, key="water_balance_year")
+                    st.caption(tx(
+                        f"Representative cycle: {cycle_days} days, beginning {sowing_month:02d}/01/{water_year}. The midpoint cycle is a screening assumption, not cultivar phenology.",
+                        f"Ciclo representativo: {cycle_days} dias, iniciando em 01/{sowing_month:02d}/{water_year}. A duração intermediária é uma hipótese de triagem, não a fenologia da cultivar."
+                    ))
+                    with st.expander(tx("Crop and soil parameters", "Parâmetros da cultura e do solo"), expanded=True):
+                        c1,c2,c3=st.columns(3)
+                        initial_days = c1.number_input(tx("Initial stage (days)", "Fase inicial (dias)"), 1, cycle_days-3, max(1, round(cycle_days*0.2)), key="kc_initial_days")
+                        development_days = c2.number_input(tx("Development (days)", "Desenvolvimento (dias)"), 1, cycle_days-2, max(1, round(cycle_days*0.25)), key="kc_development_days")
+                        midseason_days = c3.number_input(tx("Mid-season (days)", "Meia-estação (dias)"), 1, cycle_days-1, max(1, round(cycle_days*0.35)), key="kc_mid_days")
+                        end_days = cycle_days - int(initial_days) - int(development_days) - int(midseason_days)
+                        st.caption(tx(f"Late season is calculated as the remaining {end_days} days.", f"A fase final será calculada com os {end_days} dias restantes."))
+                        kc_defaults = {
+                            "Maize (grain)": (0.30, 1.20, 0.35),
+                            "Soybean": (0.40, 1.15, 0.50),
+                            "Common bean (dry)": (0.40, 1.15, 0.35)
+                        }
+                        k0, km, ke = kc_defaults[water_crop]
+                        k1,k2,k3=st.columns(3)
+                        kc_ini = k1.number_input("Kc initial", 0.0, 2.0, k0, 0.05, key="kc_ini")
+                        kc_mid = k2.number_input("Kc mid-season", 0.0, 2.0, km, 0.05, key="kc_mid")
+                        kc_end = k3.number_input("Kc end-season", 0.0, 2.0, ke, 0.05, key="kc_end")
+                        st.caption(tx(
+                            "Kc starting values are generic FAO-56 reference values. Adjust them to cultivar, climate, planting density, ground cover and local technical guidance.",
+                            "Os Kc iniciais são valores genéricos de referência FAO-56. Ajuste-os conforme cultivar, clima, densidade, cobertura do solo e orientação técnica local."
+                        ))
+                        st.markdown("**" + tx("Soil water properties", "Propriedades hídricas do solo") + "**")
+                        q1,q2,q3=st.columns(3)
+                        available_water = q1.number_input(tx("Available water (mm/m)", "Água disponível (mm/m)"), 34.0, 184.0, 100.0, 1.0, key="soil_available_water")
+                        root_depth = q2.number_input(tx("Effective root depth (m)", "Profundidade efetiva das raízes (m)"), 0.1, 2.5, 0.6, 0.05, key="effective_root_depth")
+                        depletion_fraction = q3.number_input("FAO depletion fraction (p)", 0.1, 0.8, 0.5, 0.05, key="depletion_fraction")
+                        initial_storage = st.slider(tx("Initial soil-water storage (% of field capacity)", "Armazenamento inicial de água no solo (% da capacidade de campo)"), 0, 100, 80, 5, key="initial_soil_storage") / 100
+                        st.caption(tx(
+                            "Available water default (100 mm/m), root depth (0.6 m) and initial storage (80%) are placeholders. Replace them with a soil analysis and crop-specific rooting information. MAPA ZARC uses soil available-water classes; see the official classification.",
+                            "Os valores iniciais de água disponível (100 mm/m), raízes (0,6 m) e armazenamento (80%) são apenas placeholders. Substitua-os por análise de solo e informação de enraizamento da cultura. O ZARC/MAPA utiliza classes de água disponível no solo; consulte a classificação oficial."
+                        ))
+                    irrigation_mode_label = st.radio(
+                        tx("Water-management scenario", "Cenário de manejo hídrico"),
+                        [tx("Rainfed · no irrigation", "Sequeiro · sem irrigação"), tx("Idealized supplemental irrigation", "Irrigação suplementar idealizada")],
+                        horizontal=True, key="water_irrigation_scenario"
+                    )
+                    irrigation_mode = "triggered_supplemental" if irrigation_mode_label == tx("Idealized supplemental irrigation", "Irrigação suplementar idealizada") else "rainfed"
+                    irrigation_efficiency = st.slider(tx("Application efficiency (%)", "Eficiência de aplicação (%)"), 50, 100, 85, 5, key="water_irrigation_efficiency") / 100 if irrigation_mode == "triggered_supplemental" else 0.85
+                    if end_days < 1:
+                        st.error(tx("Crop-stage durations exceed the cycle. Reduce one or more stages.", "A soma das fases excede o ciclo. Reduza uma ou mais fases."))
+                    elif st.button(tx("Calculate daily water balance", "Calcular balanço hídrico diário"), type="primary", key="run_water_balance"):
+                        try:
+                            start = pd.Timestamp(year=int(water_year), month=int(sowing_month), day=1)
+                            end = start + pd.Timedelta(days=cycle_days - 1)
+                            weather_window = climate.loc[start:end]
+                            et0_window = et0_all.loc[start:end]
+                            kc_curve = crop_coefficient_curve(
+                                cycle_days, initial_days, development_days, midseason_days,
+                                kc_ini, kc_mid, kc_end
+                            )
+                            balance = simulate_root_zone_balance(
+                                weather_window, et0_window, lat, available_water, root_depth,
+                                depletion_fraction, initial_storage, kc_curve,
+                                irrigation_mode=irrigation_mode,
+                                irrigation_efficiency=irrigation_efficiency
+                            )
+                            st.session_state["latest_water_balance"] = {
+                                "crop": water_crop, "year": int(water_year), "sowing_month": int(sowing_month),
+                                "table": balance, "parameters": {
+                                    "available_water_mm_m": available_water, "root_depth_m": root_depth,
+                                    "depletion_fraction": depletion_fraction, "initial_storage_fraction": initial_storage,
+                                    "elevation_m": elevation_m, "irrigation_mode": irrigation_mode,
+                                    "irrigation_efficiency": irrigation_efficiency
+                                }
+                            }
+                        except Exception as exc:
+                            st.error(tx("Water-balance calculation failed: ", "Falha no cálculo do balanço hídrico: ") + str(exc))
+                    saved_balance = st.session_state.get("latest_water_balance")
+                    if saved_balance and saved_balance.get("crop") == water_crop and saved_balance.get("year") == int(water_year):
+                        balance = saved_balance["table"]
+                        total_etc = balance["ETc potential (mm)"].sum()
+                        total_eta = balance["ETa actual estimate (mm)"].sum()
+                        total_rain = balance["Precipitation (mm)"].sum()
+                        total_net_irrigation = balance["Net irrigation (mm)"].sum()
+                        total_gross_irrigation = balance["Gross irrigation estimate (mm)"].sum()
+                        days_stressed = int((balance["Stress coefficient Ks"] < 0.999).sum())
+                        st.markdown("**" + tx("Seasonal indicators", "Indicadores da safra") + "**")
+                        a1,a2,a3,a4=st.columns(4)
+                        a1.metric("ET0", f'{balance["ET0 FAO-56 (mm)"].sum():.0f} mm')
+                        a2.metric("Potential ETc", f"{total_etc:.0f} mm")
+                        a3.metric("Estimated actual ETa", f"{total_eta:.0f} mm")
+                        a4.metric(tx("Days with water stress", "Dias com estresse hídrico"), f"{days_stressed}/{len(balance)}")
+                        b1,b2,b3=st.columns(3)
+                        b1.metric(tx("Cycle rainfall", "Chuva no ciclo"), f"{total_rain:.0f} mm")
+                        b2.metric(tx("Net irrigation", "Irrigação líquida"), f"{total_net_irrigation:.0f} mm")
+                        b3.metric(tx("Gross irrigation estimate", "Estimativa de irrigação bruta"), f"{total_gross_irrigation:.0f} mm")
+                        chart = balance.set_index("Date")[["Root-zone depletion (mm)", "RAW trigger (mm)"]]
+                        st.line_chart(chart)
+                        st.dataframe(balance, use_container_width=True, hide_index=True)
+                        st.download_button(
+                            tx("Download daily water-balance CSV", "Baixar CSV do balanço hídrico diário"),
+                            balance.to_csv(index=False).encode("utf-8"),
+                            file_name=f"agrovision_water_balance_{water_crop.lower().replace(' ','_')}_{water_year}.csv",
+                            mime="text/csv"
+                        )
+                        st.warning(tx(
+                            "Interpretation limits: rainfall is treated as infiltrating until field capacity; runoff, capillary rise, lateral flow, changing root depth, salinity and field-specific soil hydraulic properties are not modeled. Supplemental irrigation is an idealized trigger/refill scenario, not a prescription. ET0 depends on gridded NASA POWER weather and entered elevation; validate it against a local station.",
+                            "Limites: a chuva é considerada infiltrada até a capacidade de campo; escoamento superficial, ascensão capilar, fluxo lateral, variação da profundidade radicular, salinidade e propriedades hidráulicas específicas do talhão não são modelados. A irrigação suplementar é um cenário idealizado de gatilho/reposição, não uma recomendação. A ET0 depende do clima em grade do NASA POWER e da altitude informada; valide-a com estação local."
+                        ))
+            except Exception as exc:
+                st.error(tx("FAO-56 weather inputs are unavailable or invalid: ", "As variáveis meteorológicas FAO-56 estão indisponíveis ou inválidas: ") + str(exc))
+
+        st.divider()
+        st.subheader(tx("ZARC · Official planting-risk reference", "ZARC · Referência oficial de risco de plantio"))
+        st.markdown(tx(
+            "Consult the MAPA SISZARC / Risk Indication Panel and record the exact official result for your municipality, crop, cultivar group, soil class and season. The panel's current filters and risk tables are authoritative; AGROVISION does not scrape or invent an API result.",
+            "Consulte o SISZARC/Painel de Indicação de Riscos do MAPA e registre o resultado oficial exato para município, cultura, grupo de cultivar, classe de solo e safra. Os filtros e tábuas oficiais são a referência; o AGROVISION não simula consulta nem inventa uma API."
+        ))
+        st.markdown("[Abrir painel oficial ZARC/MAPA](https://mapa-indicadores.agricultura.gov.br/publico/extensions/Zarc/Zarc.html) · [SISZARC](https://sistemasweb.agricultura.gov.br/siszarc/base.action) · [Classes de água disponível](https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/classificacao-de-solo)")
+        with st.form("zarc_record_form"):
+            z1,z2,z3=st.columns(3)
+            zarc_uf = z1.text_input(tx("State (UF)", "Estado (UF)"), max_chars=2, key="zarc_uf")
+            zarc_municipality = z2.text_input(tx("Municipality", "Município"), key="zarc_municipality")
+            zarc_season = z3.text_input(tx("Crop season", "Safra"), placeholder="2026/2027", key="zarc_season")
+            z4,z5,z6=st.columns(3)
+            zarc_crop = z4.selectbox(tx("ZARC crop", "Cultura no ZARC"), ["Maize (grain)", "Soybean", "Common bean (dry)"], format_func=lambda c: CROP_REFERENCE[c]["pt"] if st.session_state.get("agrovision_language") == "Português" else c, key="zarc_crop")
+            zarc_soil = z5.selectbox(tx("Soil water class", "Classe de água disponível do solo"), ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Not specified"], key="zarc_soil")
+            zarc_risk = z6.selectbox(tx("Official risk level", "Nível oficial de risco"), ["20%", "30%", "40%", "Not eligible / no result"], key="zarc_risk")
+            z7,z8,z9=st.columns(3)
+            zarc_cultivar = z7.text_input(tx("Cultivar group / cycle", "Grupo de cultivar / ciclo"), key="zarc_cultivar")
+            zarc_decendio = z8.selectbox(tx("Sowing 10-day period", "Decêndio de semeadura"), [f"{m:02d}/{d}" for m in range(1,13) for d in ("1–10","11–20","21–end")], key="zarc_decendio")
+            zarc_portaria = z9.text_input(tx("Ordinance / publication", "Portaria / publicação"), key="zarc_portaria")
+            zarc_submit = st.form_submit_button(tx("Save ZARC reference in this session", "Salvar referência ZARC nesta sessão"))
+        if zarc_submit:
+            if len(zarc_uf.strip()) != 2 or not zarc_municipality.strip() or not zarc_season.strip():
+                st.error(tx("Enter UF, municipality and crop season.", "Informe UF, município e safra."))
+            else:
+                st.session_state["zarc_reference"] = {
+                    "UF": zarc_uf.strip().upper(), "Municipality": zarc_municipality.strip(),
+                    "Season": zarc_season.strip(), "Crop": zarc_crop, "Soil water class": zarc_soil,
+                    "Risk level": zarc_risk, "Cultivar group / cycle": zarc_cultivar.strip(),
+                    "Sowing 10-day period": zarc_decendio, "Ordinance / publication": zarc_portaria.strip(),
+                    "Source": "MAPA SISZARC / ZARC Risk Indication Panel (user-transcribed)"
+                }
+                st.success(tx("ZARC reference recorded for this session. It has not been independently verified by AGROVISION.", "Referência ZARC registrada nesta sessão. O AGROVISION ainda não a verificou independentemente."))
+        if st.session_state.get("zarc_reference"):
+            st.dataframe(pd.DataFrame([st.session_state["zarc_reference"]]), use_container_width=True, hide_index=True)
+            st.caption(tx("This is a user-transcribed record, not an API-verified official lookup.", "Este é um registro transcrito pelo usuário, não uma consulta oficial verificada por API."))
+
         else:
             st.info(tx("Select at least one crop to analyze.", "Selecione ao menos uma cultura para analisar."))
 
