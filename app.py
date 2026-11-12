@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from agrovision_validation import paired_validation_metrics
 import requests
 import folium
 import io
@@ -373,12 +374,13 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4 = st.tabs([
+tab_help, tab1, tab2, tab3, tab4, tab5 = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
     tx("Environmental dashboard", "Painel ambiental"),
     tx("Rotation scenarios", "Cenários de rotação"),
     tx("Data & limitations", "Dados e limitações"),
-    tx("Saved projects", "Projetos salvos")
+    tx("Saved projects", "Projetos salvos"),
+    tx("Scientific validation", "Validação científica")
 ])
 
 with tab_help:
@@ -762,6 +764,71 @@ def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude):
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+with tab5:
+    st.subheader(tx("Independent validation against weather-station observations", "Validação independente com observações de estações meteorológicas"))
+    st.markdown(tx(
+        "Upload a CSV containing daily observations from a traceable weather station. AGROVISION will align dates with NASA POWER and calculate paired error statistics. No station observations are bundled or fabricated.",
+        "Envie um CSV com observações diárias de uma estação meteorológica identificável. O AGROVISION alinhará as datas com o NASA POWER e calculará estatísticas de erro pareadas. Nenhuma observação de estação é embutida ou inventada."
+    ))
+    st.warning(tx(
+        "Use the same location, physical variable, unit and daily aggregation. Document station ID, coordinates, elevation, instrument, source and quality control. A nearby station is not automatically representative of the satellite/grid cell.",
+        "Use o mesmo local, variável física, unidade e agregação diária. Documente ID da estação, coordenadas, altitude, instrumento, fonte e controle de qualidade. Uma estação próxima não representa automaticamente o pixel/célula de grade."
+    ))
+    if "climate" not in st.session_state or st.session_state.get("coords") != (lat, lon):
+        st.info(tx("Load NASA POWER data in the Environmental dashboard first.", "Carregue primeiro os dados NASA POWER no Painel ambiental."))
+    else:
+        uploaded_station = st.file_uploader(
+            tx("Station observations (CSV)", "Observações da estação (CSV)"),
+            type=["csv"], key="station_validation_csv",
+            help=tx("CSV must contain a date column and one observed-variable column.", "O CSV deve conter uma coluna de data e uma coluna da variável observada.")
+        )
+        if uploaded_station is not None:
+            try:
+                station = pd.read_csv(uploaded_station)
+                if station.empty or len(station.columns) < 2:
+                    raise ValueError("CSV must contain at least two columns.")
+                date_col = st.selectbox(tx("Date column", "Coluna de data"), list(station.columns), key="validation_date_col")
+                variable_map = {
+                    "Air temperature (°C)": ("T2M", "°C"),
+                    "Precipitation (mm/day)": ("PRECTOTCORR", "mm/day"),
+                    "Solar radiation (kWh/m²/day)": ("ALLSKY_SFC_SW_DWN", "kWh/m²/day")
+                }
+                variable_label = st.selectbox(tx("Variable to validate", "Variável a validar"), list(variable_map), key="validation_variable")
+                model_col, unit = variable_map[variable_label]
+                obs_options = [c for c in station.columns if c != date_col]
+                obs_col = st.selectbox(tx("Station observation column", "Coluna observada na estação"), obs_options, key="validation_obs_col")
+                station_name = st.text_input(tx("Station name / identifier and source", "Nome/identificador da estação e fonte"), key="validation_station_name")
+                if st.button(tx("Run independent validation", "Executar validação independente"), type="primary", key="run_station_validation"):
+                    dates = pd.to_datetime(station[date_col], errors="coerce", utc=True).dt.tz_convert(None).dt.normalize()
+                    observed = pd.Series(pd.to_numeric(station[obs_col], errors="coerce").values, index=dates).groupby(level=0).mean()
+                    model = st.session_state["climate"][model_col].copy()
+                    model.index = pd.to_datetime(model.index).normalize()
+                    result = paired_validation_metrics(model, observed)
+                    paired = result.pop("paired")
+                    st.caption(f"{station_name.strip() or 'Station source not specified'} · {variable_label} · {unit}")
+                    m1,m2,m3,m4=st.columns(4)
+                    m1.metric("Paired days", result["n"])
+                    m2.metric("Bias", f'{result["bias"]:.3f} {unit}')
+                    m3.metric("MAE", f'{result["mae"]:.3f} {unit}')
+                    m4.metric("RMSE", f'{result["rmse"]:.3f} {unit}')
+                    if result["r_squared"] is not None:
+                        st.metric("Coefficient of determination (R²)", f'{result["r_squared"]:.3f}')
+                    else:
+                        st.info(tx("R² is undefined because the station observations have zero variance.", "R² não está definido porque as observações da estação não apresentam variância."))
+                    st.line_chart(paired.rename(columns={"model": "NASA POWER", "observed": "Weather station"}))
+                    st.dataframe(paired.assign(Error=paired["model"]-paired["observed"]), use_container_width=True)
+                    st.caption(tx(
+                        "Bias = mean(POWER − station); MAE = mean absolute error; RMSE = root mean squared error; R² = 1 − SSE/SST. Missing pairs are excluded. These statistics describe this station, variable and period only; they are not a universal validation of NASA POWER or of crop predictions.",
+                        "Viés = média(POWER − estação); MAE = erro absoluto médio; RMSE = raiz do erro quadrático médio; R² = 1 − SSE/SST. Pares ausentes são excluídos. Estas estatísticas descrevem somente esta estação, variável e período; não validam universalmente o NASA POWER nem previsões agrícolas."
+                    ))
+            except Exception as exc:
+                st.error(tx("Could not process this CSV: ", "Não foi possível processar este CSV: ") + str(exc))
+    st.markdown("**" + tx("Official independent validation resources", "Recursos oficiais de validação independente") + "**")
+    st.markdown("- [NASA POWER DAV Validate / PRUVE](https://power.larc.nasa.gov/docs/services/api/validate/) — compare POWER with qualifying NOAA/BSRN/AERONET ground observations where available.")
+    st.markdown("- [MAPA ZARC / SISZARC](https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/siszarc) — official planting windows by municipality, crop, soil water class and cultivar cycle.")
+    st.markdown("- [FAO Irrigation and Drainage Paper 56](https://www.fao.org/4/X0490E/X0490E00.htm) — reference evapotranspiration and crop-coefficient methodology.")
 
 with tab4:
     st.subheader(tx("Saved projects", "Projetos salvos"))
