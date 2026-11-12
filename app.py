@@ -195,7 +195,7 @@ def get_modis(lat, lon):
 st.subheader("🗺️ Select your study area on the map")
 st.caption("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.")
 map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
-study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="CartoDB positron")
+study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
 folium.CircleMarker(
     location=map_center, radius=8, color="#176b45", weight=3,
     fill=True, fill_color="#4da978", fill_opacity=0.9,
