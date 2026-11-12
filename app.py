@@ -97,7 +97,9 @@ map_event = st_folium(study_map, height=360, use_container_width=True, returned_
 if map_event and map_event.get("last_clicked"):
     clicked_lat = round(float(map_event["last_clicked"]["lat"]), 4)
     clicked_lon = round(float(map_event["last_clicked"]["lng"]), 4)
-    if (clicked_lat, clicked_lon) != (st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)):
+    clicked_point = (clicked_lat, clicked_lon)
+    if clicked_point != st.session_state.get("last_map_click"):
+        st.session_state["last_map_click"] = clicked_point
         st.session_state["lat_value"] = clicked_lat
         st.session_state["lon_value"] = clicked_lon
         st.rerun()
