@@ -10,6 +10,9 @@
 - MODIS/Terra MOD13Q1 16-day vegetation observations for a selectable year range (2020–2025), with pixel-reliability filtering.
 - Annual climate summaries and rainfall/temperature anomalies relative to the 2020–2025 baseline.
 - Crop-specific historical climate screening for maize, soybean and common bean, using a selected sowing month and complete daily crop-cycle windows.
+- Daily FAO-56 Penman–Monteith ET0 estimates using NASA POWER temperature, dew point, wind and solar-radiation inputs plus user-entered elevation.
+- A transparent single-layer root-zone water-balance scenario with crop-stage Kc, soil available water, effective root depth, depletion threshold, water stress and optional idealized supplemental irrigation.
+- A ZARC/MAPA reference workflow for recording official municipality, cultivar group, soil class, risk level, sowing dekad and ordinance; official lookup remains user-confirmed rather than API-verified.
 - Indicative crop-cycle durations and seasonal crop-water reference ranges sourced from FAO and Embrapa publications; no arbitrary crop ranking score.
 - CSV export and PDF environmental report.
 - Supabase email authentication and optional per-user project persistence.
@@ -33,11 +36,22 @@ SMAP is **not connected** in this deployment. Do not interpret any previous isol
 - NASA POWER and MODIS are gridded / satellite-derived products, not field sensors. A point query does not represent every part of a farm.
 - NDVI is a vegetation-greenness indicator. It does not identify crop species, diagnose plant disease, or directly measure yield.
 - Climate anomalies are calculated against the queried 2020–2025 period; this short baseline is not a formal climatological normal.
-- Crop screening uses the midpoint of published indicative crop-cycle duration ranges to define a historical weather window. It reports observed precipitation and temperature; it does not model phenology, effective rainfall, evapotranspiration, soil-water storage, irrigation demand, yield, profitability, or crop suitability.
+- Crop screening uses the midpoint of published indicative crop-cycle duration ranges to define a historical weather window. It does not model cultivar-specific phenology, yield, profitability or crop suitability.
+- The water-balance module calculates FAO-56 reference ET0 and a simplified daily root-zone bucket. Rainfall is assumed to infiltrate until field capacity; runoff, capillary rise, lateral flow, changing root depth, salinity and measured soil hydraulic properties are not represented.
+- Crop coefficients, crop-stage lengths, root depth, soil available water, initial storage, elevation and irrigation efficiency require local confirmation. Generic Kc values and soil defaults are illustrative starting values, not recommendations.
+- The supplemental-irrigation option is an idealized threshold/refill scenario, not an irrigation prescription. The model is not the official ZARC SARRA method.
 - FAO seasonal crop-water requirements are indicative evapotranspiration-based ranges under defined conditions. Comparing gross rainfall with those ranges is **not** a water-balance calculation.
 - Crop cycle and water-need ranges vary by cultivar, region, sowing date and management. Local ZARC calendars, soil analysis, field observations and agronomist review remain necessary before planting decisions.
 - Soil texture, fertility and irrigation context are user-entered assumptions.
 - Validate any real-world decision with local soil tests, crop calendars, field observations and qualified agronomic advice.
+
+## FAO-56 water balance and ZARC
+
+The water-balance workflow uses daily NASA POWER inputs (T2M, T2M_MAX, T2M_MIN, T2MDEW, WS2M and ALLSKY_SFC_SW_DWN) to estimate reference evapotranspiration with FAO-56 Penman–Monteith. Crop ET is estimated with a user-configurable Kc curve across initial, development, mid-season and late-season stages. A one-layer root-zone bucket tracks total available water (TAW), readily available water (RAW), depletion, stress coefficient (Ks), estimated actual ET and an idealized supplemental-irrigation scenario.
+
+The ZARC section links to the official MAPA panel and SISZARC and records the result transcribed by the user. It does not claim to query a verified ZARC API. The saved sowing dekad can be checked for consistency against the modeled sowing date, but the municipality, cultivar, soil class and official risk publication still require human confirmation.
+
+References: [FAO-56](https://www.fao.org/4/X0490E/X0490E00.htm), [FAO Penman–Monteith](https://www.fao.org/4/x0490e/x0490e06.htm), [MAPA ZARC/SISZARC](https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/siszarc), [MAPA soil available-water classes](https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/classificacao-de-solo).
 
 ## Scientific validation
 
