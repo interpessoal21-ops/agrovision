@@ -444,11 +444,11 @@ with tab_help:
         st.markdown("""
         1. First load the environmental data in the dashboard.
         2. Open **Rotation scenarios**.
-        3. Review the three illustrative strategies: maize/common bean, soybean/sorghum, and a diversified rotation with a cover crop.
-        4. Compare their screening scores and the bar chart.
-        5. Read the note below the results before drawing conclusions.
+        3. Select maize, soybean and/or common bean, then choose an assumed sowing month.
+        4. Review observed rainfall and temperature during complete historical crop-cycle windows.
+        5. Compare those observations with published indicative crop-cycle and water-need ranges.
 
-        The score is a transparent, provisional rule-based screening exercise. It is not a calibrated crop model, yield forecast, profitability estimate, or agronomic recommendation. A higher score does not guarantee a better harvest.
+        The analysis does not rank crops. It is an initial climate-screening layer, not a calibrated crop model, yield forecast, soil-water balance or agronomic recommendation.
         """)
 
     with st.expander("6. Common questions and troubleshooting"):
@@ -474,10 +474,10 @@ with tab_help:
     left, right = st.columns(2)
     with left:
         st.markdown("**AGROVISION can help you:**")
-        st.markdown("- Explore climate indicators for a selected location.\n- View satellite-derived vegetation observations.\n- Compare illustrative crop-rotation scenarios.\n- Understand where Earth-observation data can support agricultural analysis.")
+        st.markdown("- Explore climate indicators for a selected location.\n- View satellite-derived vegetation observations.\n- Compare historical climate during representative cycles of maize, soybean and common bean.\n- Review the reference ranges and assumptions behind each crop screen.")
     with right:
         st.markdown("**AGROVISION does not currently:**")
-        st.markdown("- Measure the soil directly.\n- Predict crop yield or farm profit.\n- Provide a certified planting recommendation.\n- Display SMAP data in this public deployment.")
+        st.markdown("- Measure soil properties directly.\n- Calculate effective rainfall or a complete soil-water balance.\n- Predict crop yield or farm profit.\n- Provide a certified planting recommendation.\n- Display SMAP data in this public deployment.")
     st.caption("AGROVISION · " + tx("First-visit guide · Prototype for NASA Space Apps Challenge 2026", "Guia inicial · Protótipo para o NASA Space Apps Challenge 2026"))
 
 with tab1:
