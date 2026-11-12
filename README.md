@@ -5,16 +5,18 @@
 ## Current capabilities
 
 - Bilingual interface: English and Portuguese.
-- Interactive study-area map with latitude/longitude input.
+- Interactive study-area map with OpenStreetMap, Esri satellite imagery and topographic basemap layers (visual context only; no inferred farm boundary).
 - NASA POWER daily climate data for 2020–2025.
 - MODIS/Terra MOD13Q1 16-day vegetation observations for a selectable year range (2020–2025), with pixel-reliability filtering.
 - Annual climate summaries and rainfall/temperature anomalies relative to the 2020–2025 baseline.
+- Annual MODIS/NDVI summaries with quality-screened observation counts and pixel-quality breakdown.
+- Integrated evidence dashboard combining climate data coverage, vegetation indicators, current-coordinate water-balance scenario and selected official ZARC reference without inventing a composite suitability score.
 - Crop-specific historical climate screening for maize, soybean and common bean, using a selected sowing month and complete daily crop-cycle windows.
 - Daily FAO-56 Penman–Monteith ET0 estimates using NASA POWER temperature, dew point, wind and solar-radiation inputs plus user-entered elevation.
 - A transparent single-layer root-zone water-balance scenario with crop-stage Kc, soil available water, effective root depth, depletion threshold, water stress and optional idealized supplemental irrigation.
 - A ZARC/MAPA reference workflow for recording official municipality, cultivar group, soil class, risk level, sowing dekad and ordinance; official lookup remains user-confirmed rather than API-verified.
 - Indicative crop-cycle durations and seasonal crop-water reference ranges sourced from FAO and Embrapa publications; no arbitrary crop ranking score.
-- CSV export and PDF environmental report.
+- CSV export and an integrated PDF report covering climate coverage, annual MODIS/NDVI summaries, any current-coordinate FAO-56 scenario, selected MAPA ZARC record, sources and scientific limitations.
 - Supabase email authentication and optional per-user project persistence.
 - Saved projects include the queried climate and MODIS series plus any recorded FAO-56 water-balance run and ZARC reference, which can be restored in the app.
 
