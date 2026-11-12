@@ -1093,6 +1093,24 @@ with tab4:
                         restored_modis["Date"] = pd.to_datetime(restored_modis["Date"])
                     st.session_state["modis"] = restored_modis
                     st.session_state["modis_years"] = tuple(payload.get("modis_years", [2023, 2025]))
+                    saved_water = payload.get("water_balance")
+                    if saved_water and saved_water.get("daily_rows"):
+                        restored_water = pd.DataFrame(saved_water["daily_rows"])
+                        restored_water["Date"] = pd.to_datetime(restored_water["Date"])
+                        st.session_state["latest_water_balance"] = {
+                            "crop": saved_water.get("crop"), "year": saved_water.get("year"),
+                            "coords": (float(selected["latitude"]), float(selected["longitude"])),
+                            "sowing_month": saved_water.get("sowing_month"),
+                            "sowing_day": saved_water.get("sowing_day"),
+                            "parameters": saved_water.get("parameters", {}),
+                            "table": restored_water
+                        }
+                    else:
+                        st.session_state.pop("latest_water_balance", None)
+                    if payload.get("zarc_reference"):
+                        st.session_state["zarc_reference"] = payload["zarc_reference"]
+                    else:
+                        st.session_state.pop("zarc_reference", None)
                     st.success(tx("Saved analysis loaded. Open the dashboard tab to review it.", "Análise carregada. Abra o painel ambiental para revisá-la."))
                     st.rerun()
         else:
