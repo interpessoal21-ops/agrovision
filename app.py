@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from agrovision_validation import paired_validation_metrics
 from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
+from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
 import requests
 import folium
 import io
@@ -878,41 +879,120 @@ with tab2:
                 st.error(tx("FAO-56 weather inputs are unavailable or invalid: ", "As variáveis meteorológicas FAO-56 estão indisponíveis ou inválidas: ") + str(exc))
 
         st.divider()
-        st.subheader(tx("ZARC · Official planting-risk reference", "ZARC · Referência oficial de risco de plantio"))
+        st.subheader(tx("ZARC · Official MAPA open-data lookup", "ZARC · Consulta à base oficial aberta do MAPA"))
         st.markdown(tx(
-            "Consult the MAPA SISZARC / Risk Indication Panel and record the exact official result for your municipality, crop, cultivar group, soil class and season. The panel's current filters and risk tables are authoritative; AGROVISION does not scrape or invent an API result.",
-            "Consulte o SISZARC/Painel de Indicação de Riscos do MAPA e registre o resultado oficial exato para município, cultura, grupo de cultivar, classe de solo e safra. Os filtros e tábuas oficiais são a referência; o AGROVISION não simula consulta nem inventa uma API."
+            "Search the MAPA risk table directly. The app downloads the official season CSV, filters the exact municipality/crop/soil/cultivar-management combination and expands the 36 sowing dekads. Values 20, 30 and 40 are shown as their official risk levels; 0 is kept as outside the recommended window.",
+            "Consulte diretamente a tábua de risco do MAPA. O app baixa o CSV oficial da safra, filtra a combinação exata de município/cultura/solo/ciclo e expande os 36 decêndios. Valores 20, 30 e 40 são exibidos como níveis oficiais de risco; 0 é mantido como fora da janela recomendada."
         ))
-        st.markdown("[Abrir painel oficial ZARC/MAPA](https://mapa-indicadores.agricultura.gov.br/publico/extensions/Zarc/Zarc.html) · [SISZARC](https://sistemasweb.agricultura.gov.br/siszarc/base.action) · [Classes de água disponível](https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/classificacao-de-solo)")
-        with st.form("zarc_record_form"):
-            z1,z2,z3=st.columns(3)
-            zarc_uf = z1.text_input(tx("State (UF)", "Estado (UF)"), max_chars=2, key="zarc_uf")
-            zarc_municipality = z2.text_input(tx("Municipality", "Município"), key="zarc_municipality")
-            zarc_season = z3.text_input(tx("Crop season", "Safra"), placeholder="2026/2027", key="zarc_season")
-            z4,z5,z6=st.columns(3)
-            zarc_crop = z4.selectbox(tx("ZARC crop", "Cultura no ZARC"), ["Maize (grain)", "Soybean", "Common bean (dry)"], format_func=lambda c: CROP_REFERENCE[c]["pt"] if st.session_state.get("agrovision_language") == "Português" else c, key="zarc_crop")
-            zarc_soil = z5.selectbox(tx("Soil water class", "Classe de água disponível do solo"), ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Not specified"], key="zarc_soil")
-            zarc_risk = z6.selectbox(tx("Official risk level", "Nível oficial de risco"), ["20%", "30%", "40%", "Not eligible / no result"], key="zarc_risk")
-            z7,z8,z9=st.columns(3)
-            zarc_cultivar = z7.text_input(tx("Cultivar group / cycle", "Grupo de cultivar / ciclo"), key="zarc_cultivar")
-            zarc_decendio = z8.selectbox(tx("Sowing 10-day period", "Decêndio de semeadura"), [f"{m:02d}/{d}" for m in range(1,13) for d in ("1–10","11–20","21–end")], key="zarc_decendio")
-            zarc_portaria = z9.text_input(tx("Ordinance / publication", "Portaria / publicação"), key="zarc_portaria")
-            zarc_submit = st.form_submit_button(tx("Save ZARC reference in this session", "Salvar referência ZARC nesta sessão"))
-        if zarc_submit:
-            if len(zarc_uf.strip()) != 2 or not zarc_municipality.strip() or not zarc_season.strip():
-                st.error(tx("Enter UF, municipality and crop season.", "Informe UF, município e safra."))
+        st.markdown("[Portal de Dados Abertos do MAPA — Tábua de Risco](https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico) · [Painel ZARC](https://mapa-indicadores.agricultura.gov.br/publico/extensions/Zarc/Zarc.html) · [SISZARC](https://sistemasweb.agricultura.gov.br/siszarc/base.action)")
+        @st.cache_data(ttl=3600, show_spinner=False)
+        def _cached_zarc_resources():
+            return list_zarc_resources()
+
+        @st.cache_data(ttl=3600, show_spinner=False)
+        def _cached_zarc_table(url):
+            return load_zarc_csv(url)
+
+        try:
+            with st.spinner(tx("Loading the MAPA catalogue…", "Carregando o catálogo do MAPA…")):
+                zarc_resources = _cached_zarc_resources()
+            resource_labels = [r["title"] for r in zarc_resources]
+            default_resource = next((i for i, label in enumerate(resource_labels) if "2026/2027" in label or "2026-2027" in label), 0)
+            chosen_resource_label = st.selectbox(
+                tx("Official ZARC season dataset", "Base oficial da safra ZARC"),
+                resource_labels, index=default_resource, key="zarc_official_resource"
+            )
+            chosen_resource = zarc_resources[resource_labels.index(chosen_resource_label)]
+            with st.spinner(tx("Downloading and parsing the official MAPA CSV…", "Baixando e lendo o CSV oficial do MAPA…")):
+                zarc_data = _cached_zarc_table(chosen_resource["url"])
+            crop_col = find_column(zarc_data, "Nome_cultura", "cultura")
+            uf_col = find_column(zarc_data, "UF")
+            municipality_col = find_column(zarc_data, "municipio")
+            soil_col = find_column(zarc_data, "Cod_Solo", "solo")
+            cycle_col = find_column(zarc_data, "Cod_Ciclo", "grupo")
+            management_col = find_column(zarc_data, "Nome_Outros_Manejos", "outros_manejos")
+            climate_col = find_column(zarc_data, "Nome_Clima", "clima")
+            dec_cols = decendio_columns(zarc_data)
+            if not all([crop_col, uf_col, municipality_col, soil_col, cycle_col]) or not dec_cols:
+                raise ValueError("The MAPA CSV structure does not match the published ZARC data dictionary. No result was inferred.")
+            st.caption(tx(
+                f"Source: {chosen_resource['title']} · {len(zarc_data):,} official rows · {len(dec_cols)} dekad columns. Catalogue update: {chosen_resource.get('last_modified') or 'not supplied'}.",
+                f"Fonte: {chosen_resource['title']} · {len(zarc_data):,} registros oficiais · {len(dec_cols)} colunas de decêndio. Atualização do catálogo: {chosen_resource.get('last_modified') or 'não informada'}."
+            ))
+            zarc_crop_options = unique_values(zarc_data, crop_col)
+            zarc_crop_choice = st.selectbox(tx("Crop", "Cultura"), zarc_crop_options, key="zarc_query_crop")
+            after_crop = filter_zarc_rows(zarc_data, {"crop": zarc_crop_choice})
+            uf_options = unique_values(after_crop, uf_col)
+            zarc_uf_choice = st.selectbox(tx("State (UF)", "Estado (UF)"), uf_options, key="zarc_query_uf")
+            after_uf = filter_zarc_rows(after_crop, {"uf": zarc_uf_choice})
+            municipality_options = unique_values(after_uf, municipality_col)
+            zarc_municipality_choice = st.selectbox(tx("Municipality", "Município"), municipality_options, key="zarc_query_municipality")
+            after_municipality = filter_zarc_rows(after_uf, {"municipality": zarc_municipality_choice})
+            c1,c2,c3=st.columns(3)
+            soil_options = unique_values(after_municipality, soil_col)
+            zarc_soil_choice = c1.selectbox(tx("Soil class / code", "Classe / código do solo"), soil_options, key="zarc_query_soil")
+            after_soil = filter_zarc_rows(after_municipality, {"soil": zarc_soil_choice})
+            cycle_options = unique_values(after_soil, cycle_col)
+            zarc_cycle_choice = c2.selectbox(tx("Cultivar cycle / group", "Ciclo / grupo de cultivar"), cycle_options, key="zarc_query_cycle")
+            after_cycle = filter_zarc_rows(after_soil, {"cycle": zarc_cycle_choice})
+            management_options = unique_values(after_cycle, management_col) if management_col else []
+            zarc_management_choice = c3.selectbox(
+                tx("Management", "Manejo"), management_options, key="zarc_query_management"
+            ) if management_options else None
+            after_management = filter_zarc_rows(after_cycle, {"management": zarc_management_choice})
+            climate_options = unique_values(after_management, climate_col) if climate_col else []
+            zarc_climate_choice = st.selectbox(
+                tx("Climate group", "Grupo climático"), climate_options, key="zarc_query_climate"
+            ) if climate_options else None
+            matches = filter_zarc_rows(after_management, {"climate": zarc_climate_choice})
+            st.metric(tx("Exact official records", "Registros oficiais encontrados"), f"{len(matches):,}")
+            if matches.empty:
+                st.warning(tx("No record matches this exact combination in the selected MAPA season file. Do not infer a planting window.", "Nenhum registro corresponde a essa combinação exata no arquivo MAPA selecionado. Não infira uma janela de plantio."))
             else:
-                st.session_state["zarc_reference"] = {
-                    "UF": zarc_uf.strip().upper(), "Municipality": zarc_municipality.strip(),
-                    "Season": zarc_season.strip(), "Crop": zarc_crop, "Soil water class": zarc_soil,
-                    "Risk level": zarc_risk, "Cultivar group / cycle": zarc_cultivar.strip(),
-                    "Sowing 10-day period": zarc_decendio, "Ordinance / publication": zarc_portaria.strip(),
-                    "Source": "MAPA SISZARC / ZARC Risk Indication Panel (user-transcribed)"
+                row_options = list(range(len(matches)))
+                def _zarc_record_label(index):
+                    row = matches.iloc[index]
+                    portaria_col = find_column(matches, "Portaria")
+                    portaria = str(row.get(portaria_col, "")) if portaria_col else ""
+                    return f"Record {index + 1} · {portaria or tx('official record', 'registro oficial')}"
+                selected_record_index = st.selectbox(
+                    tx("Official record", "Registro oficial"), row_options,
+                    format_func=_zarc_record_label, key="zarc_query_record"
+                )
+                selected_zarc_row = matches.iloc[int(selected_record_index)]
+                dekad_rows = expand_decendios(selected_zarc_row, dec_cols)
+                dekad_frame = pd.DataFrame(dekad_rows)
+                if not dekad_frame.empty:
+                    st.markdown("**" + tx("Official sowing windows by dekad", "Janelas oficiais de semeadura por decêndio") + "**")
+                    st.dataframe(dekad_frame, use_container_width=True, hide_index=True)
+                metadata_columns = {
+                    "Crop": crop_col, "UF": uf_col, "Municipality": municipality_col,
+                    "Soil code": soil_col, "Cultivar group / cycle": cycle_col,
                 }
-                st.success(tx("ZARC reference recorded for this session. It has not been independently verified by AGROVISION.", "Referência ZARC registrada nesta sessão. O AGROVISION ainda não a verificou independentemente."))
-        if st.session_state.get("zarc_reference"):
-            st.dataframe(pd.DataFrame([st.session_state["zarc_reference"]]), use_container_width=True, hide_index=True)
-            st.caption(tx("This is a user-transcribed record, not an API-verified official lookup.", "Este é um registro transcrito pelo usuário, não uma consulta oficial verificada por API."))
+                for label, col in (("Management", management_col), ("Climate", climate_col), ("Ordinance", find_column(matches, "Portaria"))):
+                    if col:
+                        metadata_columns[label] = col
+                official_record = {label: str(selected_zarc_row.get(col, "")) for label, col in metadata_columns.items()}
+                official_record["Season dataset"] = chosen_resource["title"]
+                official_record["Recommended decendios"] = [
+                    item for item in dekad_rows if item.get("Risco (%)") in (20, 30, 40)
+                ]
+                official_record["All decendios"] = dekad_rows
+                official_record["Source URL"] = chosen_resource["url"]
+                official_record["Source"] = "MAPA Dados Abertos — ZARC Tábua de Risco (official CSV)"
+                if st.button(tx("Use this official ZARC record in the project", "Usar este registro oficial ZARC no projeto"), type="primary", key="zarc_use_official"):
+                    st.session_state["zarc_reference"] = official_record
+                    st.success(tx("Official MAPA record selected and attached to this project session.", "Registro oficial do MAPA selecionado e vinculado a esta sessão do projeto."))
+                if st.session_state.get("zarc_reference", {}).get("Source URL") == chosen_resource["url"]:
+                    st.caption(tx("Current project ZARC reference", "Referência ZARC atual do projeto"))
+                    st.dataframe(pd.DataFrame([{
+                        key: value for key, value in st.session_state["zarc_reference"].items()
+                        if key not in ("Recommended decendios", "All decendios")
+                    }]), use_container_width=True, hide_index=True)
+        except Exception as exc:
+            st.error(tx("Could not load or query the official MAPA ZARC dataset: ", "Não foi possível carregar ou consultar a base oficial ZARC do MAPA: ") + str(exc))
+            st.markdown("[Open MAPA ZARC open-data portal](https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico)")
+
 
         else:
             st.info(tx("Select at least one crop to analyze.", "Selecione ao menos uma cultura para analisar."))
