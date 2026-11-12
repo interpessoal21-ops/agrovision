@@ -53,6 +53,96 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+def supabase_settings():
+    try:
+        return st.secrets.get("SUPABASE_URL", "").rstrip("/"), st.secrets.get("SUPABASE_ANON_KEY", "")
+    except Exception:
+        return "", ""
+
+def supabase_auth(endpoint, payload):
+    base_url, anon_key = supabase_settings()
+    if not base_url or not anon_key:
+        raise RuntimeError("Email login is not configured yet. Guest access is available.")
+    response = requests.post(
+        f"{base_url}/auth/v1/{endpoint}",
+        json=payload,
+        headers={"apikey": anon_key, "Content-Type": "application/json"},
+        timeout=25,
+    )
+    try:
+        data = response.json()
+    except ValueError:
+        data = {}
+    if not response.ok:
+        message = data.get("msg") or data.get("message") or data.get("error_description") or data.get("error") or "Authentication failed."
+        raise RuntimeError(message)
+    return data
+
+auth_mode = st.session_state.get("agrovision_auth_mode")
+if auth_mode not in ("guest", "email"):
+    st.markdown("### Welcome · Bem-vindo ao AGROVISION")
+    st.write("Choose how you want to explore the platform.")
+    login_tab, signup_tab = st.tabs(["✉️ Sign in", "Create account"])
+    supabase_url, supabase_key = supabase_settings()
+    email_enabled = bool(supabase_url and supabase_key)
+
+    if not email_enabled:
+        st.info("Email access is being prepared. For now, you can explore the complete prototype as a visitor.")
+    with login_tab:
+        with st.form("agrovision_signin"):
+            email = st.text_input("Email", placeholder="you@example.com")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Sign in", use_container_width=True, disabled=not email_enabled)
+        if submitted:
+            try:
+                result = supabase_auth("token?grant_type=password", {"email": email.strip(), "password": password})
+                st.session_state["agrovision_auth_mode"] = "email"
+                st.session_state["agrovision_access_token"] = result.get("access_token", "")
+                st.session_state["agrovision_user_email"] = result.get("user", {}).get("email", email.strip())
+                st.rerun()
+            except Exception as exc:
+                st.error(f"Could not sign in: {exc}")
+    with signup_tab:
+        with st.form("agrovision_signup"):
+            new_email = st.text_input("Email address", key="signup_email", placeholder="you@example.com")
+            new_password = st.text_input("Create password", type="password", key="signup_password", help="Use at least 8 characters.")
+            confirm_password = st.text_input("Confirm password", type="password", key="signup_confirm")
+            create_account = st.form_submit_button("Create account", use_container_width=True, disabled=not email_enabled)
+        if create_account:
+            if new_password != confirm_password:
+                st.error("The passwords do not match.")
+            elif len(new_password) < 8:
+                st.error("Choose a password with at least 8 characters.")
+            else:
+                try:
+                    result = supabase_auth("signup", {"email": new_email.strip(), "password": new_password})
+                    if result.get("access_token"):
+                        st.session_state["agrovision_auth_mode"] = "email"
+                        st.session_state["agrovision_access_token"] = result["access_token"]
+                        st.session_state["agrovision_user_email"] = result.get("user", {}).get("email", new_email.strip())
+                        st.rerun()
+                    else:
+                        st.success("Account created. Check your email to confirm your address, then sign in here.")
+                except Exception as exc:
+                    st.error(f"Could not create account: {exc}")
+    st.divider()
+    st.markdown("**Or explore without an account**")
+    if st.button("Continue as visitor →", type="primary", use_container_width=True):
+        st.session_state["agrovision_auth_mode"] = "guest"
+        st.rerun()
+    st.caption("Visitor access does not require registration. Email authentication will become available after the project owner configures Supabase.")
+    st.stop()
+
+with st.sidebar:
+    if st.session_state.get("agrovision_auth_mode") == "email":
+        st.caption(f"Signed in as {st.session_state.get('agrovision_user_email', 'user')}")
+    else:
+        st.caption("Browsing as a visitor")
+    if st.button("Sign out / Exit", use_container_width=True):
+        for key in ("agrovision_auth_mode", "agrovision_access_token", "agrovision_user_email", "climate", "modis", "coords"):
+            st.session_state.pop(key, None)
+        st.rerun()
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_nasa_power(lat, lon):
     url = "https://power.larc.nasa.gov/api/temporal/daily/point"
