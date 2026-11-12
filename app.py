@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import requests
+import folium
+from streamlit_folium import st_folium
 
 st.set_page_config(page_title="AGROVISION", page_icon="🌱", layout="wide")
 
@@ -82,11 +84,29 @@ def get_modis(lat, lon):
         rows.append({"Date":pd.to_datetime(day),"Quality":quality,"NDVI":ndvi})
     return pd.DataFrame(rows).sort_values("Date") if rows else pd.DataFrame()
 
+st.subheader("🗺️ Select your study area on the map")
+st.caption("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.")
+map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
+study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="CartoDB positron")
+folium.CircleMarker(
+    location=map_center, radius=8, color="#176b45", weight=3,
+    fill=True, fill_color="#4da978", fill_opacity=0.9,
+    tooltip="Current study area"
+).add_to(study_map)
+map_event = st_folium(study_map, height=360, use_container_width=True, returned_objects=["last_clicked"], key="agrovision_study_map")
+if map_event and map_event.get("last_clicked"):
+    clicked_lat = round(float(map_event["last_clicked"]["lat"]), 4)
+    clicked_lon = round(float(map_event["last_clicked"]["lng"]), 4)
+    if (clicked_lat, clicked_lon) != (st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)):
+        st.session_state["lat_value"] = clicked_lat
+        st.session_state["lon_value"] = clicked_lon
+        st.rerun()
+
 with st.sidebar:
     st.header("Study area")
     st.caption("Enter the coordinates of the area you want to investigate.")
-    lat = st.number_input("Latitude", -90.0, 90.0, -15.8, 0.01, format="%.4f", help="Decimal degrees. Locations south of the Equator use negative values.")
-    lon = st.number_input("Longitude", -180.0, 180.0, -47.0, 0.01, format="%.4f", help="Decimal degrees. Locations west of Greenwich use negative values.")
+    lat = st.number_input("Latitude", -90.0, 90.0, -15.8, 0.01, format="%.4f", key="lat_value", help="Decimal degrees. Locations south of the Equator use negative values.")
+    lon = st.number_input("Longitude", -180.0, 180.0, -47.0, 0.01, format="%.4f", key="lon_value", help="Decimal degrees. Locations west of Greenwich use negative values.")
     st.divider()
     st.header("Farm context")
     irrigation = st.selectbox("Water availability", ["Rainfed","Supplemental irrigation","Irrigated"], help="Choose the water supply used or planned for the study area.")
