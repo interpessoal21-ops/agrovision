@@ -16,7 +16,7 @@
 - Indicative crop-cycle durations and seasonal crop-water reference ranges sourced from FAO and Embrapa publications; no arbitrary crop ranking score.
 - CSV export and PDF environmental report.
 - Supabase email authentication and optional per-user project persistence.
-- Saved projects include the queried climate and MODIS series and can be restored in the app.
+- Saved projects include the queried climate and MODIS series plus any recorded FAO-56 water-balance run and ZARC reference, which can be restored in the app.
 
 ## Run locally
 
@@ -24,7 +24,7 @@ Create a Python virtual environment, install dependencies with `pip install -r r
 
 ## Data sources
 
-- **NASA POWER Daily API:** daily near-surface air temperature, precipitation and solar radiation for the Agroclimatology community.
+- **NASA POWER Daily API:** daily near-surface temperature, daily maximum/minimum temperature, dew-point temperature, 2 m wind speed, corrected precipitation and solar radiation for the Agroclimatology community.
 - **MODIS/Terra MOD13Q1 via ORNL DAAC:** 16-day vegetation-index composites and pixel-reliability data. The app first retrieves the available composite dates and splits the selected period into batches of no more than ten dates per point-subset request, respecting the ORNL service limit.
 
 The MODIS endpoint is queried for the selected period. NDVI is computed from NIR and red reflectance using the ratio (NIR − red) / (NIR + red); the common reflectance scale factor cancels in this ratio. Only reliability flags 0 (good) and 1 (marginal) are retained for NDVI calculations.
