@@ -839,7 +839,7 @@ with tab2:
                                 zarc_date_matches = zarc_month_matches and zarc_day_matches
                             except Exception:
                                 zarc_date_matches = False
-                            if zarc_crop_matches and zarc_date_matches:
+                            if zarc_crop_matches and zarc_date_matches and zarc_saved.get("Risk level") in ("20%", "30%", "40%"):
                                 st.success(tx(
                                     "The simulated crop and sowing 10-day period match the ZARC reference you recorded. This is a consistency check only; municipality, cultivar, soil class and official source have not been independently verified.",
                                     "A cultura e o decêndio simulados coincidem com a referência ZARC registrada. Esta é apenas uma verificação de consistência; município, cultivar, classe de solo e fonte oficial não foram verificados independentemente."
@@ -1132,6 +1132,19 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
                 "modis_years": st.session_state.get("modis_years"),
                 "climate_data": climate_records.to_dict(orient="records"),
                 "modis_data": modis_payload,
+                "water_balance": (
+                    {
+                        "crop": st.session_state["latest_water_balance"]["crop"],
+                        "year": st.session_state["latest_water_balance"]["year"],
+                        "sowing_month": st.session_state["latest_water_balance"]["sowing_month"],
+                        "sowing_day": st.session_state["latest_water_balance"].get("sowing_day"),
+                        "parameters": st.session_state["latest_water_balance"]["parameters"],
+                        "daily_rows": st.session_state["latest_water_balance"]["table"].assign(
+                            Date=st.session_state["latest_water_balance"]["table"]["Date"].astype(str)
+                        ).to_dict(orient="records")
+                    } if st.session_state.get("latest_water_balance") else None
+                ),
+                "zarc_reference": st.session_state.get("zarc_reference"),
                 "irrigation": irrigation, "soil": soil, "fertility": fertility,
                 "saved_at": datetime.now(timezone.utc).isoformat()
             }
