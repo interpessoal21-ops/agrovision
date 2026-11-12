@@ -54,29 +54,45 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def supabase_settings():
-    """Read Supabase credentials from Streamlit Secrets.
-
-    Prefer the modern publishable-key name; keep the legacy anon-key name
-    as a backwards-compatible fallback for existing deployments.
-    """
+    """Read Supabase credentials from Streamlit Secrets without exposing them."""
     try:
         base_url = str(st.secrets.get("SUPABASE_URL", "")).strip().rstrip("/")
-        api_key = str(
-            st.secrets.get("SUPABASE_PUBLISHABLE_KEY", "")
-            or st.secrets.get("SUPABASE_ANON_KEY", "")
-        ).strip()
-        return base_url, api_key
+        candidates = [
+            ("SUPABASE_PUBLISHABLE_KEY", str(st.secrets.get("SUPABASE_PUBLISHABLE_KEY", "")).strip()),
+            ("SUPABASE_ANON_KEY", str(st.secrets.get("SUPABASE_ANON_KEY", "")).strip()),
+            ("SUPABASE_KEY", str(st.secrets.get("SUPABASE_KEY", "")).strip()),
+        ]
+        # Prefer a valid modern publishable key, then a legacy anon JWT.
+        for name, value in candidates:
+            if value.startswith("sb_publishable_") or value.startswith("eyJ"):
+                return base_url, value, name
+        # Return the first configured value so validation can explain the mismatch.
+        for name, value in candidates:
+            if value:
+                return base_url, value, name
+        return base_url, "", "none"
     except Exception:
-        return "", ""
+        return "", "", "unreadable"
 
 def supabase_auth(endpoint, payload):
-    base_url, anon_key = supabase_settings()
+    base_url, anon_key, key_source = supabase_settings()
     if not base_url or not anon_key:
         raise RuntimeError("Email login is not configured yet. Guest access is available.")
     if not base_url.startswith("https://") or not base_url.endswith(".supabase.co"):
         raise RuntimeError("Supabase URL format looks incorrect. Use the Project URL without /rest/v1/.")
     if not (anon_key.startswith("sb_publishable_") or anon_key.startswith("eyJ")):
-        raise RuntimeError("The configured Supabase key does not look like a Publishable key or legacy anon JWT. Check Streamlit Secrets.")
+        if anon_key.startswith("sb_secret_"):
+            detected = "Secret key (server-only), not a Publishable key"
+        elif anon_key.startswith("sb_"):
+            detected = "unrecognized sb_ key type"
+        else:
+            detected = "value without a recognized Supabase key prefix"
+        raise RuntimeError(
+            f"{key_source} is configured, but its value is {detected} "
+            f"(length: {len(anon_key)}). In Streamlit Secrets, set "
+            "SUPABASE_PUBLISHABLE_KEY to the project's Publishable key "
+            "(starts with sb_publishable_). Do not use a Secret key."
+        )
     response = requests.post(
         f"{base_url}/auth/v1/{endpoint}",
         json=payload,
