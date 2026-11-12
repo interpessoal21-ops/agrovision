@@ -5,6 +5,7 @@ import folium
 import io
 import json
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -15,14 +16,19 @@ st.set_page_config(page_title="AGROVISION", page_icon="🌱", layout="wide")
 
 st.markdown("""
 <style>
-    :root { --agro-green: #2f855a; --agro-deep: #164b35; --agro-light: #eaf5ee; }
-    .stApp { background: linear-gradient(180deg, rgba(234,245,238,.55) 0%, rgba(248,250,248,0) 260px); }
-    [data-testid="stSidebar"] { background: #f1f7f2; border-right: 1px solid #dce9df; }
+    :root { --agro-green: #2f855a; --agro-deep: #103b2b; --agro-light: #eaf5ee; --agro-gold: #d6b36a; }
+    .stApp { background: radial-gradient(ellipse at 85% 0%, rgba(214,179,106,.12) 0%, transparent 34%), linear-gradient(180deg, #f1f7f2 0%, #fbfcfa 340px); }
+    [data-testid="stSidebar"] { background: linear-gradient(180deg, #edf5ee 0%, #e5efe7 100%); border-right: 1px solid #d5e3d8; }
+    [data-testid="stHeader"] { background: rgba(251,252,250,.86); }
+    .block-container { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1440px; }
+    div.stButton > button[kind="primary"] { background: linear-gradient(105deg, #164b35, #2f855a); border: 0; box-shadow: 0 5px 16px rgba(22,75,53,.18); }
+    div.stButton > button { border-radius: 11px; font-weight: 650; }
+    [data-testid="stMetric"] { border-radius: 16px !important; }
     [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #164b35; }
     .hero {
-        padding: 1.65rem 1.8rem; border-radius: 20px; color: white;
-        background: linear-gradient(120deg, #164b35 0%, #28734e 58%, #65a879 100%);
-        margin: .25rem 0 1.2rem 0; box-shadow: 0 8px 24px rgba(22,75,53,.13);
+        padding: 2rem 2.1rem; border-radius: 22px; color: white; position: relative; overflow: hidden;
+        background: radial-gradient(circle at 88% 18%, rgba(214,179,106,.32), transparent 23%), linear-gradient(118deg, #103b2b 0%, #1d6343 58%, #57936b 100%);
+        margin: .25rem 0 1.35rem 0; box-shadow: 0 14px 34px rgba(16,59,43,.18); border: 1px solid rgba(255,255,255,.13);
     }
     .hero h1 { color: white; font-size: 2.35rem; margin: 0 0 .35rem 0; letter-spacing: -.04em; }
     .hero p { color: #e5f4e9; font-size: 1.02rem; margin: 0; max-width: 850px; }
@@ -428,17 +434,40 @@ with tab_help:
 with tab1:
     st.subheader(tx("Your study area, from space", "Sua área de estudo vista do espaço"))
     st.caption(tx("Live climate data from NASA POWER and vegetation observations from MODIS.", "Dados climáticos da NASA POWER e observações de vegetação do MODIS."))
-    modis_years = st.slider(tx("MODIS observation period", "Período de observação MODIS"), 2020, 2025, (2023, 2025))
+    analysis_mode = st.radio(
+        tx("Analysis depth", "Profundidade da análise"),
+        [tx("Quick · 3 years", "Rápida · 3 anos"), tx("Deep · 6 years", "Profunda · 6 anos")],
+        horizontal=True,
+        help=tx("Quick mode retrieves a shorter MODIS period. Deep mode retrieves the full 2020–2025 record.", "A rápida consulta um período MODIS menor. A profunda busca todo o histórico de 2020 a 2025.")
+    )
+    if analysis_mode == tx("Quick · 3 years", "Rápida · 3 anos"):
+        modis_years = (2023, 2025)
+        st.caption(tx("Faster retrieval: MODIS 2023–2025, with the same NASA POWER climate baseline.", "Consulta mais rápida: MODIS 2023–2025, mantendo a mesma série climática NASA POWER."))
+    else:
+        modis_years = (2020, 2025)
+        st.caption(tx("Deeper retrieval: full MODIS 2020–2025 record. This may take longer on the first request.", "Consulta aprofundada: histórico MODIS completo de 2020–2025. A primeira consulta pode demorar mais."))
     if st.button(tx("🛰️ Load environmental data", "🛰️ Carregar dados ambientais"), type="primary", use_container_width=True):
         try:
-            with st.spinner(tx("Requesting NASA POWER and MODIS data...", "Consultando dados NASA POWER e MODIS...")):
-                climate = get_nasa_power(lat, lon)
-                modis = get_modis(lat, lon, modis_years[0], modis_years[1])
+            status = st.status(tx("Starting parallel data requests…", "Iniciando consultas paralelas…"), expanded=True)
+            status.write(tx("NASA POWER: requesting daily climate series.", "NASA POWER: consultando a série climática diária."))
+            status.write(tx("MODIS: retrieving vegetation observations.", "MODIS: buscando observações de vegetação."))
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                climate_future = executor.submit(get_nasa_power, lat, lon)
+                modis_future = executor.submit(get_modis, lat, lon, modis_years[0], modis_years[1])
+                climate = climate_future.result()
+                status.write(tx("NASA POWER data received.", "Dados NASA POWER recebidos."))
+                modis = modis_future.result()
             st.session_state["climate"], st.session_state["modis"] = climate, modis
             st.session_state["coords"] = (lat, lon)
             st.session_state["modis_years"] = modis_years
+            st.session_state["analysis_mode"] = "deep" if modis_years[0] == 2020 else "quick"
+            status.update(label=tx("Environmental data loaded successfully.", "Dados ambientais carregados com sucesso."), state="complete", expanded=False)
             st.success(tx("Environmental data loaded.", "Dados ambientais carregados."))
         except Exception as exc:
+            try:
+                status.update(label=tx("Data request failed.", "Falha ao consultar os dados."), state="error", expanded=True)
+            except Exception:
+                pass
             st.error(f"Data request failed: {exc}")
     if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
         climate = st.session_state["climate"]
