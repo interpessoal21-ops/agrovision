@@ -44,13 +44,14 @@ A one-layer root-zone bucket tracks total available water (TAW = available water
 
 **Important simplifications:** precipitation is treated as infiltrating until field capacity; runoff is not separately modeled. The current model omits capillary rise, lateral flow, salinity, changing root depth, layered soil, measured hydraulic properties and crop-specific stress response. The irrigation trigger is a scenario, not an irrigation prescription. This is not the official ZARC SARRA model and has not been calibrated against field observations.
 
-The ZARC section links to the current MAPA SISZARC and risk-indication panel. It allows a user to transcribe the official municipality/crop/cultivar/soil/risk/dekadal result and checks crop + sowing-dekad consistency with the water-balance scenario. It does not query an official API or independently verify the transcribed publication. MAPA explains that ZARC evaluates climate, soil water availability and crop phenology, and publishes soil available-water classes; those local details must be confirmed before interpreting the scenario.
+The ZARC section now downloads season CSV resources from the MAPA CKAN open-data catalogue, with a direct official 2026/2027 CSV fallback if catalogue metadata is unavailable. It filters by crop, UF, municipality, soil code, cultivar-cycle group, management and climate, then expands the 36 official sowing dekads. The source values are preserved: 20, 30 and 40 are risk percentages; 0 is retained and displayed as outside the recommended window. The selected official row is attached to the project, and the simulated sowing dekad is checked against its risk windows. This checks consistency with the selected row only; the user must ensure that all farm-specific dimensions actually match.
 
 References:
 - Allen et al. (1998), FAO Irrigation and Drainage Paper 56: https://www.fao.org/4/X0490E/X0490E00.htm
 - FAO-56 crop coefficient tables (Chapter 6): https://www.fao.org/4/X0490E/x0490e0b.htm
 - FAO Penman–Monteith method: https://www.fao.org/4/x0490e/x0490e06.htm
-- MAPA ZARC/SISZARC: https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/siszarc
+- MAPA ZARC open-data risk table (CSV, CC BY): https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico
+- MAPA SISZARC: https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/siszarc
 - MAPA soil available-water classes: https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/classificacao-de-solo
 
 ### Stage C — Field validation
