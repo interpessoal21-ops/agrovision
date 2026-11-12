@@ -209,30 +209,63 @@ def get_nasa_power(lat, lon):
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_modis(lat, lon, start_year=2020, end_year=2025):
-    """Retrieve MOD13Q1 observations for a selectable year range."""
-    url = "https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset"
+    """Retrieve MOD13Q1 observations in batches of at most ten composites.
+
+    ORNL DAAC's point-subset endpoint limits each request to ten MODIS dates.
+    The dates endpoint is used to obtain the actual available composite dates.
+    """
+    api_root = "https://modis.ornl.gov/rst/api/v1/MOD13Q1"
+    common = {"latitude": lat, "longitude": lon}
+    dates_response = requests.get(
+        f"{api_root}/dates",
+        params=common,
+        timeout=60
+    )
+    dates_response.raise_for_status()
+    available = dates_response.json().get("dates", [])
+    start_date = f"A{int(start_year)}001"
     end_day = 366 if end_year % 4 == 0 else 365
-    params = {
-        "latitude": lat, "longitude": lon,
-        "startDate": f"A{int(start_year)}001",
-        "endDate": f"A{int(end_year)}{end_day:03d}",
-        "kmAboveBelow": 0, "kmLeftRight": 0
-    }
-    response = requests.get(url, params=params, timeout=90)
-    response.raise_for_status()
+    end_date = f"A{int(end_year)}{end_day:03d}"
+    selected_dates = [
+        item.get("modis_date")
+        for item in available
+        if item.get("modis_date") and start_date <= item["modis_date"] <= end_date
+    ]
+    selected_dates = sorted(set(selected_dates))
     records = {}
-    for item in response.json().get("subset", []):
-        day, band, vals = item.get("calendar_date"), item.get("band"), item.get("data", [])
-        if day and vals:
-            records.setdefault(day, {})[band] = vals[0]
+    for offset in range(0, len(selected_dates), 10):
+        date_batch = selected_dates[offset:offset + 10]
+        params = {
+            **common,
+            "startDate": date_batch[0],
+            "endDate": date_batch[-1],
+            "kmAboveBelow": 0,
+            "kmLeftRight": 0
+        }
+        response = requests.get(f"{api_root}/subset", params=params, timeout=90)
+        response.raise_for_status()
+        for item in response.json().get("subset", []):
+            day, band, vals = item.get("calendar_date"), item.get("band"), item.get("data", [])
+            if day and vals:
+                records.setdefault(day, {})[band] = vals[0]
     rows = []
     for day, bands in records.items():
         nir = bands.get("250m_16_days_NIR_reflectance")
         red = bands.get("250m_16_days_red_reflectance")
         quality = bands.get("250m_16_days_pixel_reliability")
-        ndvi = (nir-red)/(nir+red) if nir is not None and red is not None and quality in (0,1) and nir+red != 0 else None
+        valid_reflectance = (
+            nir is not None and red is not None
+            and nir >= -1000 and red >= -1000
+            and nir + red != 0
+        )
+        ndvi = (
+            (nir - red) / (nir + red)
+            if valid_reflectance and quality in (0, 1)
+            else None
+        )
         rows.append({
-            "Date": pd.to_datetime(day), "Quality": quality,
+            "Date": pd.to_datetime(day),
+            "Quality": quality,
             "Quality label": {0: "Good", 1: "Marginal", 2: "Snow/ice", 3: "Cloudy"}.get(quality, "Unknown"),
             "NDVI": ndvi
         })
