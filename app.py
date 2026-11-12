@@ -40,16 +40,107 @@ def get_modis(lat, lon):
 
 with st.sidebar:
     st.header("Study area")
-    lat = st.number_input("Latitude", -90.0, 90.0, -15.8, 0.01, format="%.4f")
-    lon = st.number_input("Longitude", -180.0, 180.0, -47.0, 0.01, format="%.4f")
+    st.caption("Enter the coordinates of the area you want to investigate.")
+    lat = st.number_input("Latitude", -90.0, 90.0, -15.8, 0.01, format="%.4f", help="Decimal degrees. Locations south of the Equator use negative values.")
+    lon = st.number_input("Longitude", -180.0, 180.0, -47.0, 0.01, format="%.4f", help="Decimal degrees. Locations west of Greenwich use negative values.")
     st.divider()
     st.header("Farm context")
-    irrigation = st.selectbox("Water availability", ["Rainfed","Supplemental irrigation","Irrigated"])
-    soil = st.selectbox("Soil texture (local input)", ["Unknown","Sandy","Loamy","Clayey"])
-    fertility = st.select_slider("Soil fertility (local input)", ["Low","Medium","High"], value="Medium")
+    irrigation = st.selectbox("Water availability", ["Rainfed","Supplemental irrigation","Irrigated"], help="Choose the water supply used or planned for the study area.")
+    soil = st.selectbox("Soil texture (local input)", ["Unknown","Sandy","Loamy","Clayey"], help="This is information supplied by you; it is not measured by NASA in this prototype.")
+    fertility = st.select_slider("Soil fertility (local input)", ["Low","Medium","High"], value="Medium", help="A qualitative local estimate, not a satellite measurement.")
     st.caption("Soil and management inputs are supplied by the user, not measured by NASA.")
+    st.info("First visit? Open the Start here tab for a short walkthrough.")
 
-tab1, tab2, tab3 = st.tabs(["Environmental dashboard","Rotation scenarios","Data & limitations"])
+tab_help, tab1, tab2, tab3 = st.tabs(["👋 Start here · Help","Environmental dashboard","Rotation scenarios","Data & limitations"])
+
+with tab_help:
+    st.header("Welcome to AGROVISION")
+    st.write("This guide walks you through the first use of the platform. You can follow the steps in order, then return here whenever you need help.")
+    st.success("Recommended workflow: choose a study area → describe the farm context → load NASA data → compare rotation scenarios → review the limitations.")
+
+    with st.expander("1. Choose your study area", expanded=True):
+        st.markdown("""
+        - In the **Study area** panel on the left, enter the latitude and longitude of the farm or area you want to study.
+        - Use decimal degrees, not degrees/minutes/seconds.
+        - South of the Equator = negative latitude. North = positive latitude.
+        - West of Greenwich = negative longitude. East = positive longitude.
+        - Make sure the point represents the agricultural area you are investigating. A point in a nearby city may describe a different environment.
+        """)
+        st.caption("Tip: use a trusted map or GPS tool to obtain the farm coordinates. The default coordinates are only a starting point, not a recommended farm location.")
+
+    with st.expander("2. Describe the farm context"):
+        st.markdown("""
+        These options help frame the exploratory rotation comparison:
+        - **Rainfed:** crops depend mainly on rainfall.
+        - **Supplemental irrigation:** irrigation is used to complement rainfall when needed.
+        - **Irrigated:** irrigation is a regular part of the production system.
+        - **Sandy / Loamy / Clayey:** choose the closest known soil texture. If you do not know it, leave **Unknown**.
+        - **Soil fertility:** choose a low, medium, or high qualitative estimate based on local knowledge or soil analysis.
+        """)
+        st.warning("These are user-provided context values. AGROVISION does not measure soil texture or fertility from NASA data.")
+
+    with st.expander("3. Load the environmental data"):
+        st.markdown("""
+        1. Open the **Environmental dashboard** tab.
+        2. Check the coordinates in the left panel.
+        3. Click **Load environmental data**.
+        4. Wait for the NASA POWER and MODIS requests to finish.
+        5. Review the indicators and time series displayed on the dashboard.
+
+        NASA POWER provides the climate series for 2020–2025. The current MODIS request retrieves vegetation observations for the first quarter of 2024.
+        """)
+        st.info("The first request can take a little time because the platform retrieves data from external NASA-related services. Repeated requests may be faster because results are temporarily cached.")
+
+    with st.expander("4. Understand the environmental indicators"):
+        st.markdown("""
+        - **Mean air temperature:** average daily near-surface air temperature for the retrieved period.
+        - **Total precipitation:** accumulated precipitation across the 2020–2025 dataset. It is not the rainfall for a single year.
+        - **Mean solar radiation:** average daily solar energy reaching the surface in the retrieved period.
+        - **Annual climate series:** shows how annual precipitation totals and mean temperature vary over time.
+        - **NDVI:** a satellite-derived vegetation greenness indicator. It can help observe vegetation patterns, but it does not identify a crop or prove that a field is healthy or productive.
+        """)
+        st.caption("Clouds, mixed land cover, pixel size, observation dates, and data quality can affect satellite indicators. Interpret them together with field information.")
+
+    with st.expander("5. Compare crop-rotation scenarios"):
+        st.markdown("""
+        1. First load the environmental data in the dashboard.
+        2. Open **Rotation scenarios**.
+        3. Review the three illustrative strategies: maize/common bean, soybean/sorghum, and a diversified rotation with a cover crop.
+        4. Compare their screening scores and the bar chart.
+        5. Read the note below the results before drawing conclusions.
+
+        The score is a transparent, provisional rule-based screening exercise. It is not a calibrated crop model, yield forecast, profitability estimate, or agronomic recommendation. A higher score does not guarantee a better harvest.
+        """)
+
+    with st.expander("6. Common questions and troubleshooting"):
+        st.markdown("""
+        **The dashboard says data could not be loaded.**
+        - Check your internet connection and confirm the coordinates are valid.
+        - Try again after a short wait. The external data service may be temporarily unavailable.
+        - If the problem continues, note the error message and report it to the project team.
+
+        **The MODIS chart is empty.**
+        - The selected point or observation period may not have usable observations.
+        - Cloud cover and pixel-quality flags can reduce the number of valid observations.
+
+        **Why can I not see SMAP data?**
+        - SMAP is not yet connected in this public version. The platform must not present an unavailable dataset as if it had been measured.
+
+        **Can I use the score to decide what to plant?**
+        - No. Use it only to explore the prototype. Real decisions require local soil tests, crop calendars, water availability, management information, and advice from qualified agronomists.
+        """)
+
+    st.divider()
+    st.subheader("What the platform does — and does not do")
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**AGROVISION can help you:**")
+        st.markdown("- Explore climate indicators for a selected location.\n- View satellite-derived vegetation observations.\n- Compare illustrative crop-rotation scenarios.\n- Understand where Earth-observation data can support agricultural analysis.")
+    with right:
+        st.markdown("**AGROVISION does not currently:**")
+        st.markdown("- Measure the soil directly.\n- Predict crop yield or farm profit.\n- Provide a certified planting recommendation.\n- Display SMAP data in this public deployment.")
+    st.caption("AGROVISION · First-visit guide · Prototype for NASA Space Apps Challenge 2026")
+
 with tab1:
     st.subheader("NASA climate indicators")
     if st.button("Load environmental data", type="primary"):
