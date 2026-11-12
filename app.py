@@ -740,10 +740,12 @@ with tab1:
                 st.success(tx("No basic completeness or range issue was detected in the loaded climate table.", "Nenhum problema básico de completude ou faixa foi detectado na tabela climática carregada."))
             st.dataframe(pd.DataFrame(climate_qc["variables"]), use_container_width=True, hide_index=True)
             modis_qc = modis_quality_report(st.session_state.get("modis", pd.DataFrame()))
-            m1, m2, m3 = st.columns(3)
+            m1, m2, m3, m4, m5 = st.columns(5)
             m1.metric(tx("MODIS observations", "Observações MODIS"), modis_qc["rows"])
             m2.metric(tx("Usable NDVI", "NDVI utilizável"), modis_qc["valid_ndvi"])
-            m3.metric(tx("Poor/unknown QA", "QA ruim/desconhecida"), modis_qc["poor_or_unknown_quality"])
+            m3.metric(tx("Invalid NDVI", "NDVI inválido"), modis_qc["invalid_ndvi"])
+            m4.metric(tx("Poor/unknown QA", "QA ruim/desconhecida"), modis_qc["poor_or_unknown_quality"])
+            m5.metric(tx("Duplicate dates", "Datas duplicadas"), modis_qc["duplicate_dates"])
             st.caption(tx(
                 "MODIS QA is reported separately from climate completeness. NDVI values outside [-1, 1] are flagged, not silently clipped.",
                 "A QA do MODIS é informada separadamente da completude climática. Valores de NDVI fora de [-1, 1] são sinalizados, não limitados silenciosamente."
