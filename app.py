@@ -710,6 +710,11 @@ with tab2:
             )
             profile = CROP_REFERENCE[water_crop]
             cycle_days = round((profile["cycle_min"] + profile["cycle_max"]) / 2)
+            water_sowing_day = st.selectbox(
+                tx("Sowing day / ZARC 10-day period", "Dia de semeadura / decêndio ZARC"),
+                [1, 11, 21], format_func=lambda d: {1: "1–10", 11: "11–20", 21: "21–end"}[d],
+                key="water_sowing_day"
+            )
             try:
                 et0_all = fao56_reference_et0(climate, lat, elevation_m)
                 st.caption(tx(
@@ -718,7 +723,7 @@ with tab2:
                 ))
                 candidate_years = []
                 for candidate_year in sorted(set(climate.index.year)):
-                    candidate_start = pd.Timestamp(year=int(candidate_year), month=int(sowing_month), day=1)
+                    candidate_start = pd.Timestamp(year=int(candidate_year), month=int(sowing_month), day=int(water_sowing_day))
                     candidate_end = candidate_start + pd.Timedelta(days=cycle_days - 1)
                     candidate_weather = climate.loc[candidate_start:candidate_end]
                     candidate_et0 = et0_all.loc[candidate_start:candidate_end]
@@ -734,8 +739,8 @@ with tab2:
                 else:
                     water_year = st.selectbox(tx("Historical season to simulate", "Safra histórica para simular"), candidate_years, index=len(candidate_years)-1, key="water_balance_year")
                     st.caption(tx(
-                        f"Representative cycle: {cycle_days} days, beginning {sowing_month:02d}/01/{water_year}. The midpoint cycle is a screening assumption, not cultivar phenology.",
-                        f"Ciclo representativo: {cycle_days} dias, iniciando em 01/{sowing_month:02d}/{water_year}. A duração intermediária é uma hipótese de triagem, não a fenologia da cultivar."
+                        f"Representative cycle: {cycle_days} days, beginning {sowing_month:02d}/{water_sowing_day:02d}/{water_year}. The midpoint cycle is a screening assumption, not cultivar phenology.",
+                        f"Ciclo representativo: {cycle_days} dias, iniciando em {water_sowing_day:02d}/{sowing_month:02d}/{water_year}. A duração intermediária é uma hipótese de triagem, não a fenologia da cultivar."
                     ))
                     with st.expander(tx("Crop and soil parameters", "Parâmetros da cultura e do solo"), expanded=True):
                         c1,c2,c3=st.columns(3)
@@ -775,11 +780,21 @@ with tab2:
                     )
                     irrigation_mode = "triggered_supplemental" if irrigation_mode_label == tx("Idealized supplemental irrigation", "Irrigação suplementar idealizada") else "rainfed"
                     irrigation_efficiency = st.slider(tx("Application efficiency (%)", "Eficiência de aplicação (%)"), 50, 100, 85, 5, key="water_irrigation_efficiency") / 100 if irrigation_mode == "triggered_supplemental" else 0.85
+                    current_parameters = {
+                        "available_water_mm_m": float(available_water), "root_depth_m": float(root_depth),
+                        "depletion_fraction": float(depletion_fraction), "initial_storage_fraction": float(initial_storage),
+                        "elevation_m": float(elevation_m), "irrigation_mode": irrigation_mode,
+                        "irrigation_efficiency": float(irrigation_efficiency),
+                        "initial_days": int(initial_days), "development_days": int(development_days),
+                        "midseason_days": int(midseason_days), "kc_initial": float(kc_ini),
+                        "kc_mid": float(kc_mid), "kc_end": float(kc_end),
+                        "sowing_day": int(water_sowing_day)
+                    }
                     if end_days < 1:
                         st.error(tx("Crop-stage durations exceed the cycle. Reduce one or more stages.", "A soma das fases excede o ciclo. Reduza uma ou mais fases."))
                     elif st.button(tx("Calculate daily water balance", "Calcular balanço hídrico diário"), type="primary", key="run_water_balance"):
                         try:
-                            start = pd.Timestamp(year=int(water_year), month=int(sowing_month), day=1)
+                            start = pd.Timestamp(year=int(water_year), month=int(sowing_month), day=int(water_sowing_day))
                             end = start + pd.Timedelta(days=cycle_days - 1)
                             weather_window = climate.loc[start:end]
                             et0_window = et0_all.loc[start:end]
@@ -795,17 +810,12 @@ with tab2:
                             )
                             st.session_state["latest_water_balance"] = {
                                 "crop": water_crop, "year": int(water_year), "sowing_month": int(sowing_month),
-                                "table": balance, "parameters": {
-                                    "available_water_mm_m": available_water, "root_depth_m": root_depth,
-                                    "depletion_fraction": depletion_fraction, "initial_storage_fraction": initial_storage,
-                                    "elevation_m": elevation_m, "irrigation_mode": irrigation_mode,
-                                    "irrigation_efficiency": irrigation_efficiency
-                                }
+                                "sowing_day": int(water_sowing_day), "table": balance, "parameters": current_parameters
                             }
                         except Exception as exc:
                             st.error(tx("Water-balance calculation failed: ", "Falha no cálculo do balanço hídrico: ") + str(exc))
                     saved_balance = st.session_state.get("latest_water_balance")
-                    if saved_balance and saved_balance.get("crop") == water_crop and saved_balance.get("year") == int(water_year):
+                    if saved_balance and saved_balance.get("crop") == water_crop and saved_balance.get("year") == int(water_year) and saved_balance.get("sowing_month") == int(sowing_month) and saved_balance.get("sowing_day") == int(water_sowing_day) and saved_balance.get("parameters") == current_parameters:
                         balance = saved_balance["table"]
                         total_etc = balance["ETc potential (mm)"].sum()
                         total_eta = balance["ETa actual estimate (mm)"].sum()
@@ -813,6 +823,32 @@ with tab2:
                         total_net_irrigation = balance["Net irrigation (mm)"].sum()
                         total_gross_irrigation = balance["Gross irrigation estimate (mm)"].sum()
                         days_stressed = int((balance["Stress coefficient Ks"] < 0.999).sum())
+                        zarc_saved = st.session_state.get("zarc_reference")
+                        if zarc_saved:
+                            zarc_decade = zarc_saved.get("Sowing 10-day period", "")
+                            zarc_crop_matches = zarc_saved.get("Crop") == water_crop
+                            try:
+                                zarc_month_text, zarc_range = zarc_decade.split("/", 1)
+                                zarc_month_matches = int(zarc_month_text) == int(sowing_month)
+                                if zarc_range == "1–10":
+                                    zarc_day_matches = int(water_sowing_day) == 1
+                                elif zarc_range == "11–20":
+                                    zarc_day_matches = int(water_sowing_day) == 11
+                                else:
+                                    zarc_day_matches = int(water_sowing_day) == 21
+                                zarc_date_matches = zarc_month_matches and zarc_day_matches
+                            except Exception:
+                                zarc_date_matches = False
+                            if zarc_crop_matches and zarc_date_matches:
+                                st.success(tx(
+                                    "The simulated crop and sowing 10-day period match the ZARC reference you recorded. This is a consistency check only; municipality, cultivar, soil class and official source have not been independently verified.",
+                                    "A cultura e o decêndio simulados coincidem com a referência ZARC registrada. Esta é apenas uma verificação de consistência; município, cultivar, classe de solo e fonte oficial não foram verificados independentemente."
+                                ))
+                            else:
+                                st.warning(tx(
+                                    "The simulated crop or sowing period does not match the ZARC reference recorded below. Review the official MAPA result before interpreting this scenario.",
+                                    "A cultura ou o período simulado não coincide com a referência ZARC registrada abaixo. Revise o resultado oficial do MAPA antes de interpretar este cenário."
+                                ))
                         st.markdown("**" + tx("Seasonal indicators", "Indicadores da safra") + "**")
                         a1,a2,a3,a4=st.columns(4)
                         a1.metric("ET0", f'{balance["ET0 FAO-56 (mm)"].sum():.0f} mm')
