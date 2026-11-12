@@ -365,7 +365,7 @@ with st.sidebar:
     irrigation = dict(zip(irrigation_labels, irrigation_options))[irrigation_label]
     soil_options = ["Unknown", "Sandy", "Loamy", "Clayey"]
     soil_labels = [tx("Unknown", "Desconhecida"), tx("Sandy", "Arenosa"), tx("Loamy", "Franca"), tx("Clayey", "Argilosa")]
-    soil_label = st.selectbox(tx("Soil texture (local input)", "Textura do solo (dado local)"), soil_labels, help=tx("This is information supplied by you; it is not measured by NASA in this prototype.", "Informação fornecida pelo usuário; não é medida pela NASA."))
+    soil_label = st.selectbox(tx("Soil texture (local input)", "Textura do solo (dado local)"), soil_labels, help=tx("This is information supplied by you; it is not measured by NASA in this platform.", "Informação fornecida pelo usuário; não é medida pela NASA."))
     soil = dict(zip(soil_labels, soil_options))[soil_label]
     fertility_labels = [tx("Low", "Baixa"), tx("Medium", "Média"), tx("High", "Alta")]
     fertility_label = st.select_slider(tx("Soil fertility (local input)", "Fertilidade do solo (dado local)"), fertility_labels, value=tx("Medium", "Média"), help=tx("A qualitative local estimate, not a satellite measurement.", "Estimativa qualitativa local, não é medição por satélite."))
