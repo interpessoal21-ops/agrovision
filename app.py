@@ -381,7 +381,7 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
     tx("Environmental dashboard", "Painel ambiental"),
     tx("Crop analysis", "Análise de culturas"),
@@ -1309,7 +1309,7 @@ def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water
     else:
         story.append(Paragraph("No official MAPA ZARC row was attached to this project.", styles["Normal"]))
 
-        story.extend([Spacer(1, 16), Paragraph("Scientific note: this report summarizes historical environmental observations. NDVI is not a direct measure of yield or crop health. Rainfall totals alone are not a soil-water balance or crop water deficit estimate. Crop reference ranges are indicative and must be checked against cultivar, local ZARC calendar, soil tests, management and field observations.", styles["Italic"])])
+    story.extend([Spacer(1, 16), Paragraph("Scientific note: this report summarizes historical environmental observations. NDVI is not a direct measure of yield or crop health. Rainfall totals alone are not a soil-water balance or crop water deficit estimate. Crop reference ranges are indicative and must be checked against cultivar, local ZARC calendar, soil tests, management and field observations.", styles["Italic"])])
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
