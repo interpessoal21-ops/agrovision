@@ -758,7 +758,8 @@ def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude):
         story.append(Paragraph(f"Valid observations: {len(valid)} · Mean NDVI: {valid.mean():.3f}" if len(valid) else "No quality-screened NDVI observations were available.", styles["Normal"]))
     else:
         story.append(Paragraph("No MODIS observations available for this analysis.", styles["Normal"]))
-    story.extend([Spacer(1, 16), Paragraph("Scientific note: this report summarizes historical environmental observations. NDVI is not a direct measure of yield or crop health. Rainfall totals alone are not a soil-water balance or crop water deficit estimate. Crop reference ranges are indicative and must be checked against cultivar, local ZARC calendar, soil tests, management and field observations.", styles["Italic"])])\n    doc.build(story)
+    story.extend([Spacer(1, 16), Paragraph("Scientific note: this report summarizes historical environmental observations. NDVI is not a direct measure of yield or crop health. Rainfall totals alone are not a soil-water balance or crop water deficit estimate. Crop reference ranges are indicative and must be checked against cultivar, local ZARC calendar, soil tests, management and field observations.", styles["Italic"])])
+    doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
 
