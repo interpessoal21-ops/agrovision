@@ -523,6 +523,64 @@ with tab6:
         "Biblioteca editorial · Referências fundamentais, não um feed de notícias em tempo real. Novas pesquisas e atualizações oficiais são verificadas separadamente."
     ))
 
+with tab7:
+    st.header(tx("Integrated evidence dashboard", "Painel integrado de evidências"))
+    st.write(tx("A consolidated view of climate, vegetation, crop-water and official zoning evidence attached to this study area.", "Uma visão consolidada das evidências de clima, vegetação, balanço hídrico e zoneamento oficial desta área."))
+    st.info(tx("No composite suitability score or planting recommendation is calculated. Missing evidence is shown explicitly.", "Nenhuma pontuação geral de aptidão ou recomendação de plantio é calculada. As evidências ausentes são identificadas."))
+    current_coords = (float(lat), float(lon))
+    climate_ready = "climate" in st.session_state and st.session_state.get("coords") == current_coords
+    if climate_ready:
+        climate_evidence = st.session_state["climate"]
+        indicators = [("NASA POWER · T2M", climate_evidence["T2M"], "°C"), ("NASA POWER · PRECTOTCORR", climate_evidence["PRECTOTCORR"], "mm"), ("NASA POWER · ALLSKY_SFC_SW_DWN", climate_evidence["ALLSKY_SFC_SW_DWN"], "kWh/m²/day")]
+        rows = []
+        for label, series, unit in indicators:
+            valid = series.dropna()
+            value = valid.mean() if "T2M" in label or "ALLSKY" in label else valid.sum()
+            rows.append({"Indicator": label, "Valid records": len(valid), "Coverage (%)": round(100*len(valid)/max(1,len(series)),1), "Summary": f"{value:.2f} {unit}" if len(valid) else "No valid values"})
+        st.subheader(tx("Climate evidence", "Evidências climáticas"))
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    else:
+        st.warning(tx("Load environmental data for the selected coordinates first.", "Carregue primeiro os dados ambientais das coordenadas selecionadas."))
+    vegetation = st.session_state.get("modis", pd.DataFrame())
+    if climate_ready and not vegetation.empty:
+        usable = vegetation.dropna(subset=["NDVI"])
+        st.subheader(tx("MODIS vegetation evidence", "Evidências de vegetação MODIS"))
+        if not usable.empty:
+            v1, v2, v3 = st.columns(3)
+            v1.metric(tx("Usable composites", "Composições válidas"), len(usable))
+            v2.metric(tx("Mean NDVI", "NDVI médio"), f"{usable['NDVI'].mean():.3f}")
+            v3.metric(tx("Period", "Período"), str(pd.to_datetime(usable["Date"]).dt.year.min()) + "–" + str(pd.to_datetime(usable["Date"]).dt.year.max()))
+        else:
+            st.warning(tx("No usable quality-screened NDVI observations.", "Nenhuma observação NDVI passou pelo filtro de qualidade."))
+    else:
+        st.caption(tx("No MODIS series is attached to the current study coordinates.", "Não há série MODIS vinculada às coordenadas atuais."))
+    saved_balance = st.session_state.get("latest_water_balance")
+    if saved_balance and saved_balance.get("coords") == current_coords and saved_balance.get("table") is not None:
+        balance_table = saved_balance["table"]
+        st.subheader(tx("Exploratory FAO-56 crop-water scenario", "Cenário exploratório de balanço hídrico FAO-56"))
+        a, b, c, d = st.columns(4)
+        a.metric(tx("Crop", "Cultura"), str(saved_balance.get("crop", "—")))
+        b.metric(tx("Season", "Safra"), str(saved_balance.get("year", "—")))
+        c.metric("ETc", f"{balance_table['ETc potential (mm)'].sum():.1f} mm")
+        d.metric("ETa", f"{balance_table['ETa actual estimate (mm)'].sum():.1f} mm")
+        st.caption(tx("User-entered parameters; simplified one-layer bucket; not calibrated or an irrigation prescription.", "Parâmetros informados pelo usuário; reservatório simplificado de uma camada; não calibrado nem prescrição de irrigação."))
+    else:
+        st.caption(tx("No water-balance run is attached for the current coordinates.", "Nenhuma simulação de balanço hídrico está vinculada às coordenadas atuais."))
+    zarc_evidence = st.session_state.get("zarc_reference")
+    if zarc_evidence:
+        st.subheader(tx("Official MAPA ZARC reference", "Referência oficial ZARC/MAPA"))
+        zarc_keys = ("Crop", "UF", "Municipality", "Soil code", "Cultivar group / cycle", "Management", "Climate", "Ordinance", "Season dataset")
+        zarc_rows = [{"Field": key, "Value": zarc_evidence.get(key, "")} for key in zarc_keys if zarc_evidence.get(key, "")]
+        if zarc_rows:
+            st.dataframe(pd.DataFrame(zarc_rows), use_container_width=True, hide_index=True)
+        st.markdown("[Open official MAPA source](" + str(zarc_evidence.get("Source URL", "https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico")) + ")")
+    else:
+        st.caption(tx("No official ZARC row has been attached yet.", "Nenhum registro oficial ZARC foi vinculado ainda."))
+    st.divider()
+    st.subheader(tx("Evidence still needed", "Evidências ainda necessárias"))
+    st.markdown(tx("- Exact farm boundary and representative satellite pixel.\n- Laboratory soil analysis and measured root-zone properties.\n- Confirmed cultivar, cycle, management and current ZARC ordinance.\n- Comparison with a quality-controlled local weather station.\n- Field validation of the water-balance scenario.", "- Limite exato da propriedade e pixel de satélite representativo.\n- Análise laboratorial do solo e propriedades medidas da zona radicular.\n- Cultivar, ciclo, manejo e portaria ZARC vigente confirmados.\n- Comparação com estação meteorológica local controlada.\n- Validação do balanço hídrico em campo."))
+    st.caption(tx("Evidence summary only — not a calibrated agronomic decision-support system.", "Apenas resumo de evidências — não é um sistema calibrado de apoio à decisão agronômica."))
+
 with tab_help:
     st.header(tx("Your first steps", "Seus primeiros passos"))
     st.write(tx("New here? Follow this short path to get from a location to an informed exploration of the data.", "É sua primeira vez? Siga este roteiro para sair da escolha de um local e chegar à exploração dos dados."))
@@ -684,6 +742,14 @@ with tab1:
             st.line_chart(modis.set_index("Date")[["NDVI"]])
             st.caption(f"MODIS/Terra MOD13Q1 · 16-day composites · {st.session_state.get('modis_years', (2023, 2025))[0]}–{st.session_state.get('modis_years', (2023, 2025))[1]} · QA reliability 0 (good) and 1 (marginal).")
             st.dataframe(modis[["Date", "NDVI", "Quality label"]], use_container_width=True, hide_index=True)
+            valid_modis = modis.dropna(subset=["NDVI"]).copy()
+            if not valid_modis.empty:
+                valid_modis["Year"] = pd.to_datetime(valid_modis["Date"]).dt.year
+                annual_ndvi = valid_modis.groupby("Year")["NDVI"].agg(Observations="count", Mean="mean", Minimum="min", Maximum="max").reset_index()
+                st.markdown("**" + tx("Interannual vegetation summary", "Resumo interanual da vegetação") + "**")
+                st.dataframe(annual_ndvi.round({"Mean": 3, "Minimum": 3, "Maximum": 3}), use_container_width=True, hide_index=True)
+                st.caption(tx("Annual means summarize quality-screened 16-day observations. They are not crop classification, phenology or yield estimates.", "As médias anuais resumem observações de 16 dias com qualidade aceita. Não são classificação de cultura, fenologia ou estimativa de produtividade."))
+                st.bar_chart(modis["Quality label"].fillna("Unknown").value_counts())
         else:
             st.info(tx("No usable MODIS observations were returned for this point and period.", "Não foram encontradas observações MODIS válidas para este ponto e período."))
     else:
