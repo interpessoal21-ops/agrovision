@@ -887,7 +887,7 @@ with tab2:
             with st.spinner(tx("Loading the MAPA catalogue…", "Carregando o catálogo do MAPA…")):
                 zarc_resources = _cached_zarc_resources()
             resource_labels = [r["title"] for r in zarc_resources]
-            default_resource = next((i for i, label in enumerate(resource_labels) if "2026/2027" in label or "2026-2027" in label), 0)
+            default_resource = next((i for i, resource in enumerate(zarc_resources) if ("2026" in resource["title"] and "2027" in resource["title"]) or ("2026" in resource["url"] and "2027" in resource["url"])), 0)
             chosen_resource_label = st.selectbox(
                 tx("Official ZARC season dataset", "Base oficial da safra ZARC"),
                 resource_labels, index=default_resource, key="zarc_official_resource"
@@ -920,10 +920,25 @@ with tab2:
             after_municipality = filter_zarc_rows(after_uf, {"municipality": zarc_municipality_choice})
             c1,c2,c3=st.columns(3)
             soil_options = unique_values(after_municipality, soil_col)
-            zarc_soil_choice = c1.selectbox(tx("Soil class / code", "Classe / código do solo"), soil_options, key="zarc_query_soil")
+            zarc_soil_choice = c1.selectbox(
+                tx("Soil class / code", "Classe / código do solo"), soil_options,
+                format_func=lambda value: {
+                    "1": "1 · Arenoso", "2": "2 · Textura média", "3": "3 · Argiloso",
+                    "11": "11 · AD1", "12": "12 · AD2", "13": "13 · AD3",
+                    "14": "14 · AD4", "15": "15 · AD5", "16": "16 · AD6"
+                }.get(str(value), str(value)), key="zarc_query_soil"
+            )
             after_soil = filter_zarc_rows(after_municipality, {"soil": zarc_soil_choice})
             cycle_options = unique_values(after_soil, cycle_col)
-            zarc_cycle_choice = c2.selectbox(tx("Cultivar cycle / group", "Ciclo / grupo de cultivar"), cycle_options, key="zarc_query_cycle")
+            zarc_cycle_choice = c2.selectbox(
+                tx("Cultivar cycle / group", "Ciclo / grupo de cultivar"), cycle_options,
+                format_func=lambda value: {
+                    "13": "13 · Perene", "19": "19 · Semiperene",
+                    "20": "20 · Grupo I", "21": "21 · Grupo II",
+                    "22": "22 · Grupo III", "24": "24 · Grupo IV",
+                    "25": "25 · Grupo V", "26": "26 · Grupo VI"
+                }.get(str(value), str(value)), key="zarc_query_cycle"
+            )
             after_cycle = filter_zarc_rows(after_soil, {"cycle": zarc_cycle_choice})
             management_options = unique_values(after_cycle, management_col) if management_col else []
             zarc_management_choice = c3.selectbox(
