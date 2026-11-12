@@ -828,29 +828,19 @@ with tab2:
                         days_stressed = int((balance["Stress coefficient Ks"] < 0.999).sum())
                         zarc_saved = st.session_state.get("zarc_reference")
                         if zarc_saved:
-                            zarc_decade = zarc_saved.get("Sowing 10-day period", "")
-                            zarc_crop_matches = zarc_saved.get("Crop") == water_crop
-                            try:
-                                zarc_month_text, zarc_range = zarc_decade.split("/", 1)
-                                zarc_month_matches = int(zarc_month_text) == int(sowing_month)
-                                if zarc_range == "1–10":
-                                    zarc_day_matches = int(water_sowing_day) == 1
-                                elif zarc_range == "11–20":
-                                    zarc_day_matches = int(water_sowing_day) == 11
-                                else:
-                                    zarc_day_matches = int(water_sowing_day) == 21
-                                zarc_date_matches = zarc_month_matches and zarc_day_matches
-                            except Exception:
-                                zarc_date_matches = False
-                            if zarc_crop_matches and zarc_date_matches and zarc_saved.get("Risk level") in ("20%", "30%", "40%"):
+                            zarc_crop_matches = crop_matches_app_crop(zarc_saved.get("Crop", ""), water_crop)
+                            target_dekad = (int(sowing_month) - 1) * 3 + (1 if int(water_sowing_day) == 1 else 2 if int(water_sowing_day) == 11 else 3)
+                            recommended = zarc_saved.get("Recommended decendios", [])
+                            matching_dekad = next((item for item in recommended if int(item.get("Decêndio", -1)) == target_dekad), None)
+                            if zarc_crop_matches and matching_dekad and matching_dekad.get("Risco (%)") in (20, 30, 40):
                                 st.success(tx(
-                                    "The simulated crop and sowing 10-day period match the ZARC reference you recorded. This is a consistency check only; municipality, cultivar, soil class and official source have not been independently verified.",
-                                    "A cultura e o decêndio simulados coincidem com a referência ZARC registrada. Esta é apenas uma verificação de consistência; município, cultivar, classe de solo e fonte oficial não foram verificados independentemente."
+                                    f"The selected sowing dekad appears in the official MAPA record with {matching_dekad['Risco (%)']}% risk. This checks the selected row only; confirm that its municipality, cultivar group, soil class, management and climate match the farm.",
+                                    f"O decêndio selecionado consta no registro oficial do MAPA com risco de {matching_dekad['Risco (%)']}%. Esta verificação considera apenas a linha selecionada; confirme se município, grupo de cultivar, classe de solo, manejo e clima correspondem à propriedade."
                                 ))
                             else:
                                 st.warning(tx(
-                                    "The simulated crop or sowing period does not match the ZARC reference recorded below. Review the official MAPA result before interpreting this scenario.",
-                                    "A cultura ou o período simulado não coincide com a referência ZARC registrada abaixo. Revise o resultado oficial do MAPA antes de interpretar este cenário."
+                                    "The selected crop or sowing dekad is not listed as a 20%, 30% or 40% window in the selected official MAPA record. Confirm all ZARC filters and the applicable ordinance.",
+                                    "A cultura ou o decêndio selecionado não aparece como janela de 20%, 30% ou 40% no registro oficial escolhido. Confira todos os filtros do ZARC e a portaria aplicável."
                                 ))
                         st.markdown("**" + tx("Seasonal indicators", "Indicadores da safra") + "**")
                         a1,a2,a3,a4=st.columns(4)
