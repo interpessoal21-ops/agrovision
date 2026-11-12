@@ -3,9 +3,53 @@ import pandas as pd
 import requests
 
 st.set_page_config(page_title="AGROVISION", page_icon="🌱", layout="wide")
-st.title("🌱 AGROVISION")
-st.caption("Agricultural decision support powered by NASA Earth observation data")
-st.write("Explore local climate and vegetation indicators, then compare crop-rotation scenarios as an initial screening tool.")
+
+st.markdown("""
+<style>
+    :root { --agro-green: #2f855a; --agro-deep: #164b35; --agro-light: #eaf5ee; }
+    .stApp { background: linear-gradient(180deg, rgba(234,245,238,.55) 0%, rgba(248,250,248,0) 260px); }
+    [data-testid="stSidebar"] { background: #f1f7f2; border-right: 1px solid #dce9df; }
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #164b35; }
+    .hero {
+        padding: 1.65rem 1.8rem; border-radius: 20px; color: white;
+        background: linear-gradient(120deg, #164b35 0%, #28734e 58%, #65a879 100%);
+        margin: .25rem 0 1.2rem 0; box-shadow: 0 8px 24px rgba(22,75,53,.13);
+    }
+    .hero h1 { color: white; font-size: 2.35rem; margin: 0 0 .35rem 0; letter-spacing: -.04em; }
+    .hero p { color: #e5f4e9; font-size: 1.02rem; margin: 0; max-width: 850px; }
+    .eyebrow { color: #c5e8d0; text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 700; margin-bottom: .55rem; }
+    .step-card {
+        background: white; border: 1px solid #dce9df; border-radius: 15px;
+        padding: 1rem; min-height: 142px; box-shadow: 0 3px 12px rgba(20,65,43,.045);
+    }
+    .step-number {
+        display: inline-flex; width: 30px; height: 30px; border-radius: 50%;
+        align-items: center; justify-content: center; background: #e3f2e8;
+        color: #1d6843; font-weight: 800; margin-bottom: .55rem;
+    }
+    .step-card strong { display: block; color: #194d35; margin-bottom: .3rem; }
+    .step-card span { color: #52665a; font-size: .88rem; line-height: 1.4; }
+    div[data-testid="stMetric"] {
+        background: white; border: 1px solid #e0ebe3; padding: 1rem 1.1rem;
+        border-radius: 14px; box-shadow: 0 3px 12px rgba(20,65,43,.04);
+    }
+    div[data-testid="stMetricLabel"] { color: #547160; }
+    div[data-testid="stTabs"] button[aria-selected="true"] { color: #1e7048; border-bottom-color: #2f855a; }
+    .section-note {
+        padding: .8rem 1rem; border-left: 4px solid #55a477; background: #edf6ef;
+        border-radius: 0 10px 10px 0; color: #315b42; margin: .5rem 0 1rem 0;
+    }
+    @media (max-width: 700px) {
+        .hero { padding: 1.2rem; border-radius: 14px; }
+        .hero h1 { font-size: 1.8rem; }
+    }
+</style>
+<div class="hero">
+  <div class="eyebrow">NASA Earth observation · Agricultural insights</div>
+  <h1>🌱 AGROVISION</h1>
+  <p>Explore climate and vegetation data for your study area, then compare illustrative crop-rotation strategies in one place.</p>
+</div>
+""", unsafe_allow_html=True)
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_nasa_power(lat, lon):
@@ -54,9 +98,20 @@ with st.sidebar:
 tab_help, tab1, tab2, tab3 = st.tabs(["👋 Start here · Help","Environmental dashboard","Rotation scenarios","Data & limitations"])
 
 with tab_help:
-    st.header("Welcome to AGROVISION")
-    st.write("This guide walks you through the first use of the platform. You can follow the steps in order, then return here whenever you need help.")
-    st.success("Recommended workflow: choose a study area → describe the farm context → load NASA data → compare rotation scenarios → review the limitations.")
+    st.header("Your first steps")
+    st.write("New here? Follow this short path to get from a location to an informed exploration of the data.")
+    st.markdown("""
+    <div class="step-card" style="min-height:0; margin-bottom:1rem">
+      <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.65rem">
+        <div><div class="step-number">1</div><strong>Locate</strong><span>Enter farm coordinates</span></div>
+        <div><div class="step-number">2</div><strong>Describe</strong><span>Add local farm context</span></div>
+        <div><div class="step-number">3</div><strong>Explore</strong><span>Load NASA indicators</span></div>
+        <div><div class="step-number">4</div><strong>Compare</strong><span>Review rotation scenarios</span></div>
+        <div><div class="step-number">5</div><strong>Interpret</strong><span>Check limits and assumptions</span></div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('<div class="section-note">You do not need to know everything before starting. Open each step below for a short explanation, and use the question-mark tips beside fields whenever you need them.</div>', unsafe_allow_html=True)
 
     with st.expander("1. Choose your study area", expanded=True):
         st.markdown("""
@@ -142,8 +197,9 @@ with tab_help:
     st.caption("AGROVISION · First-visit guide · Prototype for NASA Space Apps Challenge 2026")
 
 with tab1:
-    st.subheader("NASA climate indicators")
-    if st.button("Load environmental data", type="primary"):
+    st.subheader("Your study area, from space")
+    st.caption("Live climate data from NASA POWER and vegetation observations from MODIS.")
+    if st.button("🛰️ Load environmental data", type="primary", use_container_width=True):
         try:
             with st.spinner("Requesting NASA POWER and MODIS data..."):
                 climate = get_nasa_power(lat, lon)
@@ -175,7 +231,8 @@ with tab1:
         st.info("Enter coordinates and click Load environmental data to query NASA.")
 
 with tab2:
-    st.subheader("Compare rotation strategies")
+    st.subheader("🌾 Explore crop-rotation strategies")
+    st.markdown('<div class="section-note">Compare three illustrative approaches using the same climate baseline and the farm context entered in the sidebar.</div>', unsafe_allow_html=True)
     st.warning("Prototype screening only: this transparent rule-based comparison is not a calibrated crop model, yield forecast, or agronomic prescription.")
     if "climate" not in st.session_state or st.session_state.get("coords") != (lat, lon):
         st.info("Load environmental data in the first tab before comparing scenarios.")
