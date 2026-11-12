@@ -60,11 +60,11 @@ def supabase_settings():
     as a backwards-compatible fallback for existing deployments.
     """
     try:
-        base_url = st.secrets.get("SUPABASE_URL", "").rstrip("/")
-        api_key = (
+        base_url = str(st.secrets.get("SUPABASE_URL", "")).strip().rstrip("/")
+        api_key = str(
             st.secrets.get("SUPABASE_PUBLISHABLE_KEY", "")
             or st.secrets.get("SUPABASE_ANON_KEY", "")
-        )
+        ).strip()
         return base_url, api_key
     except Exception:
         return "", ""
@@ -73,6 +73,10 @@ def supabase_auth(endpoint, payload):
     base_url, anon_key = supabase_settings()
     if not base_url or not anon_key:
         raise RuntimeError("Email login is not configured yet. Guest access is available.")
+    if not base_url.startswith("https://") or not base_url.endswith(".supabase.co"):
+        raise RuntimeError("Supabase URL format looks incorrect. Use the Project URL without /rest/v1/.")
+    if not (anon_key.startswith("sb_publishable_") or anon_key.startswith("eyJ")):
+        raise RuntimeError("The configured Supabase key does not look like a Publishable key or legacy anon JWT. Check Streamlit Secrets.")
     response = requests.post(
         f"{base_url}/auth/v1/{endpoint}",
         json=payload,
