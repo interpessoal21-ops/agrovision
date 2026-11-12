@@ -193,7 +193,7 @@ if auth_mode not in ("guest", "email"):
     email_enabled = bool(supabase_url and supabase_key)
 
     if not email_enabled:
-        st.info(tx("Email access is being prepared. For now, you can explore the complete prototype as a visitor.", "O acesso por e-mail está sendo preparado. Por enquanto, você pode explorar o protótipo como visitante."))
+        st.info(tx("Email access is being prepared. For now, you can explore the platform as a visitor.", "O acesso por e-mail está sendo preparado. Por enquanto, você pode explorar o protótipo como visitante."))
     with login_tab:
         with st.form("agrovision_signin"):
             email = st.text_input(tx("Email", "E-mail"), placeholder="you@example.com")
@@ -466,7 +466,7 @@ with tab_help:
         - SMAP is not yet connected in this public version. The platform must not present an unavailable dataset as if it had been measured.
 
         **Can I use the score to decide what to plant?**
-        - No. Use it only to explore the prototype. Real decisions require local soil tests, crop calendars, water availability, management information, and advice from qualified agronomists.
+        - No. Do not use it alone for planting decisions. Real decisions require local soil tests, ZARC calendars, cultivar details, water balance, management information, and advice from qualified agronomists.
         """)
 
     st.divider()
@@ -478,7 +478,7 @@ with tab_help:
     with right:
         st.markdown("**AGROVISION does not currently:**")
         st.markdown("- Measure soil properties directly.\n- Calculate effective rainfall or a complete soil-water balance.\n- Predict crop yield or farm profit.\n- Provide a certified planting recommendation.\n- Display SMAP data in this public deployment.")
-    st.caption("AGROVISION · " + tx("First-visit guide · Prototype for NASA Space Apps Challenge 2026", "Guia inicial · Protótipo para o NASA Space Apps Challenge 2026"))
+    st.caption("AGROVISION · " + tx("First-visit guide · Agricultural climate analysis", "Guia inicial · Análise climática agrícola"))
 
 with tab1:
     st.subheader(tx("Your study area, from space", "Sua área de estudo vista do espaço"))
