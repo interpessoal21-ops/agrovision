@@ -117,7 +117,7 @@ if auth_mode not in ("guest", "email"):
     st.markdown("### Welcome · Bem-vindo ao AGROVISION")
     st.write("Choose how you want to explore the platform.")
     login_tab, signup_tab = st.tabs(["✉️ Sign in", "Create account"])
-    supabase_url, supabase_key = supabase_settings()
+    supabase_url, supabase_key, _supabase_key_source = supabase_settings()
     email_enabled = bool(supabase_url and supabase_key)
 
     if not email_enabled:
