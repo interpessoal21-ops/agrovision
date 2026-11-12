@@ -906,7 +906,7 @@ with tab2:
             if not all([crop_col, uf_col, municipality_col, soil_col, cycle_col]) or not dec_cols:
                 raise ValueError("The MAPA CSV structure does not match the published ZARC data dictionary. No result was inferred.")
             st.caption(tx(
-                f"Source: {chosen_resource['title']} · {len(zarc_data):,} official rows · {len(dec_cols)} dekad columns. Catalogue update: {chosen_resource.get('last_modified') or 'not supplied'}.",
+                f"Source: {chosen_resource['title']} · {len(zarc_data):,} official rows · {len(dec_cols)} dekad columns. Catalogue update: {chosen_resource.get('last_modified') or 'not supplied'} · CC BY attribution.",
                 f"Fonte: {chosen_resource['title']} · {len(zarc_data):,} registros oficiais · {len(dec_cols)} colunas de decêndio. Atualização do catálogo: {chosen_resource.get('last_modified') or 'não informada'}."
             ))
             zarc_crop_options = unique_values(zarc_data, crop_col)
@@ -979,6 +979,8 @@ with tab2:
                         metadata_columns[label] = col
                 official_record = {label: str(selected_zarc_row.get(col, "")) for label, col in metadata_columns.items()}
                 official_record["Season dataset"] = chosen_resource["title"]
+                official_record["Catalogue last modified"] = chosen_resource.get("last_modified", "")
+                official_record["MAPA resource ID"] = chosen_resource.get("id", "")
                 official_record["Recommended decendios"] = [
                     item for item in dekad_rows if item.get("Risco (%)") in (20, 30, 40)
                 ]
