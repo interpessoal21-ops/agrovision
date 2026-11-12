@@ -629,12 +629,22 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
     with export_col3:
         if st.button(tx("Save project to account", "Salvar projeto na conta"), use_container_width=True):
             project_name = st.session_state.get("project_name", f"Study {lat:.3f}, {lon:.3f}")
+            climate_records = climate_for_export.reset_index().rename(columns={"index": "Date"})
+            climate_records["Date"] = climate_records["Date"].astype(str)
+            climate_records = climate_records.astype(object).where(pd.notna(climate_records), None)
+            if not modis_for_export.empty:
+                modis_records = modis_for_export.copy()
+                modis_records["Date"] = modis_records["Date"].astype(str)
+                modis_records = modis_records.astype(object).where(pd.notna(modis_records), None)
+                modis_payload = modis_records.to_dict(orient="records")
+            else:
+                modis_payload = []
             payload = {
                 "climate_rows": len(climate_for_export),
                 "modis_rows": len(modis_for_export),
                 "modis_years": st.session_state.get("modis_years"),
-                "climate_data": climate_for_export.reset_index().rename(columns={"index": "Date"}).assign(Date=lambda frame: frame["Date"].astype(str)).to_dict(orient="records"),
-                "modis_data": (modis_for_export.assign(Date=modis_for_export["Date"].astype(str)).to_dict(orient="records") if not modis_for_export.empty else []),
+                "climate_data": climate_records.to_dict(orient="records"),
+                "modis_data": modis_payload,
                 "irrigation": irrigation, "soil": soil, "fertility": fertility,
                 "saved_at": datetime.now(timezone.utc).isoformat()
             }
