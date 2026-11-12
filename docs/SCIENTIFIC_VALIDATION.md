@@ -38,9 +38,9 @@ Official sources:
 
 The application now calculates daily FAO-56 reference evapotranspiration (ET0) with the Penman–Monteith equation from NASA POWER T2M, T2M_MAX, T2M_MIN, T2MDEW, WS2M and ALLSKY_SFC_SW_DWN. Solar radiation is converted from kWh/m²/day to MJ/m²/day. User-entered site elevation and selected latitude are used for atmospheric pressure and extraterrestrial/clear-sky radiation terms. Missing required weather inputs are not imputed; a season is excluded if the required daily values are incomplete.
 
-Crop evapotranspiration is estimated as ETc = Kc × ET0 using a user-configurable four-stage Kc curve (initial, development, mid-season and late-season). Generic FAO-56 reference Kc values are offered as editable starting points, not cultivar-specific recommendations.
+Crop evapotranspiration is estimated as ETc = Kc × ET0 using a user-configurable four-stage Kc curve (initial, development, mid-season and late-season). Generic FAO-56 Table 12 reference Kc values are offered as editable starting points, not cultivar-specific recommendations. The stage durations are illustrative proportions unless replaced with local crop/cultivar phenology.
 
-A one-layer root-zone bucket tracks total available water (TAW = available water × effective root depth), readily available water (RAW = p × TAW), depletion and the FAO stress coefficient Ks. It reports potential ETc, estimated actual ETa, water deficit, depletion and an idealized supplemental-irrigation trigger/refill scenario. Soil available water, effective rooting depth, p, initial storage and irrigation efficiency are explicit user inputs.
+A one-layer root-zone bucket tracks total available water (TAW = available water × effective root depth), readily available water (RAW = p × TAW), depletion and the FAO stress coefficient Ks. It reports potential ETc, estimated actual ETa, water deficit, depletion and an idealized supplemental-irrigation trigger/refill scenario. Soil available water, effective rooting depth, p, initial storage and irrigation efficiency are explicit user inputs. The allowed 34–184 mm/m available-water range corresponds to the MAPA-published 0.34–1.84 mm/cm interval; users should derive the actual value from their soil analysis / official ZARC calculator rather than use the placeholder default.
 
 **Important simplifications:** precipitation is treated as infiltrating until field capacity; runoff is not separately modeled. The current model omits capillary rise, lateral flow, salinity, changing root depth, layered soil, measured hydraulic properties and crop-specific stress response. The irrigation trigger is a scenario, not an irrigation prescription. This is not the official ZARC SARRA model and has not been calibrated against field observations.
 
@@ -48,6 +48,7 @@ The ZARC section links to the current MAPA SISZARC and risk-indication panel. It
 
 References:
 - Allen et al. (1998), FAO Irrigation and Drainage Paper 56: https://www.fao.org/4/X0490E/X0490E00.htm
+- FAO-56 crop coefficient tables (Chapter 6): https://www.fao.org/4/X0490E/x0490e0b.htm
 - FAO Penman–Monteith method: https://www.fao.org/4/x0490e/x0490e06.htm
 - MAPA ZARC/SISZARC: https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/siszarc
 - MAPA soil available-water classes: https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico/classificacao-de-solo
