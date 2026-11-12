@@ -547,59 +547,147 @@ with tab1:
     else:
         st.info(tx("Enter coordinates and click Load environmental data to query NASA.", "Informe as coordenadas e clique em Carregar dados ambientais para consultar a NASA."))
 
+# Crop screening uses crop-specific reference ranges and observed rainfall during
+# a user-selected sowing window. It deliberately does not create a suitability score.
+CROP_REFERENCE = {
+    "Maize (grain)": {
+        "pt": "Milho (grão)", "cycle_min": 125, "cycle_max": 180,
+        "water_min": 500, "water_max": 800,
+        "source": "FAO Irrigation and Drainage Paper 56 / Crop Water Needs"
+    },
+    "Soybean": {
+        "pt": "Soja", "cycle_min": 135, "cycle_max": 150,
+        "water_min": 450, "water_max": 700,
+        "source": "FAO Crop Water Needs; Embrapa Ageitec"
+    },
+    "Common bean (dry)": {
+        "pt": "Feijão-comum (grão)", "cycle_min": 95, "cycle_max": 110,
+        "water_min": 300, "water_max": 500,
+        "source": "FAO Crop Water Needs; Embrapa Arroz e Feijão"
+    }
+}
+
+def calculate_crop_climate_windows(climate_frame, sowing_month, selected_crops):
+    """Summarize observed daily climate over representative crop-cycle windows.
+
+    Cycle length is the midpoint of a published indicative range. This is a
+    climate-screening calculation, not a calibrated phenology or crop model.
+    """
+    rows = []
+    annual_rows = []
+    for crop in selected_crops:
+        profile = CROP_REFERENCE[crop]
+        cycle_days = round((profile["cycle_min"] + profile["cycle_max"]) / 2)
+        for year in sorted(set(climate_frame.index.year)):
+            start = pd.Timestamp(year=int(year), month=int(sowing_month), day=1)
+            end = start + pd.Timedelta(days=cycle_days - 1)
+            window = climate_frame.loc[start:end]
+            # Only compare complete daily windows; do not silently treat missing
+            # months or an incomplete final year as zero rainfall.
+            if len(window) < cycle_days - 2:
+                continue
+            rainfall = window["PRECTOTCORR"].dropna()
+            temperature = window["T2M"].dropna()
+            radiation = window["ALLSKY_SFC_SW_DWN"].dropna()
+            if len(rainfall) < cycle_days * 0.95:
+                continue
+            item = {
+                "Crop": crop,
+                "Year": int(year),
+                "Cycle days (reference midpoint)": cycle_days,
+                "Rainfall during cycle (mm)": float(rainfall.sum()),
+                "Mean air temperature (°C)": float(temperature.mean()) if not temperature.empty else None,
+                "Mean solar radiation (kWh/m²/day)": float(radiation.mean()) if not radiation.empty else None,
+                "Indicative crop-water need (mm/cycle)": f'{profile["water_min"]}–{profile["water_max"]}'
+            }
+            annual_rows.append(item)
+        crop_years = [r for r in annual_rows if r["Crop"] == crop]
+        if crop_years:
+            rain_values = [r["Rainfall during cycle (mm)"] for r in crop_years]
+            temp_values = [r["Mean air temperature (°C)"] for r in crop_years if r["Mean air temperature (°C)"] is not None]
+            rows.append({
+                "Crop": crop,
+                "Complete seasons": len(crop_years),
+                "Reference cycle (days)": f'{profile["cycle_min"]}–{profile["cycle_max"]}',
+                "Median cycle rainfall (mm)": round(float(pd.Series(rain_values).median()), 1),
+                "Median mean temperature (°C)": round(float(pd.Series(temp_values).median()), 1) if temp_values else None,
+                "Indicative crop-water need (mm/cycle)": f'{profile["water_min"]}–{profile["water_max"]}',
+                "Reference": profile["source"]
+            })
+    return pd.DataFrame(rows), pd.DataFrame(annual_rows)
+
 with tab2:
-    st.subheader(tx("🌾 Explore crop-rotation strategies", "🌾 Explore estratégias de rotação de culturas"))
-    st.markdown('<div class="section-note">' + tx("Compare illustrative approaches using the same climate baseline and farm context.", "Compare estratégias ilustrativas usando a mesma linha de base climática e o contexto da propriedade.") + '</div>', unsafe_allow_html=True)
-    st.warning(tx("Prototype screening only: this transparent rule-based comparison is not a calibrated crop model, yield forecast, or agronomic prescription.", "Triagem experimental: esta comparação baseada em regras não é um modelo de culturas calibrado, previsão de produtividade ou recomendação agronômica."))
+    st.subheader(tx("🌾 Crop-specific climate screening", "🌾 Análise climática por cultura"))
+    st.markdown(
+        '<div class="section-note">' +
+        tx("Compare maize, soybean and common bean using observed daily climate during a selected planting window.",
+           "Compare milho, soja e feijão-comum usando o clima diário observado durante uma janela de semeadura escolhida.") +
+        '</div>', unsafe_allow_html=True
+    )
+    st.warning(tx(
+        "This is a first agronomic screening layer, not a validated crop model or planting recommendation. It compares observed rainfall with published indicative crop-water ranges; rainfall is not the same as effective rainfall or crop evapotranspiration.",
+        "Esta é uma primeira camada de análise agronômica, não um modelo de culturas validado nem uma recomendação de plantio. Ela compara a chuva observada com faixas indicativas publicadas de necessidade hídrica; chuva não equivale à chuva efetiva nem à evapotranspiração da cultura."
+    ))
     if "climate" not in st.session_state or st.session_state.get("coords") != (lat, lon):
-        st.info(tx("Load environmental data in the first tab before comparing scenarios.", "Carregue os dados ambientais na primeira aba antes de comparar os cenários."))
+        st.info(tx("Load environmental data in the first tab before running the crop analysis.", "Carregue os dados ambientais na primeira aba antes de executar a análise das culturas."))
     else:
         climate = st.session_state["climate"]
-        rain_year = climate["PRECTOTCORR"].resample("YE").sum().mean()
-        temp = climate["T2M"].mean()
-        rain_score = max(0,min(100,(rain_year/1200)*100))
-        heat_score = max(0,min(100,100-abs(temp-23)*5))
-        water_bonus = {"Rainfed":0,"Supplemental irrigation":8,"Irrigated":15}[irrigation]
-        soil_bonus = {"Unknown":0,"Sandy":-5,"Loamy":8,"Clayey":2}[soil]
-        fertility_bonus = {"Low":-8,"Medium":0,"High":6}[fertility]
-        scenario_catalog = {
-            "A — Maize / common bean": 0,
-            "B — Soybean / sorghum": 8,
-            "C — Diversified rotation with cover crop": 5,
-            "D — Soybean / maize / cover crop": 6,
-        }
-        selected_scenarios = st.multiselect(
-            tx("Select rotation systems to compare", "Selecione os sistemas de rotação para comparar"),
-            list(scenario_catalog),
-            default=list(scenario_catalog)[:3]
+        crop_names = list(CROP_REFERENCE.keys())
+        crop_labels = [CROP_REFERENCE[c]["pt"] if st.session_state.get("agrovision_language") == "Português" else c for c in crop_names]
+        selected_labels = st.multiselect(
+            tx("Crops to analyze", "Culturas para analisar"),
+            crop_labels,
+            default=crop_labels
         )
-        scenarios = [(name, scenario_catalog[name]) for name in selected_scenarios]
-        if not scenarios:
-            st.warning(tx("Select at least one rotation system; showing the first option for now.", "Selecione ao menos um sistema de rotação; exibindo a primeira opção por enquanto."))
-            scenarios = [(next(iter(scenario_catalog)), next(iter(scenario_catalog.values())))]
-        rows = []
-        for name, adjustment in scenarios:
-            climate_component = 0.55 * rain_score + 0.45 * heat_score
-            local_context_component = water_bonus + soil_bonus + fertility_bonus
-            score = max(0, min(100, climate_component + local_context_component + adjustment))
-            rows.append({
-                "Scenario": name, "Screening score": round(score, 1),
-                "Climate component": round(climate_component, 1),
-                "Local context adjustment": round(local_context_component, 1),
-                "Scenario adjustment": adjustment
-            })
-        results = pd.DataFrame(rows).sort_values("Screening score",ascending=False)
-        st.session_state["rotation_results"] = results
-        st.dataframe(results, use_container_width=True, hide_index=True)
-        st.bar_chart(results.set_index("Scenario")[["Screening score"]])
-        with st.expander(tx("How is the screening score constructed?", "Como a pontuação exploratória é calculada?")):
-            st.write(tx(
-                "Climate component = 55% rainfall screening + 45% temperature screening. Local context adds transparent adjustments for irrigation, soil texture and fertility. Each illustrative rotation has a small demonstration adjustment. These weights are not calibrated against field outcomes.",
-                "Componente climático = 55% da triagem de chuva + 45% da triagem de temperatura. O contexto local adiciona ajustes explícitos para irrigação, textura e fertilidade. Cada rotação ilustrativa recebe um pequeno ajuste demonstrativo. Esses pesos não foram calibrados com resultados de campo."
-            ))
-            st.dataframe(results.set_index("Scenario"), use_container_width=True)
-        st.caption(f"Climate baseline: mean annual precipitation {rain_year:.0f} mm; mean temperature {temp:.1f} °C. Local inputs: {irrigation.lower()}, {soil.lower()} soil, {fertility.lower()} fertility.")
-        st.info(tx("Scenario adjustments are provisional demonstration weights. Validate with local agronomic data before real-world decisions.", "Os ajustes dos cenários são pesos demonstrativos provisórios. Valide-os com dados agronômicos locais antes de qualquer decisão real."))
+        selected_crops = [crop_names[crop_labels.index(label)] for label in selected_labels]
+        month_names_en = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        month_names_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+        month_names = month_names_pt if st.session_state.get("agrovision_language") == "Português" else month_names_en
+        selected_month = st.selectbox(tx("Assumed sowing month", "Mês de semeadura considerado"), month_names, index=9)
+        sowing_month = month_names.index(selected_month) + 1
+        if selected_crops:
+            summary, seasons = calculate_crop_climate_windows(climate, sowing_month, selected_crops)
+            if summary.empty:
+                st.warning(tx("No complete crop-cycle windows are available for this month in the loaded climate record. Choose an earlier sowing month or load a longer period.", "Não há janelas completas de ciclo disponíveis para este mês no histórico climático carregado. Escolha um mês de semeadura anterior ou carregue um período maior."))
+            else:
+                display_summary = summary.copy()
+                if st.session_state.get("agrovision_language") == "Português":
+                    display_summary["Crop"] = display_summary["Crop"].map({k: v["pt"] for k, v in CROP_REFERENCE.items()})
+                    display_summary = display_summary.rename(columns={
+                        "Crop": "Cultura", "Complete seasons": "Safras completas",
+                        "Reference cycle (days)": "Ciclo de referência (dias)",
+                        "Median cycle rainfall (mm)": "Mediana de chuva no ciclo (mm)",
+                        "Median mean temperature (°C)": "Mediana da temperatura média (°C)",
+                        "Indicative crop-water need (mm/cycle)": "Necessidade hídrica indicativa (mm/ciclo)",
+                        "Reference": "Referência"
+                    })
+                st.dataframe(display_summary, use_container_width=True, hide_index=True)
+                chart_data = summary.set_index("Crop")[["Median cycle rainfall (mm)"]]
+                st.markdown("**" + tx("Observed rainfall during representative crop cycles", "Chuva observada durante ciclos representativos") + "**")
+                st.bar_chart(chart_data)
+                st.markdown("**" + tx("Season-by-season observations", "Observações por safra") + "**")
+                season_view = seasons.copy()
+                if st.session_state.get("agrovision_language") == "Português":
+                    season_view["Crop"] = season_view["Crop"].map({k: v["pt"] for k, v in CROP_REFERENCE.items()})
+                    season_view = season_view.rename(columns={
+                        "Crop": "Cultura", "Year": "Ano de início",
+                        "Cycle days (reference midpoint)": "Duração usada (dias)",
+                        "Rainfall during cycle (mm)": "Chuva no ciclo (mm)",
+                        "Mean air temperature (°C)": "Temperatura média (°C)",
+                        "Mean solar radiation (kWh/m²/day)": "Radiação média (kWh/m²/dia)",
+                        "Indicative crop-water need (mm/cycle)": "Necessidade hídrica indicativa (mm/ciclo)"
+                    })
+                st.dataframe(season_view, use_container_width=True, hide_index=True)
+                st.caption(tx(
+                    "Method: the midpoint of each published crop-cycle range defines the observation window beginning on day 1 of the selected month. Only complete daily windows are included. The table reports historical observations, not future weather.",
+                    "Método: o ponto médio da faixa publicada de duração do ciclo define a janela de observação, iniciada no primeiro dia do mês escolhido. Apenas janelas diárias completas entram no cálculo. A tabela mostra observações históricas, não previsão do tempo."
+                ))
+                st.info(tx(
+                    "Important: the FAO crop-water requirement is an indicative evapotranspiration-based range under defined crop conditions. Comparing it with gross rainfall alone does not calculate water deficit, irrigation demand, yield, or crop suitability. Effective rainfall, reference evapotranspiration, soil water storage, cultivar, planting date and local ZARC rules are still needed.",
+                    "Importante: a necessidade hídrica da FAO é uma faixa indicativa baseada na evapotranspiração em condições definidas de cultivo. Compará-la apenas com a chuva bruta não calcula déficit hídrico, demanda de irrigação, produtividade ou aptidão. Ainda são necessários chuva efetiva, evapotranspiração de referência, armazenamento de água no solo, cultivar, data de plantio e regras locais do ZARC."
+                ))
+        else:
+            st.info(tx("Select at least one crop to analyze.", "Selecione ao menos uma cultura para analisar."))
 
 with tab3:
     st.subheader(tx("Data sources and limitations", "Fontes de dados e limitações"))
