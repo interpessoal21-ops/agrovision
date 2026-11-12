@@ -377,14 +377,146 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab_help, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
     tx("Environmental dashboard", "Painel ambiental"),
     tx("Crop analysis", "Análise de culturas"),
     tx("Data & limitations", "Dados e limitações"),
     tx("Saved projects", "Projetos salvos"),
-    tx("Scientific validation", "Validação científica")
+    tx("Scientific validation", "Validação científica"),
+    tx("📚 Knowledge", "📚 Conhecimento")
 ])
+
+
+with tab6:
+    st.header(tx("AGROVISION Knowledge", "Conhecimento AGROVISION"))
+    st.write(tx(
+        "A practical science library for understanding the data behind agricultural decisions.",
+        "Uma biblioteca científica prática para entender os dados por trás das análises agrícolas."
+    ))
+    st.markdown(
+        '<div class="section-note">Material educativo e referências técnicas. O conteúdo explica métodos e fontes; não substitui análise local, assistência técnica ou recomendação agronômica.</div>',
+        unsafe_allow_html=True
+    )
+
+    knowledge_items = [
+        {
+            "title": "NASA POWER: clima em escala global",
+            "topic": "NASA e dados climáticos",
+            "kind": "Fonte institucional",
+            "summary": "O NASA POWER disponibiliza séries meteorológicas e de radiação derivadas de observações por satélite e modelos. Os dados ajudam a caracterizar o contexto climático de um ponto, mas não equivalem a uma estação instalada dentro da propriedade.",
+            "details": "Antes de interpretar uma série, confira variável, unidade, período, resolução espacial e valores ausentes. Produtos em grade representam uma área e podem divergir de medições locais por relevo, altitude, cobertura do solo e eventos convectivos. Para decisões operacionais, compare com estações próximas e documente a distância e a diferença de altitude.",
+            "source": "NASA POWER — Data Access Viewer e documentação",
+            "url": "https://power.larc.nasa.gov/docs/",
+            "related": "Painel ambiental · Validação científica"
+        },
+        {
+            "title": "ET₀, ETc e o método FAO-56",
+            "topic": "Água e evapotranspiração",
+            "kind": "Explicação técnica",
+            "summary": "A evapotranspiração de referência (ET₀) representa a demanda evaporativa da atmosfera sobre uma superfície de referência. A evapotranspiração da cultura (ETc) é estimada, em condições padrão, por ETc = Kc × ET₀.",
+            "details": "O método FAO Penman–Monteith estima ET₀ a partir de radiação, temperatura, umidade e vento. A qualidade do resultado depende das unidades, da altura de medição do vento, da pressão atmosférica e da consistência dos dados meteorológicos. Kc varia conforme cultura, estádio fenológico, manejo e clima. ETc padrão não representa automaticamente a evapotranspiração real sob estresse hídrico.",
+            "source": "FAO Irrigation and Drainage Paper 56",
+            "url": "https://www.fao.org/4/X0490E/X0490E00.htm",
+            "related": "Análise de culturas · Balanço hídrico"
+        },
+        {
+            "title": "Balanço hídrico na zona radicular",
+            "topic": "Água e evapotranspiração",
+            "kind": "Explicação técnica",
+            "summary": "Um balanço hídrico acompanha entradas e saídas de água no solo ao longo do tempo. A chuva efetiva e a irrigação podem repor armazenamento; a evapotranspiração da cultura reduz a água disponível.",
+            "details": "Modelos de reservatório na zona radicular dependem da capacidade de água disponível do solo, profundidade efetiva das raízes, fração de depleção, coeficientes da cultura, armazenamento inicial e regras para escoamento e drenagem. Parâmetros genéricos são hipóteses de cenário, não medições. Resultados devem ser confrontados com umidade do solo, manejo observado e dados de campo.",
+            "source": "FAO-56 — Crop evapotranspiration",
+            "url": "https://www.fao.org/4/X0490E/X0490E00.htm",
+            "related": "Análise de culturas"
+        },
+        {
+            "title": "ZARC: risco climático e calendário de plantio",
+            "topic": "ZARC e planejamento",
+            "kind": "Fonte oficial",
+            "summary": "O Zoneamento Agrícola de Risco Climático identifica períodos de semeadura associados a níveis de risco para combinações específicas de município, cultura, grupo de cultivar e tipo de solo.",
+            "details": "A consulta correta exige conferir a portaria vigente para a safra e a combinação exata de município, cultura, ciclo ou grupo de cultivar e classe de solo. As faixas de risco divulgadas pelo programa não são uma previsão do tempo nem uma garantia de produtividade. O enquadramento oficial deve ser confirmado no sistema e na portaria aplicável.",
+            "source": "MAPA — ZARC / SISZARC",
+            "url": "https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico",
+            "related": "Fluxo ZARC"
+        },
+        {
+            "title": "MODIS e NDVI: o que a vegetação revela",
+            "topic": "Sensoriamento remoto",
+            "kind": "Explicação técnica",
+            "summary": "O NDVI é calculado pela diferença normalizada entre a reflectância no infravermelho próximo e no vermelho. Ele é usado como indicador da atividade e do verdor da vegetação.",
+            "details": "NDVI não identifica sozinho a cultura, a causa de uma anomalia, a presença de doença ou a produtividade. Solo exposto, nuvens, sombra, água, estádio fenológico e saturação em vegetação densa influenciam a interpretação. Verifique a qualidade do pixel e combine séries temporais com calendário agrícola, imagens de maior resolução e observações de campo.",
+            "source": "NASA Earthdata — Vegetation Indices",
+            "url": "https://www.earthdata.nasa.gov/topics/land-surface/vegetation",
+            "related": "Painel ambiental"
+        },
+        {
+            "title": "Como validar dados ambientais",
+            "topic": "Validação científica",
+            "kind": "Método científico",
+            "summary": "Uma comparação válida usa pares de observações correspondentes no tempo, na variável, na unidade e, tanto quanto possível, na localização e no período de agregação.",
+            "details": "Documente a estação, coordenadas, altitude, instrumento, manutenção, controle de qualidade e lacunas. Bias mede erro médio com sinal; MAE resume erro absoluto; RMSE penaliza mais erros grandes; R² descreve associação/ajuste, mas não deve ser interpretado isoladamente como prova de concordância. Uma amostra pequena ou enviesada não sustenta generalização para outras regiões.",
+            "source": "NASA POWER — DAV Validate / PRUVE",
+            "url": "https://power.larc.nasa.gov/docs/services/api/validate/",
+            "related": "Validação científica"
+        },
+        {
+            "title": "Solo: textura não é capacidade de água medida",
+            "topic": "Solo e manejo",
+            "kind": "Explicação técnica",
+            "summary": "Textura descreve a proporção de areia, silte e argila. Ela influencia retenção e movimento da água, mas não determina sozinha a capacidade de água disponível de um talhão.",
+            "details": "Estrutura, matéria orgânica, compactação, profundidade, pedregosidade e horizonte restritivo também importam. Para parametrizar balanços hídricos, prefira análise física do perfil e dados locais; classes amplas como arenoso, franco ou argiloso são aproximações. Não confunda uma categoria informada pelo usuário com uma medição por satélite.",
+            "source": "Embrapa — Solos",
+            "url": "https://www.embrapa.br/tema-solos",
+            "related": "Contexto da propriedade · Balanço hídrico"
+        }
+    ]
+
+    topic_options = [tx("All topics", "Todos os temas")] + sorted({item["topic"] for item in knowledge_items})
+    selected_topic = st.selectbox(tx("Filter by topic", "Filtrar por tema"), topic_options, key="knowledge_topic")
+    search_text = st.text_input(
+        tx("Search the library", "Pesquisar na biblioteca"),
+        placeholder=tx("Try: rainfall, ZARC, NDVI, soil...", "Ex.: chuva, ZARC, NDVI, solo..."),
+        key="knowledge_search"
+    ).strip().casefold()
+
+    visible_items = [
+        item for item in knowledge_items
+        if (selected_topic == topic_options[0] or item["topic"] == selected_topic)
+        and (
+            not search_text
+            or search_text in " ".join([
+                item["title"], item["topic"], item["kind"],
+                item["summary"], item["details"], item["source"]
+            ]).casefold()
+        )
+    ]
+    st.caption(tx(f"{len(visible_items)} materials in this view · reviewed 12 Nov 2026", f"{len(visible_items)} materiais nesta visualização · revisão editorial em 12 nov. 2026"))
+    if not visible_items:
+        st.info(tx("No material matches this search. Try another term or topic.", "Nenhum material corresponde à busca. Tente outro termo ou tema."))
+    for start in range(0, len(visible_items), 2):
+        cols = st.columns(2)
+        for col, item in zip(cols, visible_items[start:start + 2]):
+            with col:
+                with st.container(border=True):
+                    st.caption(f"{item['topic']} · {item['kind']}")
+                    st.subheader(item["title"])
+                    st.write(item["summary"])
+                    with st.expander(tx("Read explanation and source", "Ler explicação e fonte")):
+                        st.write(item["details"])
+                        st.markdown(f"**{tx('Primary reference', 'Referência principal')}:** [{item['source']}]({item['url']})")
+                        st.caption(f"{tx('Related area', 'Área relacionada')}: {item['related']}")
+
+    st.divider()
+    st.subheader(tx("How to use this library", "Como usar esta biblioteca"))
+    st.write(tx(
+        "Start with the explanation, open the primary reference, and then return to the relevant AGROVISION tool. Each material is educational: verify the source, date, geographic scope and assumptions before using information in a real-world decision.",
+        "Comece pela explicação, abra a referência primária e depois volte à ferramenta correspondente do AGROVISION. Os materiais são educativos: confira fonte, data, abrangência geográfica e hipóteses antes de usar a informação em uma decisão real."
+    ))
+    st.caption(tx(
+        "Editorial library · Foundational references, not a live news feed. New research and official updates are reviewed separately.",
+        "Biblioteca editorial · Referências fundamentais, não um feed de notícias em tempo real. Novas pesquisas e atualizações oficiais são verificadas separadamente."
+    ))
 
 with tab_help:
     st.header(tx("Your first steps", "Seus primeiros passos"))
