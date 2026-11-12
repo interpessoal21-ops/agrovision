@@ -692,8 +692,8 @@ with tab2:
 with tab3:
     st.subheader(tx("Data sources and limitations", "Fontes de dados e limitações"))
     st.markdown(tx(
-        "- **NASA POWER:** daily temperature, precipitation and solar radiation; queried live for selected coordinates.\n- **MODIS MOD13Q1:** 16-day NDVI composites for the selected 2020–2025 period; queried live in batches that respect the ORNL request limit.\n- **SMAP:** not yet connected in this public deployment; authenticated Earthdata access is still required.\n- Satellite pixels represent broader areas and do not replace field sampling.\n- Rotation scores are exploratory; they do not estimate yield, profit, or crop suitability.",
-        "- **NASA POWER:** temperatura diária, precipitação e radiação solar; consulta ao vivo para as coordenadas selecionadas.\n- **MODIS MOD13Q1:** composições de NDVI a cada 16 dias no período selecionado entre 2020 e 2025; consultas divididas em lotes conforme o limite da ORNL.\n- **SMAP:** ainda não conectado nesta versão pública; exige autenticação Earthdata.\n- Pixels de satélite representam áreas mais amplas e não substituem amostragem de campo.\n- As pontuações de rotação são exploratórias; não estimam produtividade, lucro ou aptidão agrícola."
+        "- **NASA POWER:** daily temperature, precipitation and solar radiation; queried live for selected coordinates.\n- **MODIS MOD13Q1:** 16-day NDVI composites for the selected 2020–2025 period; queried live in batches that respect the ORNL request limit.\n- **Crop references:** indicative crop-cycle and seasonal water-need ranges from FAO and Embrapa publications.\n- **SMAP:** not yet connected in this public deployment; authenticated Earthdata access is still required.\n- Satellite pixels represent broader areas and do not replace field sampling.\n- The crop screen summarizes historical weather; it does not calculate effective rainfall, crop evapotranspiration, soil-water balance, yield, or planting suitability.",
+        "- **NASA POWER:** temperatura diária, precipitação e radiação solar; consulta ao vivo para as coordenadas selecionadas.\n- **MODIS MOD13Q1:** composições de NDVI a cada 16 dias no período selecionado entre 2020 e 2025; consultas divididas em lotes conforme o limite da ORNL.\n- **Referências das culturas:** faixas indicativas de ciclo e necessidade hídrica sazonal de publicações da FAO e da Embrapa.\n- **SMAP:** ainda não conectado nesta versão pública; exige autenticação Earthdata.\n- Pixels de satélite representam áreas mais amplas e não substituem amostragem de campo.\n- A análise resume o clima histórico; não calcula chuva efetiva, evapotranspiração da cultura, balanço hídrico do solo, produtividade ou aptidão de plantio."
     ))
     st.markdown("[NASA POWER API](https://power.larc.nasa.gov/) · [MODIS/ORNL DAAC](https://modis.ornl.gov/) · [NASA SMAP](https://smap.jpl.nasa.gov/)")
 # Data export and persistence tools are shared across authenticated users.
@@ -733,7 +733,7 @@ def fetch_saved_projects():
         raise RuntimeError(f"Project list failed (HTTP {response.status_code}): {response.text[:300]}")
     return response.json()
 
-def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, score_frame=None):
+def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
     styles = getSampleStyleSheet()
@@ -758,14 +758,7 @@ def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, score
         story.append(Paragraph(f"Valid observations: {len(valid)} · Mean NDVI: {valid.mean():.3f}" if len(valid) else "No quality-screened NDVI observations were available.", styles["Normal"]))
     else:
         story.append(Paragraph("No MODIS observations available for this analysis.", styles["Normal"]))
-    if score_frame is not None and not score_frame.empty:
-        story.extend([Spacer(1, 12), Paragraph("Illustrative crop-rotation screening", styles["Heading2"])])
-        rows = [["Scenario", "Screening score"]] + [[str(row["Scenario"]), str(row["Screening score"])] for _, row in score_frame.iterrows()]
-        score_table = Table(rows, colWidths=[320, 130])
-        score_table.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), colors.HexColor("#164b35")), ("TEXTCOLOR", (0,0), (-1,0), colors.white), ("GRID", (0,0), (-1,-1), .4, colors.HexColor("#cbd5ce")), ("PADDING", (0,0), (-1,-1), 7)]))
-        story.append(score_table)
-    story.extend([Spacer(1, 16), Paragraph("Scientific note: this report is exploratory. NDVI is not a direct measure of yield or crop health. Rotation screening scores are provisional, not calibrated crop models or agronomic recommendations. Verify findings with local field data.", styles["Italic"])])
-    doc.build(story)
+    story.extend([Spacer(1, 16), Paragraph("Scientific note: this report summarizes historical environmental observations. NDVI is not a direct measure of yield or crop health. Rainfall totals alone are not a soil-water balance or crop water deficit estimate. Crop reference ranges are indicative and must be checked against cultivar, local ZARC calendar, soil tests, management and field observations.", styles["Italic"])])\n    doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
 
@@ -826,7 +819,7 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
         if not modis_for_export.empty:
             st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="agrovision_modis_ndvi.csv", mime="text/csv", use_container_width=True)
     with export_col2:
-        pdf_bytes = build_pdf_report(climate_for_export, modis_for_export, lat, lon, st.session_state.get("rotation_results"))
+        pdf_bytes = build_pdf_report(climate_for_export, modis_for_export, lat, lon)
         st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="agrovision_report.pdf", mime="application/pdf", use_container_width=True)
     with export_col3:
         if st.button(tx("Save project to account", "Salvar projeto na conta"), use_container_width=True):
@@ -857,4 +850,4 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
             except Exception as exc:
                 st.error(str(exc))
 st.divider()
-st.caption("AGROVISION · Prototype for NASA Space Apps Challenge 2026")
+st.caption("AGROVISION · Crop-specific climate screening · Research and validation in progress")
