@@ -131,19 +131,19 @@ with st.sidebar:
 
 auth_mode = st.session_state.get("agrovision_auth_mode")
 if auth_mode not in ("guest", "email"):
-    st.markdown("### Welcome · Bem-vindo ao AGROVISION")
-    st.write("Choose how you want to explore the platform.")
-    login_tab, signup_tab = st.tabs(["✉️ Sign in", "Create account"])
+    st.markdown("### " + tx("Welcome to AGROVISION", "Bem-vindo ao AGROVISION"))
+    st.write(tx("Choose how you want to explore the platform.", "Escolha como deseja explorar a plataforma."))
+    login_tab, signup_tab = st.tabs([tx("✉️ Sign in", "✉️ Entrar"), tx("Create account", "Criar conta")])
     supabase_url, supabase_key, _supabase_key_source = supabase_settings()
     email_enabled = bool(supabase_url and supabase_key)
 
     if not email_enabled:
-        st.info("Email access is being prepared. For now, you can explore the complete prototype as a visitor.")
+        st.info(tx("Email access is being prepared. For now, you can explore the complete prototype as a visitor.", "O acesso por e-mail está sendo preparado. Por enquanto, você pode explorar o protótipo como visitante."))
     with login_tab:
         with st.form("agrovision_signin"):
-            email = st.text_input("Email", placeholder="you@example.com")
-            password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Sign in", use_container_width=True, disabled=not email_enabled)
+            email = st.text_input(tx("Email", "E-mail"), placeholder="you@example.com")
+            password = st.text_input(tx("Password", "Senha"), type="password")
+            submitted = st.form_submit_button(tx("Sign in", "Entrar"), use_container_width=True, disabled=not email_enabled)
         if submitted:
             try:
                 result = supabase_auth("token?grant_type=password", {"email": email.strip(), "password": password})
@@ -155,10 +155,10 @@ if auth_mode not in ("guest", "email"):
                 st.error(f"Could not sign in: {exc}")
     with signup_tab:
         with st.form("agrovision_signup"):
-            new_email = st.text_input("Email address", key="signup_email", placeholder="you@example.com")
-            new_password = st.text_input("Create password", type="password", key="signup_password", help="Use at least 8 characters.")
-            confirm_password = st.text_input("Confirm password", type="password", key="signup_confirm")
-            create_account = st.form_submit_button("Create account", use_container_width=True, disabled=not email_enabled)
+            new_email = st.text_input(tx("Email address", "Endereço de e-mail"), key="signup_email", placeholder="you@example.com")
+            new_password = st.text_input(tx("Create password", "Crie uma senha"), type="password", key="signup_password", help=tx("Use at least 8 characters.", "Use pelo menos 8 caracteres."))
+            confirm_password = st.text_input(tx("Confirm password", "Confirme a senha"), type="password", key="signup_confirm")
+            create_account = st.form_submit_button(tx("Create account", "Criar conta"), use_container_width=True, disabled=not email_enabled)
         if create_account:
             if new_password != confirm_password:
                 st.error("The passwords do not match.")
@@ -177,19 +177,19 @@ if auth_mode not in ("guest", "email"):
                 except Exception as exc:
                     st.error(f"Could not create account: {exc}")
     st.divider()
-    st.markdown("**Or explore without an account**")
-    if st.button("Continue as visitor →", type="primary", use_container_width=True):
+    st.markdown("**" + tx("Or explore without an account", "Ou explore sem uma conta") + "**")
+    if st.button(tx("Continue as visitor →", "Continuar como visitante →"), type="primary", use_container_width=True):
         st.session_state["agrovision_auth_mode"] = "guest"
         st.rerun()
-    st.caption("Visitor access does not require registration. Email authentication will become available after the project owner configures Supabase.")
+    st.caption(tx("Visitor access does not require registration. Email authentication will become available after the project owner configures Supabase.", "O acesso de visitante não exige cadastro. A autenticação por e-mail depende da configuração do Supabase pelo responsável pelo projeto."))
     st.stop()
 
 with st.sidebar:
     if st.session_state.get("agrovision_auth_mode") == "email":
         st.caption(f"Signed in as {st.session_state.get('agrovision_user_email', 'user')}")
     else:
-        st.caption("Browsing as a visitor")
-    if st.button("Sign out / Exit", use_container_width=True):
+        st.caption(tx("Browsing as a visitor", "Navegando como visitante"))
+    if st.button(tx("Sign out / Exit", "Sair da conta"), use_container_width=True):
         for key in ("agrovision_auth_mode", "agrovision_access_token", "agrovision_user_email", "climate", "modis", "coords"):
             st.session_state.pop(key, None)
         st.rerun()
@@ -281,7 +281,7 @@ with st.sidebar:
     fertility_label = st.select_slider(tx("Soil fertility (local input)", "Fertilidade do solo (dado local)"), fertility_labels, value=tx("Medium", "Média"), help=tx("A qualitative local estimate, not a satellite measurement.", "Estimativa qualitativa local, não é medição por satélite."))
     fertility = dict(zip(fertility_labels, ["Low", "Medium", "High"]))[fertility_label]
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
-    st.info("First visit? Open the Start here tab for a short walkthrough.")
+    st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
 tab_help, tab1, tab2, tab3, tab4 = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
@@ -292,8 +292,8 @@ tab_help, tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 with tab_help:
-    st.header("Your first steps")
-    st.write("New here? Follow this short path to get from a location to an informed exploration of the data.")
+    st.header(tx("Your first steps", "Seus primeiros passos"))
+    st.write(tx("New here? Follow this short path to get from a location to an informed exploration of the data.", "É sua primeira vez? Siga este roteiro para sair da escolha de um local e chegar à exploração dos dados."))
     st.markdown("""
     <div class="step-card" style="min-height:0; margin-bottom:1rem">
       <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.65rem">
@@ -380,7 +380,7 @@ with tab_help:
         """)
 
     st.divider()
-    st.subheader("What the platform does — and does not do")
+    st.subheader(tx("What the platform does — and does not do", "O que a plataforma faz — e o que não faz"))
     left, right = st.columns(2)
     with left:
         st.markdown("**AGROVISION can help you:**")
@@ -388,7 +388,7 @@ with tab_help:
     with right:
         st.markdown("**AGROVISION does not currently:**")
         st.markdown("- Measure the soil directly.\n- Predict crop yield or farm profit.\n- Provide a certified planting recommendation.\n- Display SMAP data in this public deployment.")
-    st.caption("AGROVISION · First-visit guide · Prototype for NASA Space Apps Challenge 2026")
+    st.caption("AGROVISION · " + tx("First-visit guide · Prototype for NASA Space Apps Challenge 2026", "Guia inicial · Protótipo para o NASA Space Apps Challenge 2026"))
 
 with tab1:
     st.subheader(tx("Your study area, from space", "Sua área de estudo vista do espaço"))
