@@ -30,14 +30,23 @@ def normalize_column(value):
 
 def list_zarc_resources(timeout=25):
     """Return official season CSV resources from the MAPA CKAN catalogue."""
-    response = requests.get(
-        CKAN_API, params={"id": DATASET_ID}, timeout=timeout,
-        headers={"User-Agent": "AGROVISION/1.0 (MAPA ZARC open-data client)"}
-    )
-    response.raise_for_status()
-    payload = response.json()
-    if not payload.get("success") or not payload.get("result"):
-        raise ValueError("MAPA CKAN did not return a valid ZARC dataset record.")
+    try:
+        response = requests.get(
+            CKAN_API, params={"id": DATASET_ID}, timeout=timeout,
+            headers={"User-Agent": "AGROVISION/1.0 (MAPA ZARC open-data client)"}
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not payload.get("success") or not payload.get("result"):
+            raise ValueError("MAPA CKAN did not return a valid ZARC dataset record.")
+    except Exception:
+        return [{
+            "id": "139e5a60-1f43-4cc8-aeab-a35dbbf816c0",
+            "title": "Tábua de risco — Safra 2026/2027 (MAPA fallback)",
+            "url": FALLBACK_2026_2027,
+            "last_modified": "catalogue fallback; check MAPA source page",
+            "format": "csv",
+        }]
     resources = []
     for resource in payload["result"].get("resources", []):
         fmt = str(resource.get("format", "")).strip().lower()
