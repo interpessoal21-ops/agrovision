@@ -553,7 +553,7 @@ CROP_REFERENCE = {
     "Maize (grain)": {
         "pt": "Milho (grão)", "cycle_min": 125, "cycle_max": 180,
         "water_min": 500, "water_max": 800,
-        "source": "FAO Irrigation and Drainage Paper 56 / Crop Water Needs"
+        "source": "FAO Crop Water Needs (indicative seasonal ranges)"
     },
     "Soybean": {
         "pt": "Soja", "cycle_min": 135, "cycle_max": 150,
