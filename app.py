@@ -339,6 +339,10 @@ st.subheader(tx("🗺️ Select your study area on the map", "🗺️ Selecione 
 st.caption(tx("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.", "Clique no mapa para escolher um ponto ou informe as coordenadas no painel Área de estudo."))
 map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
 study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
+# Public Esri basemaps add satellite and topographic context without a CARTO API key.
+folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community", name="Satellite imagery", overlay=False, control=True).add_to(study_map)
+folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, increment P Corp.", name="Topographic map", overlay=False, control=True).add_to(study_map)
+folium.LayerControl(collapsed=True).add_to(study_map)
 folium.CircleMarker(
     location=map_center, radius=8, color="#176b45", weight=3,
     fill=True, fill_color="#4da978", fill_opacity=0.9,
@@ -384,7 +388,8 @@ tab_help, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     tx("Data & limitations", "Dados e limitações"),
     tx("Saved projects", "Projetos salvos"),
     tx("Scientific validation", "Validação científica"),
-    tx("📚 Knowledge", "📚 Conhecimento")
+    tx("📚 Knowledge", "📚 Conhecimento"),
+    tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado")
 ])
 
 
