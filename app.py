@@ -764,6 +764,7 @@ with tab2:
                             "Kc starting values are generic FAO-56 reference values. Adjust them to cultivar, climate, planting density, ground cover and local technical guidance.",
                             "Os Kc iniciais são valores genéricos de referência FAO-56. Ajuste-os conforme cultivar, clima, densidade, cobertura do solo e orientação técnica local."
                         ))
+                        st.markdown("[FAO-56 crop coefficient tables](https://www.fao.org/4/X0490E/x0490e0b.htm) · [FAO Penman–Monteith method](https://www.fao.org/4/x0490e/x0490e06.htm)")
                         st.markdown("**" + tx("Soil water properties", "Propriedades hídricas do solo") + "**")
                         q1,q2,q3=st.columns(3)
                         available_water = q1.number_input(tx("Available water (mm/m)", "Água disponível (mm/m)"), 34.0, 184.0, 100.0, 1.0, key="soil_available_water")
