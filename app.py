@@ -757,9 +757,9 @@ with tab2:
                         }
                         k0, km, ke = kc_defaults[water_crop]
                         k1,k2,k3=st.columns(3)
-                        kc_ini = k1.number_input("Kc initial", 0.0, 2.0, k0, 0.05, key=f"kc_ini_{crop_widget_key}")
-                        kc_mid = k2.number_input("Kc mid-season", 0.0, 2.0, km, 0.05, key=f"kc_mid_{crop_widget_key}")
-                        kc_end = k3.number_input("Kc end-season", 0.0, 2.0, ke, 0.05, key=f"kc_end_{crop_widget_key}")
+                        kc_ini = k1.number_input(tx("Kc initial", "Kc inicial"), 0.0, 2.0, k0, 0.05, key=f"kc_ini_{crop_widget_key}")
+                        kc_mid = k2.number_input(tx("Kc mid-season", "Kc de meia-estação"), 0.0, 2.0, km, 0.05, key=f"kc_mid_{crop_widget_key}")
+                        kc_end = k3.number_input(tx("Kc end-season", "Kc final"), 0.0, 2.0, ke, 0.05, key=f"kc_end_{crop_widget_key}")
                         st.caption(tx(
                             "Kc starting values are generic FAO-56 reference values. Adjust them to cultivar, climate, planting density, ground cover and local technical guidance.",
                             "Os Kc iniciais são valores genéricos de referência FAO-56. Ajuste-os conforme cultivar, clima, densidade, cobertura do solo e orientação técnica local."
@@ -852,9 +852,9 @@ with tab2:
                                 ))
                         st.markdown("**" + tx("Seasonal indicators", "Indicadores da safra") + "**")
                         a1,a2,a3,a4=st.columns(4)
-                        a1.metric("ET0", f'{balance["ET0 FAO-56 (mm)"].sum():.0f} mm')
-                        a2.metric("Potential ETc", f"{total_etc:.0f} mm")
-                        a3.metric("Estimated actual ETa", f"{total_eta:.0f} mm")
+                        a1.metric(tx("ET0", "ET0"), f'{balance["ET0 FAO-56 (mm)"].sum():.0f} mm')
+                        a2.metric(tx("Potential ETc", "ETc potencial"), f"{total_etc:.0f} mm")
+                        a3.metric(tx("Estimated actual ETa", "ETa real estimada"), f"{total_eta:.0f} mm")
                         a4.metric(tx("Days with water stress", "Dias com estresse hídrico"), f"{days_stressed}/{len(balance)}")
                         b1,b2,b3=st.columns(3)
                         b1.metric(tx("Cycle rainfall", "Chuva no ciclo"), f"{total_rain:.0f} mm")
@@ -920,7 +920,7 @@ with tab3:
     st.subheader(tx("Data sources and limitations", "Fontes de dados e limitações"))
     st.markdown(tx(
         "- **NASA POWER:** daily temperature, dew point, 2 m wind speed, precipitation and solar radiation; used as gridded weather inputs.\n- **FAO-56:** daily reference ET0 (Penman–Monteith), crop ETc (Kc × ET0) and a simplified root-zone bucket balance.\n- **ZARC/MAPA:** official planting-risk panel and SISZARC links; the result is manually transcribed by the user and is not API-verified in AGROVISION.\n- **MODIS MOD13Q1:** 16-day NDVI composites for the selected 2020–2025 period; queried live in batches that respect the ORNL request limit.\n- **Crop references:** indicative crop-cycle and seasonal water-need ranges from FAO and Embrapa publications.\n- **SMAP:** not yet connected in this public deployment; authenticated Earthdata access is still required.\n- Satellite pixels represent broader areas and do not replace field sampling.\n- The water balance is a simplified single-layer bucket, not the official ZARC SARRA model; it does not represent runoff, capillary rise, changing roots or calibrated field hydraulics.",
-        "- **NASA POWER:** temperatura diária, precipitação e radiação solar; consulta ao vivo para as coordenadas selecionadas.\n- **MODIS MOD13Q1:** composições de NDVI a cada 16 dias no período selecionado entre 2020 e 2025; consultas divididas em lotes conforme o limite da ORNL.\n- **Referências das culturas:** faixas indicativas de ciclo e necessidade hídrica sazonal de publicações da FAO e da Embrapa.\n- **SMAP:** ainda não conectado nesta versão pública; exige autenticação Earthdata.\n- Pixels de satélite representam áreas mais amplas e não substituem amostragem de campo.\n- A análise resume o clima histórico; não calcula chuva efetiva, evapotranspiração da cultura, balanço hídrico do solo, produtividade ou aptidão de plantio."
+        "- **NASA POWER:** temperatura, ponto de orvalho, vento a 2 m, precipitação e radiação solar diários; usados como dados meteorológicos em grade.\n- **FAO-56:** ET0 diária pelo método Penman–Monteith, ETc da cultura (Kc × ET0) e balanço simplificado da zona radicular.\n- **ZARC/MAPA:** links para o painel oficial e SISZARC; o resultado é transcrito pelo usuário e não verificado por API pelo AGROVISION.\n- **MODIS MOD13Q1:** composições de NDVI a cada 16 dias no período selecionado entre 2020 e 2025; consultas divididas em lotes conforme o limite da ORNL.\n- **Referências das culturas:** faixas indicativas de ciclo e necessidade hídrica sazonal de publicações da FAO e da Embrapa.\n- **SMAP:** ainda não conectado nesta versão pública; exige autenticação Earthdata.\n- Pixels de satélite representam áreas mais amplas e não substituem amostragem de campo.\n- O balanço hídrico é um reservatório simplificado de uma camada, não o SARRA oficial do ZARC; não representa escoamento superficial, ascensão capilar, raízes variáveis ou hidráulica do solo calibrada."
     ))
     st.markdown("[NASA POWER Daily API](https://power.larc.nasa.gov/docs/services/api/temporal/daily/) · [FAO-56](https://www.fao.org/4/X0490E/X0490E00.htm) · [MAPA ZARC](https://mapa-indicadores.agricultura.gov.br/publico/extensions/Zarc/Zarc.html) · [MODIS/ORNL DAAC](https://modis.ornl.gov/) · [NASA SMAP](https://smap.jpl.nasa.gov/)")
 # Data export and persistence tools are shared across authenticated users.
