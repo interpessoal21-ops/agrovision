@@ -378,7 +378,7 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation = st.tabs([
+tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
     tx("Environmental dashboard", "Painel ambiental"),
     tx("Crop analysis", "Análise de culturas"),
@@ -387,7 +387,8 @@ tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation = st.tabs([
     tx("Scientific validation", "Validação científica"),
     tx("📚 Knowledge", "📚 Conhecimento"),
     tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado"),
-    tx("🌾 Rotation Lab", "🌾 Laboratório de rotação")
+    tx("🌾 Rotation Lab", "🌾 Laboratório de rotação"),
+    tx("🌍 Climate Watch", "🌍 Observatório climático")
 ])
 
 
@@ -717,7 +718,128 @@ with tab1:
                 pass
             st.error(f"Data request failed: {exc}")
     
-    if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
+    
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_climate_watch_data():
+    from agrovision_climate import fetch_climate_watch
+    return fetch_climate_watch()
+
+with tab_climate:
+    st.markdown("""
+    <div style="padding:1.6rem 1.8rem;border:1px solid #4b3940;border-radius:18px;
+      background:radial-gradient(circle at 90% 10%,rgba(226,91,66,.22),transparent 28%),
+      linear-gradient(115deg,#101c2a,#1d2632 60%,#342329);margin:.3rem 0 1rem 0">
+      <div style="color:#ffb18e;font-size:.72rem;letter-spacing:.18em;font-weight:800">PLANETARY SIGNALS · EARTH SYSTEM</div>
+      <h1 style="color:#f4f0ed;margin:.25rem 0">CLIMATE WATCH</h1>
+      <p style="color:#d0d9df;margin:0">Monitoramento de indicadores do sistema climático e suas implicações para a agricultura.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.write(tx(
+        "A source-traceable observatory of long-term global change. Values are updated when their providers publish new observations; this is not a real-time sensor feed.",
+        "Um observatório rastreável da mudança climática de longo prazo. Os valores são atualizados quando as instituições publicam novas observações; isto não é um fluxo de sensores em tempo real."
+    ))
+    if st.button(tx("↻ Update climate indicators", "↻ Atualizar indicadores climáticos"), type="primary"):
+        get_climate_watch_data.clear()
+    try:
+        with st.spinner(tx("Retrieving NASA and NOAA climate series…", "Consultando séries climáticas da NASA e NOAA…")):
+            climate_watch = get_climate_watch_data()
+        temperature = climate_watch["temperature"].copy()
+        co2 = climate_watch["co2"].copy()
+        if temperature.empty or co2.empty:
+            st.warning(tx("A source returned no usable observations.", "Uma das fontes não retornou observações utilizáveis."))
+        else:
+            latest_temp = temperature.iloc[-1]
+            latest_co2 = co2.iloc[-1]
+            annual = temperature.assign(Year=temperature["Date"].dt.year).groupby("Year")["Anomaly_C"].mean()
+            annual = annual[annual.index >= 1880]
+            previous_co2 = co2[co2["Date"] <= latest_co2["Date"] - pd.DateOffset(years=1)]
+            co2_delta = (latest_co2["CO2_ppm"] - previous_co2.iloc[-1]["CO2_ppm"]) if not previous_co2.empty else None
+            m1, m2, m3 = st.columns(3)
+            m1.metric(tx("Latest monthly temperature anomaly", "Última anomalia mensal de temperatura"),
+                f"{latest_temp['Anomaly_C']:+.2f} °C",
+                tx("vs 1951–1980", "vs. 1951–1980"))
+            m2.metric(tx("Mauna Loa CO₂", "CO₂ em Mauna Loa"),
+                f"{latest_co2['CO2_ppm']:.1f} ppm",
+                f"{co2_delta:+.1f} ppm" if co2_delta is not None else None)
+            m3.metric(tx("Temperature record", "Série de temperatura"),
+                f"{int(temperature['Date'].dt.year.min())}–{int(temperature['Date'].dt.year.max())}",
+                tx("NASA GISTEMP v4", "NASA GISTEMP v4"))
+            st.caption(tx(
+                f"Most recent observations in the downloaded files: temperature {latest_temp['Date']:%b %Y}; CO₂ {latest_co2['Date']:%b %Y}. Retrieved {climate_watch['retrieved_at']:%Y-%m-%d %H:%M UTC}.",
+                f"Observações mais recentes nos arquivos consultados: temperatura {latest_temp['Date']:%m/%Y}; CO₂ {latest_co2['Date']:%m/%Y}. Consulta realizada em {climate_watch['retrieved_at']:%d/%m/%Y %H:%M UTC}."
+            ))
+            st.divider()
+            left, right = st.columns([1.25, 1])
+            with left:
+                st.subheader(tx("Global temperature anomaly", "Anomalia da temperatura global"))
+                st.line_chart(temperature.set_index("Date")[["Anomaly_C"]], height=300)
+                st.caption(tx(
+                    "Monthly global land-ocean temperature anomaly in °C relative to 1951–1980. Monthly values fluctuate; use annual means to discuss long-term trends.",
+                    "Anomalia mensal global de temperatura sobre continentes e oceanos, em °C, relativa a 1951–1980. Valores mensais oscilam; use médias anuais para discutir tendências de longo prazo."
+                ))
+            with right:
+                st.subheader(tx("Atmospheric CO₂ · Mauna Loa", "CO₂ atmosférico · Mauna Loa"))
+                st.line_chart(co2.set_index("Date")[["CO2_ppm"]], height=300)
+                st.caption(tx(
+                    "Monthly mean CO₂ measured at Mauna Loa, Hawaii. This is a long-running station record, not a global spatial average.",
+                    "Média mensal de CO₂ medida em Mauna Loa, Havaí. É uma série de uma estação de monitoramento, não uma média espacial global."
+                ))
+            st.subheader(tx("Annual temperature signal", "Sinal anual de temperatura"))
+            annual_frame = annual.rename("Annual anomaly (°C)").to_frame()
+            st.area_chart(annual_frame, height=260)
+            st.caption(tx(
+                "Annual means are calculated here from the monthly NASA values. The reference baseline remains 1951–1980; this is not the pre-industrial (1850–1900) reference used in many 1.5°C assessments.",
+                "As médias anuais são calculadas aqui a partir dos valores mensais da NASA. A referência continua sendo 1951–1980; não é a linha de base pré-industrial (1850–1900) usada em muitas avaliações do limite de 1,5 °C."
+            ))
+            st.divider()
+            st.subheader(tx("Why this matters for agriculture", "Por que isso importa para a agricultura"))
+            a, b = st.columns(2)
+            with a:
+                st.markdown("**" + tx("Heat exposure", "Exposição ao calor") + "**")
+                st.write(tx(
+                    "Rising background temperatures can increase the frequency and intensity of heat stress during sensitive crop stages. Local exposure must be assessed with regional daily data and crop calendars.",
+                    "O aumento da temperatura de fundo pode elevar a frequência e a intensidade do estresse térmico em fases sensíveis das culturas. A exposição local precisa ser avaliada com dados diários regionais e calendários agrícolas."
+                ))
+                st.markdown("**" + tx("Water and rainfall variability", "Água e variabilidade das chuvas") + "**")
+                st.write(tx(
+                    "Changes in evaporation demand and rainfall patterns can affect soil-water balance, sowing windows and drought or excess-rain risk. Global indicators do not determine conditions on an individual farm.",
+                    "Mudanças na demanda evaporativa e nos padrões de chuva podem afetar o balanço hídrico do solo, janelas de semeadura e riscos de seca ou excesso de chuva. Indicadores globais não determinam as condições de uma propriedade específica."
+                ))
+            with b:
+                st.markdown("**" + tx("Greenhouse gases", "Gases de efeito estufa") + "**")
+                st.write(tx(
+                    "CO₂ is a major long-lived greenhouse gas. The Mauna Loa series is an atmospheric measurement record; it does not by itself attribute a particular local drought, flood or crop loss.",
+                    "O CO₂ é um importante gás de efeito estufa de longa permanência. A série de Mauna Loa é um registro de medição atmosférica; isoladamente, não atribui uma seca, enchente ou perda agrícola local."
+                ))
+                st.markdown("**" + tx("Next AGROVISION connection", "Próxima conexão no AGROVISION") + "**")
+                st.write(tx(
+                    "The next analytical layer is to compare regional heat and rainfall extremes with crop calendars, NASA POWER histories, MODIS vegetation signals and official Brazilian datasets.",
+                    "A próxima camada analítica é cruzar extremos regionais de calor e chuva com calendários agrícolas, históricos NASA POWER, sinais de vegetação MODIS e bases oficiais brasileiras."
+                ))
+            st.subheader(tx("Data provenance & update policy", "Proveniência dos dados e política de atualização"))
+            source_rows = [
+                {"Indicator": "Global temperature anomaly", "Provider": "NASA GISS", "Dataset": "GISTEMP v4", "Baseline": "1951–1980", "Frequency": "Monthly"},
+                {"Indicator": "Atmospheric CO₂", "Provider": "NOAA GML", "Dataset": "Mauna Loa monthly mean", "Baseline": "Station record", "Frequency": "Monthly"},
+            ]
+            st.dataframe(pd.DataFrame(source_rows), use_container_width=True, hide_index=True)
+            st.markdown(
+                "- [NASA GISTEMP v4 — data and methodology](https://data.giss.nasa.gov/gistemp/)\n"
+                "- [NASA GISTEMP source documentation](https://data.giss.nasa.gov/gistemp/sources/gistemp.html)\n"
+                "- [NOAA Global Monitoring Laboratory — Trends](https://gml.noaa.gov/ccgg/trends/)"
+            )
+            with st.expander(tx("Scientific interpretation and limitations", "Interpretação científica e limitações")):
+                st.markdown(tx(
+                    "- NASA GISTEMP is an estimate of global surface temperature change, not a direct thermometer reading at every location.\n- Monthly anomalies are not the same as annual means or absolute global mean temperature.\n- GISTEMP uses a 1951–1980 baseline; do not compare its anomaly directly with indicators using 1850–1900 without a documented conversion.\n- Mauna Loa CO₂ is a station record and has seasonal variation; it is not the global marine-surface average.\n- These two indicators describe global context. They do not establish local climate impacts or agricultural causation.\n- This first release does not yet include sea level, ocean heat, methane, nitrous oxide, ice sheets or a Brazil-specific climate-extremes atlas.",
+                    "- O NASA GISTEMP estima a mudança da temperatura superficial global; não é uma leitura direta de termômetro em cada local.\n- Anomalias mensais não são equivalentes a médias anuais nem à temperatura média global absoluta.\n- O GISTEMP usa a referência 1951–1980; não compare diretamente sua anomalia com indicadores baseados em 1850–1900 sem conversão documentada.\n- CO₂ de Mauna Loa é uma série de estação e apresenta variação sazonal; não é a média global da superfície oceânica.\n- Esses indicadores descrevem o contexto global. Não demonstram impactos climáticos locais nem causalidade agrícola.\n- Esta primeira versão ainda não inclui nível do mar, calor oceânico, metano, óxido nitroso, mantos de gelo ou atlas brasileiro de extremos climáticos."
+                ))
+    except Exception as exc:
+        st.error(tx("Climate Watch could not retrieve the source datasets: ", "O Observatório climático não conseguiu consultar as bases: ") + str(exc))
+        st.info(tx(
+            "Try again later. The dashboard does not replace missing live observations with invented or hard-coded values.",
+            "Tente novamente mais tarde. O painel não substitui observações indisponíveis por números inventados ou fixos."
+        ))
+
+if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
         climate = st.session_state["climate"]
         with st.expander(tx("🔎 Automatic data-quality checks", "🔎 Verificações automáticas de qualidade dos dados"), expanded=False):
             climate_qc = climate_quality_report(climate)
