@@ -41,6 +41,42 @@ AGRICULTURAL_HUBS = [
      "context_en":"Regional center in western Paraná, in a diversified agricultural landscape."},
 ]
 
+
+DATA_LAYERS = {
+    "ana_bho_part1": {
+        "name": "ANA Base Hidrográfica Ottocodificada (BHO), part 1",
+        "source": "Agência Nacional de Águas e Saneamento Básico (ANA)",
+        "status": "live_wms",
+        "vintage_or_scale": "Multiscale reference dataset, 2012; part 1 covers Otto basins 1, 2 and 3",
+        "limitations": "Not a complete national layer by itself; not real-time river flow or water availability.",
+        "service_url": "https://portal1.snirh.gov.br/server/services/dados_abertos/Hidrografia_Parte_1/MapServer/WMSServer",
+    },
+    "icmbio_protected_areas": {
+        "name": "Conservation units boundaries",
+        "source": "ICMBio / INDE",
+        "status": "linked_not_ingested",
+        "vintage_or_scale": "Current WMS/WFS service catalog; dataset-specific dates must be checked per layer",
+        "limitations": "Layer name, national coverage and current geometry vintage must be verified before rendering in-app.",
+        "service_url": "https://geoservicos.inde.gov.br/geoserver/ICMBio/ows",
+    },
+    "ibge_biomes": {
+        "name": "Biomes and Coastal-Marine System",
+        "source": "IBGE",
+        "status": "linked_not_ingested",
+        "vintage_or_scale": "Official product compatible with 1:250,000 scale",
+        "limitations": "Current in-app markers are illustrative points, not official polygon boundaries.",
+        "service_url": "https://www.ibge.gov.br/geociencias/informacoes-ambientais/vegetacao/15842-biomas.html",
+    },
+    "mapbiomas_land_cover": {
+        "name": "Annual land cover and land use",
+        "source": "MapBiomas",
+        "status": "linked_not_ingested",
+        "vintage_or_scale": "Annual collections; consult platform for current collection and reference year",
+        "limitations": "Not yet ingested as a native raster layer; collection and methodology must accompany analysis.",
+        "service_url": "https://plataforma.brasil.mapbiomas.org/",
+    },
+}
+
 def validate_atlas_catalog():
     if len(BIOMES) != 6:
         raise ValueError("The Brazilian terrestrial-biome catalog must contain six entries.")
