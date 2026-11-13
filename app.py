@@ -784,8 +784,9 @@ with tab_home:
             clicked_point=(clicked_lat,clicked_lon)
             if clicked_point != st.session_state.get("last_map_click"):
                 st.session_state["last_map_click"]=clicked_point
-                st.session_state["lat_value"]=clicked_lat
-                st.session_state["lon_value"]=clicked_lon
+                # Apply map selections before the sidebar number_input widgets
+                # are instantiated on the next rerun.
+                st.session_state["pending_study_coords"]=(clicked_lat,clicked_lon)
                 st.rerun()
     with map_right:
         st.markdown("**" + tx("A connected Earth system", "Um sistema terrestre conectado") + "**")
