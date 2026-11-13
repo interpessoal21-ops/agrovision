@@ -2,7 +2,7 @@ name: Validate AGROVISION
 
 on:
   push:
-    branches: [main]
+    branches: [main, spaceapps-2026-rotation-lab]
   pull_request:
   workflow_dispatch:
   schedule:
