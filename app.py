@@ -375,7 +375,7 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_home, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab, tab_partners = st.tabs([
+tab_home, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab, tab_partners, tab_systems = st.tabs([
     tx("🌐 00 · Earth Observatory", "🌐 00 · Observatório da Terra"),
     tx("👋 01 · Start here", "👋 01 · Comece aqui"),
     tx("🛰️ 02 · Earth data", "🛰️ 02 · Dados da Terra"),
@@ -389,7 +389,8 @@ tab_home, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_
     tx("🌍 10 · Climate Watch", "🌍 10 · Monitoramento climático"),
     tx("🧬 11 · Commons", "🧬 11 · Comunidade"),
     tx("🔬 12 · Field Lab", "🔬 12 · Laboratório de Campo"),
-    tx("🤝 13 · Partnerships", "🤝 13 · Alianças")
+    tx("🤝 13 · Partnerships", "🤝 13 · Alianças"),
+    tx("🌾 14 · Agronomic Systems", "🌾 14 · Sistemas agronômicos")
 ])
 
 
@@ -2434,3 +2435,65 @@ with tab_fieldlab:
 
 st.divider()
 st.caption("GUMA · Crop-specific climate screening · Research and validation in progress")
+
+
+with tab_systems:
+    from agrovision_systems import AGRONOMIC_SYSTEMS, validate_catalog
+    st.header(tx("Agronomic Systems Library", "Biblioteca de Sistemas Agronômicos"))
+    st.write(tx(
+        "Explore how major farming and management systems are organized, how they operate, and what determines their performance.",
+        "Explore como os principais sistemas de produção e manejo são organizados, como funcionam e quais fatores condicionam seus resultados."
+    ))
+    st.markdown(
+        '<div class="section-note">Educational reference · Context-specific management · Not an agronomic prescription</div>',
+        unsafe_allow_html=True
+    )
+    validate_catalog()
+    categories = sorted({item["category"] for item in AGRONOMIC_SYSTEMS})
+    category_labels = {item["category"]: (item["category_pt"] if LANGUAGE == "pt" else item["category"]) for item in AGRONOMIC_SYSTEMS}
+    category_keys = ["All categories"] + categories
+    category_options = [tx("All categories", "Todas as categorias")] + [category_labels[key] for key in categories]
+    selected_category_label = st.selectbox(tx("Explore by category", "Explorar por categoria"), category_options, key="guma_system_category")
+    selected_category = None if selected_category_label == category_options[0] else next(key for key in categories if category_labels[key] == selected_category_label)
+    search_term = st.text_input(tx("Search systems", "Buscar sistemas"), placeholder=tx("Example: no-till, ILPF, irrigation...", "Ex.: plantio direto, ILPF, irrigação..."), key="guma_system_search").strip().casefold()
+    filtered_systems = [
+        item for item in AGRONOMIC_SYSTEMS
+        if (selected_category is None or item["category"] == selected_category)
+        and (not search_term or search_term in " ".join(str(value) for value in item.values()).casefold())
+    ]
+    st.caption(tx(f"{len(filtered_systems)} systems in this view · {len(AGRONOMIC_SYSTEMS)} in the library", f"{len(filtered_systems)} sistemas nesta visualização · {len(AGRONOMIC_SYSTEMS)} na biblioteca"))
+    if not filtered_systems:
+        st.info(tx("No systems match this search. Try another term.", "Nenhum sistema corresponde à busca. Tente outro termo."))
+    for system in filtered_systems:
+        title = system["pt"] if LANGUAGE == "pt" else system["name"]
+        category = system["category_pt"] if LANGUAGE == "pt" else system["category"]
+        with st.expander(f"{title} · {category}", expanded=False):
+            how = system["how_pt"] if LANGUAGE == "pt" else system["how"]
+            flow = system["flow_pt"] if LANGUAGE == "pt" else system["flow"]
+            strengths = system["strengths_pt"] if LANGUAGE == "pt" else system["strengths"]
+            limits = system["limits_pt"] if LANGUAGE == "pt" else system["limits"]
+            watch = system["watch_pt"] if LANGUAGE == "pt" else system["watch"]
+            st.markdown("**" + tx("How it works", "Como funciona") + "**")
+            st.write(how)
+            st.markdown("**" + tx("Typical operating sequence", "Sequência típica de funcionamento") + "**")
+            st.info(flow)
+            left, right = st.columns(2)
+            with left:
+                st.markdown("**" + tx("Potential strengths", "Potenciais vantagens") + "**")
+                st.write(strengths)
+            with right:
+                st.markdown("**" + tx("Limitations and trade-offs", "Limitações e contrapartidas") + "**")
+                st.write(limits)
+            st.markdown("**" + tx("What to monitor", "O que monitorar") + "**")
+            st.caption(watch)
+    st.divider()
+    st.subheader(tx("How to interpret this library", "Como interpretar esta biblioteca"))
+    st.write(tx(
+        "These entries describe different levels of a farming system. No-till is a soil-management approach; rotation and succession describe crop sequences; ILP/ILPF and agroforestry integrate production components; irrigation describes water supply. They can be combined, but they are not synonyms.",
+        "As entradas descrevem níveis diferentes de um sistema agrícola. Plantio direto é uma abordagem de manejo do solo; rotação e sucessão descrevem sequências de culturas; ILP/ILPF e SAF integram componentes produtivos; irrigação descreve o suprimento de água. Eles podem ser combinados, mas não são sinônimos."
+    ))
+    st.caption(tx(
+        "Suitability depends on local soil, climate, topography, water, crop, machinery, labor, market and regulation. Potential benefits are conditional, not guaranteed.",
+        "A adequação depende de solo, clima, relevo, água, cultura, máquinas, mão de obra, mercado e legislação locais. Benefícios potenciais são condicionais, não garantidos."
+    ))
+    st.markdown("[Technical references and methodology](https://github.com/interpessoal21-ops/agrovision/blob/spaceapps-2026-rotation-lab/docs/AGRONOMIC_SYSTEMS.md)")
