@@ -1844,6 +1844,7 @@ def publish_field_lab_update(record):
         raise RuntimeError(f"Field Lab follow-up failed (HTTP {response.status_code}): {response.text[:250]}")
     return response.json()
 
+@st.cache_data(ttl=3600, max_entries=4, show_spinner=False)
 def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water_balance=None, zarc_reference=None):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
@@ -2036,6 +2037,72 @@ if tab4.open:
                 st.caption(tx("No saved projects found yet.", "Nenhum projeto salvo ainda."))
     
     
+        if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
+            climate_for_export = st.session_state["climate"]
+            modis_for_export = st.session_state.get("modis", pd.DataFrame())
+            st.divider()
+            st.subheader(tx("Export and save this analysis", "Exportar e salvar esta análise"))
+            st.text_input(tx("Project name", "Nome do projeto"), key="project_name", value=f"Study {lat:.3f}, {lon:.3f}")
+            export_col1, export_col2, export_col3 = st.columns(3)
+            with export_col1:
+                csv_frame = climate_for_export.copy()
+                csv_frame.index.name = "Date"
+                st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="guma_nasa_power.csv", mime="text/csv", width="stretch")
+                if not modis_for_export.empty:
+                    st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="guma_modis_ndvi.csv", mime="text/csv", width="stretch")
+            with export_col2:
+                water_for_export = st.session_state.get("latest_water_balance")
+                if water_for_export and water_for_export.get("coords") != (float(lat), float(lon)):
+                    water_for_export = None
+                pdf_bytes = build_pdf_report(
+                    climate_for_export, modis_for_export, lat, lon,
+                    water_balance=water_for_export,
+                    zarc_reference=st.session_state.get("zarc_reference")
+                )
+                st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="guma_report.pdf", mime="application/pdf", width="stretch")
+            with export_col3:
+                if st.button(tx("Save project to account", "Salvar projeto na conta"), width="stretch"):
+                    project_name = st.session_state.get("project_name", f"Study {lat:.3f}, {lon:.3f}")
+                    climate_records = climate_for_export.reset_index().rename(columns={"index": "Date"})
+                    climate_records["Date"] = climate_records["Date"].astype(str)
+                    climate_records = climate_records.astype(object).where(pd.notna(climate_records), None)
+                    if not modis_for_export.empty:
+                        modis_records = modis_for_export.copy()
+                        modis_records["Date"] = modis_records["Date"].astype(str)
+                        modis_records = modis_records.astype(object).where(pd.notna(modis_records), None)
+                        modis_payload = modis_records.to_dict(orient="records")
+                    else:
+                        modis_payload = []
+                    payload = {
+                        "climate_rows": len(climate_for_export),
+                        "modis_rows": len(modis_for_export),
+                        "modis_years": st.session_state.get("modis_years"),
+                        "climate_data": climate_records.to_dict(orient="records"),
+                        "modis_data": modis_payload,
+                        "water_balance": (
+                            {
+                                "crop": st.session_state["latest_water_balance"]["crop"],
+                                "year": st.session_state["latest_water_balance"]["year"],
+                                "sowing_month": st.session_state["latest_water_balance"]["sowing_month"],
+                                "sowing_day": st.session_state["latest_water_balance"].get("sowing_day"),
+                                "parameters": st.session_state["latest_water_balance"]["parameters"],
+                                "daily_rows": st.session_state["latest_water_balance"]["table"].assign(
+                                    Date=st.session_state["latest_water_balance"]["table"]["Date"].astype(str)
+                                ).to_dict(orient="records")
+                            } if st.session_state.get("latest_water_balance") else None
+                        ),
+                        "zarc_reference": st.session_state.get("zarc_reference"),
+                        "irrigation": irrigation, "soil": soil, "fertility": fertility,
+                        "saved_at": datetime.now(timezone.utc).isoformat()
+                    }
+                    try:
+                        save_project_record(project_name, payload)
+                        st.success(tx("Project saved to your account.", "Projeto salvo na sua conta."))
+                        st.session_state.pop("saved_projects", None)
+                    except Exception as exc:
+                        st.error(str(exc))
+        
+
 if tab_rotation.open:
     with tab_rotation:
         st.header(tx("Crop Rotation Lab", "Laboratório de rotação de culturas"))
@@ -2114,71 +2181,6 @@ if tab_rotation.open:
                 "[Rotation Lab methodology and validation plan](https://github.com/interpessoal21-ops/agrovision/blob/spaceapps-2026-rotation-lab/docs/ROTATION_LAB.md)"
             )
     
-if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
-    climate_for_export = st.session_state["climate"]
-    modis_for_export = st.session_state.get("modis", pd.DataFrame())
-    st.divider()
-    st.subheader(tx("Export and save this analysis", "Exportar e salvar esta análise"))
-    st.text_input(tx("Project name", "Nome do projeto"), key="project_name", value=f"Study {lat:.3f}, {lon:.3f}")
-    export_col1, export_col2, export_col3 = st.columns(3)
-    with export_col1:
-        csv_frame = climate_for_export.copy()
-        csv_frame.index.name = "Date"
-        st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="guma_nasa_power.csv", mime="text/csv", width="stretch")
-        if not modis_for_export.empty:
-            st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="guma_modis_ndvi.csv", mime="text/csv", width="stretch")
-    with export_col2:
-        water_for_export = st.session_state.get("latest_water_balance")
-        if water_for_export and water_for_export.get("coords") != (float(lat), float(lon)):
-            water_for_export = None
-        pdf_bytes = build_pdf_report(
-            climate_for_export, modis_for_export, lat, lon,
-            water_balance=water_for_export,
-            zarc_reference=st.session_state.get("zarc_reference")
-        )
-        st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="guma_report.pdf", mime="application/pdf", width="stretch")
-    with export_col3:
-        if st.button(tx("Save project to account", "Salvar projeto na conta"), width="stretch"):
-            project_name = st.session_state.get("project_name", f"Study {lat:.3f}, {lon:.3f}")
-            climate_records = climate_for_export.reset_index().rename(columns={"index": "Date"})
-            climate_records["Date"] = climate_records["Date"].astype(str)
-            climate_records = climate_records.astype(object).where(pd.notna(climate_records), None)
-            if not modis_for_export.empty:
-                modis_records = modis_for_export.copy()
-                modis_records["Date"] = modis_records["Date"].astype(str)
-                modis_records = modis_records.astype(object).where(pd.notna(modis_records), None)
-                modis_payload = modis_records.to_dict(orient="records")
-            else:
-                modis_payload = []
-            payload = {
-                "climate_rows": len(climate_for_export),
-                "modis_rows": len(modis_for_export),
-                "modis_years": st.session_state.get("modis_years"),
-                "climate_data": climate_records.to_dict(orient="records"),
-                "modis_data": modis_payload,
-                "water_balance": (
-                    {
-                        "crop": st.session_state["latest_water_balance"]["crop"],
-                        "year": st.session_state["latest_water_balance"]["year"],
-                        "sowing_month": st.session_state["latest_water_balance"]["sowing_month"],
-                        "sowing_day": st.session_state["latest_water_balance"].get("sowing_day"),
-                        "parameters": st.session_state["latest_water_balance"]["parameters"],
-                        "daily_rows": st.session_state["latest_water_balance"]["table"].assign(
-                            Date=st.session_state["latest_water_balance"]["table"]["Date"].astype(str)
-                        ).to_dict(orient="records")
-                    } if st.session_state.get("latest_water_balance") else None
-                ),
-                "zarc_reference": st.session_state.get("zarc_reference"),
-                "irrigation": irrigation, "soil": soil, "fertility": fertility,
-                "saved_at": datetime.now(timezone.utc).isoformat()
-            }
-            try:
-                save_project_record(project_name, payload)
-                st.success(tx("Project saved to your account.", "Projeto salvo na sua conta."))
-                st.session_state.pop("saved_projects", None)
-            except Exception as exc:
-                st.error(str(exc))
-
 if tab_commons.open:
     with tab_commons:
         st.header("GUMA COMMONS")
