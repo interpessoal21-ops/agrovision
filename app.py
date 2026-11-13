@@ -898,26 +898,40 @@ with tab_partners:
     categories = [tx("All prospects","Todas as possibilidades"),"Public science & data","Applied agricultural research","Public risk monitoring","Public geospatial infrastructure","Research network & open data","Public innovation funding","Research funding & networks","Industry–research collaboration","Private-sector innovation","Private-sector ecosystem","Public data & validation"]
     chosen = st.selectbox(tx("Filter the alliance landscape","Filtrar o mapa de alianças"),categories,key="guma_partner_filter")
     visible = partners if chosen == categories[0] else [x for x in partners if x["kind"] == chosen]
+    partner_pt = {
+      "INPE":("Ciência e dados públicos","Observação da Terra, monitoramento do uso do solo, fogo, desmatamento e produtos de satélite.","Diálogo técnico, bases públicas, referências metodológicas e possível colaboração de pesquisa.","Uma camada transparente de integração, fluxos reproduzíveis, casos de uso documentados e retorno sobre a usabilidade dos dados.","Instituto oficial"),
+      "INMET":("Dados públicos e validação","Observações de estações meteorológicas e contexto AgroMet para territórios agrícolas brasileiros.","Acesso documentado a observações, metadados, indicadores de qualidade e orientação para validação.","Painéis comparativos, cadernos de validação estação versus grade e atribuição clara das fontes.","Serviço oficial"),
+      "EMBRAPA":("Pesquisa agrícola aplicada","Ciência das culturas, solos, agrometeorologia, sistemas produtivos e validação aplicada.","Revisão científica, conhecimento de calendários agrícolas, perguntas de pesquisa e possíveis pilotos de campo.","Ferramentas geoespaciais exploratórias, triagem climática transparente e protótipos colaborativos de pesquisa.","Instituição de pesquisa"),
+      "CEMADEN":("Monitoramento público de riscos","Chuva, hidrologia, monitoramento geotécnico e redes de observação de riscos e desastres.","Métodos, metadados das redes e oportunidades para comparar sinais ambientais com observações de risco.","Visualizações territoriais e análises reproduzíveis de extremos climáticos, com limitações explícitas.","Monitoramento público"),
+      "MMA · INDE":("Infraestrutura geoespacial pública","Dados geoespaciais catalogados sobre biodiversidade, florestas, água, clima e políticas territoriais.","Identificação de camadas oficiais, metadados, padrões de serviços e orientação sobre licenças.","Visualizações interoperáveis, atribuição de fontes e síntese territorial acessível.","Ecossistema de dados públicos"),
+      "MapBiomas":("Rede de pesquisa e dados abertos","Bases anuais de cobertura e uso da terra, agricultura, pastagem, fogo, água, mineração e carbono no solo.","Orientação de uso, documentação técnica, contatos da rede e possível colaboração de pesquisa.","Novas interfaces para explorar camadas públicas e análises entre domínios com citações transparentes.","Rede multi-institucional"),
+      "FINEP · COOPERAMAIS":("Fomento público à inovação","Caminhos de financiamento para tecnologia na agricultura familiar, agroindústria, transformação digital e resiliência climática.","Orientação sobre elegibilidade e eventual consórcio qualificado entre instituição, empresa e cooperativa, se houver chamada compatível.","Um pacote técnico definido, entregáveis mensuráveis e evidências transparentes do protótipo.","Edital · conferir regras"),
+      "FAPESP / CONFAP / State FAPs":("Fomento e redes de pesquisa","Auxílios à pesquisa, acordos de cooperação e ecossistemas estaduais de ciência e inovação.","Instituição anfitriã, pesquisador responsável, plano de pesquisa e aderência a chamadas vigentes.","Software aberto e reproduzível e uma plataforma de pesquisa para apoiar um projeto financiado.","Fomento e cooperação"),
+      "EMBRAPII":("Colaboração indústria–pesquisa","P&D aplicado por meio de unidades de pesquisa credenciadas e empresas parceiras.","Identificar unidade credenciada adequada e desafio empresarial com escopo de P&D definido.","Formulação do problema, protótipo geoespacial e caminho para validar uma solução aplicada.","Ecossistema de inovação"),
+      "Petrobras · Open Innovation":("Inovação do setor privado","Inovação aberta, transferência de tecnologia, aquisição de soluções e desenvolvimento colaborativo; potencialmente relevante para oceano, clima, energia e monitoramento geoespacial.","Acompanhar desafios publicados e avaliar aderência antes de submeter proposta; não se presume convite permanente à GUMA.","Um demonstrador focado em monitoramento ambiental ou inteligência territorial com critérios técnicos mensuráveis.","Portal de inovação aberta"),
+      "Agtech Innovation":("Ecossistema privado","Programas de inovação corporativa, conexões entre startups e adoção de tecnologia centrada no produtor.","Explorar aderência a programas, conexões com parceiros do agronegócio e oportunidades de piloto quando houver chamadas.","Um protótipo geoespacial orientado por pesquisa para risco climático, sistemas agrícolas e inteligência territorial.","Programas de inovação")
+    }
     for item in visible:
+        pt = partner_pt.get(item["name"], ())
         with st.expander(f"{item['name']}  ·  {item['priority']}"):
-            st.caption(item["kind"]+" · "+item["label"])
-            st.write("**"+tx("Why it matters","Por que importa")+":** "+item["fit"])
-            st.write("**"+tx("What GUMA could seek","O que a GUMA poderia buscar")+":** "+item["ask"])
-            st.write("**"+tx("What GUMA could contribute","O que a GUMA poderia oferecer")+":** "+item["offer"])
+            st.caption(tx(item["kind"],pt[0] if pt else item["kind"])+" · "+tx(item["label"],pt[4] if pt else item["label"]))
+            st.write("**"+tx("Why it matters","Por que importa")+":** "+tx(item["fit"],pt[1] if pt else item["fit"]))
+            st.write("**"+tx("What GUMA could seek","O que a GUMA poderia buscar")+":** "+tx(item["ask"],pt[2] if pt else item["ask"]))
+            st.write("**"+tx("What GUMA could contribute","O que a GUMA poderia oferecer")+":** "+tx(item["offer"],pt[3] if pt else item["offer"]))
             st.markdown(f"[{tx('Official website / initiative','Site ou iniciativa oficial')}]({item['url']})")
     st.divider()
     st.subheader(tx("A realistic partnership sequence","Uma sequência realista de aproximação"))
     sequence=[
-      ("01","Prepare the evidence pack","Preparar o pacote de evidências","One-page overview, architecture, live demo, methods, data sources, limitations, roadmap and a specific ask."),
-      ("02","Start with research and data stewards","Começar por pesquisa e gestores de dados","Prioritize INPE, INMET, Embrapa, MapBiomas and a university lab for technical conversations and validation."),
-      ("03","Build one small validation pilot","Construir um piloto pequeno de validação","Choose one territory, compare NASA POWER with nearby station data, document gaps and publish reproducible results."),
-      ("04","Approach innovation and funding routes","Buscar inovação e fomento","Only after a credible pilot, approach EMBRAPII, FINEP, state FAPs and private innovation programs with a defined work package."),
-      ("05","Formalize governance before scaling","Formalizar governança antes de escalar","Agree on data licensing, attribution, privacy, IP, publication rights, maintenance and responsibilities in writing.")
+      ("01","Prepare the evidence pack","Preparar o pacote de evidências","One-page overview, architecture, live demo, methods, data sources, limitations, roadmap and a specific ask.","Apresentação de uma página, arquitetura, demonstração, métodos, fontes, limitações, roteiro e um pedido específico."),
+      ("02","Start with research and data stewards","Começar por pesquisa e gestores de dados","Prioritize INPE, INMET, Embrapa, MapBiomas and a university lab for technical conversations and validation.","Priorizar INPE, INMET, Embrapa, MapBiomas e um laboratório universitário para conversas técnicas e validação."),
+      ("03","Build one small validation pilot","Construir um piloto pequeno de validação","Choose one territory, compare NASA POWER with nearby station data, document gaps and publish reproducible results.","Escolher um território, comparar NASA POWER com estações próximas, documentar lacunas e publicar resultados reproduzíveis."),
+      ("04","Approach innovation and funding routes","Buscar inovação e fomento","Only after a credible pilot, approach EMBRAPII, FINEP, state FAPs and private innovation programs with a defined work package.","Depois de um piloto confiável, procurar EMBRAPII, FINEP, FAPs estaduais e programas privados com um pacote de trabalho definido."),
+      ("05","Formalize governance before scaling","Formalizar governança antes de escalar","Agree on data licensing, attribution, privacy, IP, publication rights, maintenance and responsibilities in writing.","Definir por escrito licenças de dados, atribuição, privacidade, propriedade intelectual, direitos de publicação, manutenção e responsabilidades.")
     ]
-    for n,en,pt,detail in sequence:
+    for n,en,pt,detail,detail_pt in sequence:
         with st.container(border=True):
             st.markdown(f"**{n} · {tx(en,pt)}**")
-            st.caption(tx(detail,detail))
+            st.caption(tx(detail,detail_pt))
     st.info(tx("Important eligibility note: several funding mechanisms require an eligible company, university, accredited research unit, cooperative or formal consortium. GUMA should not assume it can apply as an individual project. Confirm the current call rules and legal applicant before investing time in an application.",
                "Atenção à elegibilidade: diversos mecanismos exigem empresa, universidade, unidade de pesquisa credenciada, cooperativa ou consórcio formal. A GUMA não deve presumir que pode se candidatar como projeto individual. Confirme as regras do edital e a entidade proponente antes de preparar uma submissão."))
     st.subheader(tx("Near-term action plan","Plano de ação imediato"))
