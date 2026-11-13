@@ -89,7 +89,7 @@ Reference sources:
 - [Embrapa — Soybean water requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/soja/pre-producao/caracteristicas-da-especie-e-relacoes-com-o-ambiente/exigencias-climaticas/agua).
 - [Embrapa — Common bean climate requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/feijao/pre-producao/clima).
 
-## Supabase setup: save projects
+## AGROVISION Commons — opt-in community comparison\n\nThe Commons tab turns each loaded NASA POWER daily point series into a compact climate fingerprint: mean temperature, mean annual precipitation, annual hot-day frequency, and monthly temperature/rainfall rhythm. Signed-in users may explicitly publish this aggregate profile under a public alias and a broad Brazilian macroregion. Exact coordinates, email, farm name and raw daily records are not sent to the community table. The public board supports crop/season/region filters, a rainfall-versus-temperature climate-space plot, and a descriptive similarity distance. Similarity is not a crop-suitability, productivity or climate-risk score. Contributor labels are self-reported and not independently verified.\n\nTo enable it, run `supabase/community_schema.sql` in the same Supabase SQL Editor after the existing `supabase/schema.sql`. Publication is opt-in; browsing the board is public. Users should not enter identifying aliases or confidential farm information.\n\n## Supabase setup: save projects
 
 Email authentication uses the Supabase Auth REST API. To enable saving and restoring projects:
 
