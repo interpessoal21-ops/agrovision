@@ -380,7 +380,7 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate = st.tabs([
+tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
     tx("Environmental dashboard", "Painel ambiental"),
     tx("Crop analysis", "Análise de culturas"),
