@@ -15,7 +15,7 @@ CROP_CYCLES_DAYS = {
 }
 
 ROTATION_SCENARIOS = {
-    "A · Soybean → fallow": {
+    "A · Soybean only (single modeled crop)": {
         "crops": ["Soybean"],
         "management_note": "One soybean cycle; the remaining period is not modeled as a cover crop.",
         "cover_crop_modeled": False,
@@ -126,8 +126,8 @@ def compare_rotation_scenarios(
     detail = pd.DataFrame(records)
     if detail.empty:
         return detail, pd.DataFrame(columns=[
-            "Scenario", "Complete seasons", "Crop windows", "Median cycle rainfall (mm)",
-            "Median mean temperature (°C)", "Median regional NDVI", "Interpretation"
+            "Scenario", "Complete seasons", "Crop windows", "Median sequence duration (days)", "Median sequence rainfall (mm)",
+            "Median daily rainfall (mm/day)", "Median mean temperature (°C)", "Median regional NDVI", "Interpretation"
         ])
 
     grouped = detail.groupby("Scenario", sort=False)
@@ -135,6 +135,7 @@ def compare_rotation_scenarios(
     for name, group in grouped:
         by_season = group.groupby("Year").agg(
             rainfall=("Rainfall (mm)", "sum"),
+            duration=("Cycle days", "sum"),
             mean_temp=("Mean temperature (°C)", "mean"),
             ndvi=("Regional MODIS NDVI mean", "mean"),
         )
@@ -143,7 +144,9 @@ def compare_rotation_scenarios(
             "Scenario": name,
             "Complete seasons": int(by_season.shape[0]),
             "Crop windows": int(len(group)),
+            "Median sequence duration (days)": round(float(by_season["duration"].median()), 1),
             "Median sequence rainfall (mm)": round(float(by_season["rainfall"].median()), 1),
+            "Median daily rainfall (mm/day)": round(float((by_season["rainfall"] / by_season["duration"]).median()), 2),
             "Median mean temperature (°C)": round(float(by_season["mean_temp"].median()), 2),
             "Median regional NDVI": (
                 round(float(by_season["ndvi"].dropna().median()), 3)
