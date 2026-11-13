@@ -20,6 +20,19 @@
 - Supabase email authentication and optional per-user project persistence.
 - Saved projects include the queried climate and MODIS series plus any recorded FAO-56 water-balance run and ZARC reference, which can be restored in the app.
 
+## Climate Watch
+
+The **Climate Watch** tab is a global climate-indicator observatory, separate from the farm-scale screening tools. Its first release retrieves two published monthly series:
+
+- **NASA GISS GISTEMP v4:** global land-ocean temperature anomalies from 1880 onward, relative to 1951–1980. Monthly values and annual means are displayed separately.
+- **NOAA Global Monitoring Laboratory — Mauna Loa:** monthly atmospheric CO₂ station observations in ppm. This is not a global marine-surface average.
+
+Data are cached for 24 hours and can be manually refreshed. The dashboard shows retrieval time, latest observation dates, source links, reference baseline and interpretation limits. Publication latency is expected; the indicators are not real-time telemetry. Do not compare anomaly values with different reference periods as if they were identical.
+
+This first release does not yet include global sea level, ocean heat content, methane, nitrous oxide, ice sheets or a Brazil-specific extremes atlas. Global indicators provide context only and do not establish local agricultural impacts or causal attribution. Planned next steps are regional Brazilian heat/rainfall extremes and crop-calendar exposure, with official source provenance and uncertainty notes.
+
+Parser regression tests: `python -m unittest tests.test_climate_watch`.
+
 ## Run locally
 
 Create a Python virtual environment, install dependencies with `pip install -r requirements.txt`, then start the app with `streamlit run app.py`.
