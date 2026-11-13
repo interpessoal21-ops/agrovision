@@ -15,7 +15,9 @@ The cycle lengths use rounded midpoints of the indicative ranges already documen
 - Optional MODIS/Terra MOD13Q1 NDVI observations overlapping each window, with the existing app's quality-screened data.
 - User-entered local context (soil texture, fertility and water regime) is displayed but is not treated as a measured hydraulic property.
 
-Only complete windows with at least 95% non-missing precipitation and temperature records are retained. Rainfall is summed over each crop window; temperature is averaged. MODIS NDVI is averaged over available overlapping composites. Sequence summaries aggregate crop-window rainfall and average temperature by season.
+Only complete windows with at least 95% non-missing precipitation and temperature records are retained. Rainfall is summed over each crop window; temperature is averaged. MODIS NDVI is averaged over available overlapping composites. Sequence summaries report total modeled duration, total rainfall, and median daily rainfall (sequence rainfall divided by modeled days), alongside mean temperature. The duration-normalized rainfall rate is descriptive climate context, not crop water availability or water-use efficiency.
+
+Scenario A represents one modeled soybean crop only; the remainder of the year is not explicitly simulated as fallow. Scenarios B and C have identical modeled cash-crop windows; their distinction is solely the Brachiaria management overlay in C. They must therefore not be presented as different measured outcomes.
 
 ## Critical interpretation
 - Rainfall is not effective rainfall and is not a soil-water balance.
