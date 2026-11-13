@@ -226,7 +226,7 @@ if auth_mode not in ("guest", "email"):
         with st.form("agrovision_signin"):
             email = st.text_input(tx("Email", "E-mail"), placeholder="you@example.com")
             password = st.text_input(tx("Password", "Senha"), type="password")
-            submitted = st.form_submit_button(tx("Sign in", "Entrar"), use_container_width=True, disabled=not email_enabled)
+            submitted = st.form_submit_button(tx("Sign in", "Entrar"), width="stretch", disabled=not email_enabled)
         if submitted:
             try:
                 result = supabase_auth("token?grant_type=password", {"email": email.strip(), "password": password})
@@ -241,7 +241,7 @@ if auth_mode not in ("guest", "email"):
             new_email = st.text_input(tx("Email address", "Endereço de e-mail"), key="signup_email", placeholder="you@example.com")
             new_password = st.text_input(tx("Create password", "Crie uma senha"), type="password", key="signup_password", help=tx("Use at least 8 characters.", "Use pelo menos 8 caracteres."))
             confirm_password = st.text_input(tx("Confirm password", "Confirme a senha"), type="password", key="signup_confirm")
-            create_account = st.form_submit_button(tx("Create account", "Criar conta"), use_container_width=True, disabled=not email_enabled)
+            create_account = st.form_submit_button(tx("Create account", "Criar conta"), width="stretch", disabled=not email_enabled)
         if create_account:
             if new_password != confirm_password:
                 st.error("The passwords do not match.")
@@ -261,7 +261,7 @@ if auth_mode not in ("guest", "email"):
                     st.error(f"Could not create account: {exc}")
     st.divider()
     st.markdown("**" + tx("Or explore without an account", "Ou explore sem uma conta") + "**")
-    if st.button(tx("Continue as visitor →", "Continuar como visitante →"), type="primary", use_container_width=True):
+    if st.button(tx("Continue as visitor →", "Continuar como visitante →"), type="primary", width="stretch"):
         st.session_state["agrovision_auth_mode"] = "guest"
         st.rerun()
     st.caption(tx("Visitor access does not require registration. Email authentication will become available after the project owner configures Supabase.", "O acesso de visitante não exige cadastro. A autenticação por e-mail depende da configuração do Supabase pelo responsável pelo projeto."))
@@ -272,7 +272,7 @@ with st.sidebar:
         st.caption(f"Signed in as {st.session_state.get('agrovision_user_email', 'user')}")
     else:
         st.caption(tx("Browsing as a visitor", "Navegando como visitante"))
-    if st.button(tx("Sign out / Exit", "Sair da conta"), use_container_width=True):
+    if st.button(tx("Sign out / Exit", "Sair da conta"), width="stretch"):
         for key in ("agrovision_auth_mode", "agrovision_access_token", "agrovision_user_email", "climate", "modis", "coords"):
             st.session_state.pop(key, None)
         st.rerun()
@@ -368,7 +368,7 @@ if "pending_study_coords" in st.session_state:
 with st.sidebar:
     st.header(tx("Study area", "Área de estudo"))
     st.caption(tx("Enter the coordinates of the area you want to investigate.", "Informe as coordenadas da área que deseja investigar."))
-    if st.button(tx("📍 Use Rio Verde, GO pilot", "📍 Usar piloto de Rio Verde, GO"), use_container_width=True, help=tx("Loads the municipal-seat coordinates as a demonstration study point. Replace them with farm coordinates for local analysis.", "Carrega as coordenadas da sede municipal como ponto de demonstração. Substitua pelas coordenadas da propriedade para análise local.")):
+    if st.button(tx("📍 Use Rio Verde, GO pilot", "📍 Usar piloto de Rio Verde, GO"), width="stretch", help=tx("Loads the municipal-seat coordinates as a demonstration study point. Replace them with farm coordinates for local analysis.", "Carrega as coordenadas da sede municipal como ponto de demonstração. Substitua pelas coordenadas da propriedade para análise local.")):
         st.session_state["lat_value"] = -17.79
         st.session_state["lon_value"] = -50.91
         st.session_state["elevation_m"] = 748.0
@@ -557,7 +557,7 @@ with tab7:
             value = valid.mean() if "T2M" in label or "ALLSKY" in label else valid.sum()
             rows.append({"Indicator": label, "Valid records": len(valid), "Coverage (%)": round(100*len(valid)/max(1,len(series)),1), "Summary": f"{value:.2f} {unit}" if len(valid) else "No valid values"})
         st.subheader(tx("Climate evidence", "Evidências climáticas"))
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     else:
         st.warning(tx("Load environmental data for the selected coordinates first.", "Carregue primeiro os dados ambientais das coordenadas selecionadas."))
     vegetation = st.session_state.get("modis", pd.DataFrame())
@@ -591,7 +591,7 @@ with tab7:
         zarc_keys = ("Crop", "UF", "Municipality", "Soil code", "Cultivar group / cycle", "Management", "Climate", "Ordinance", "Season dataset")
         zarc_rows = [{"Field": key, "Value": zarc_evidence.get(key, "")} for key in zarc_keys if zarc_evidence.get(key, "")]
         if zarc_rows:
-            st.dataframe(pd.DataFrame(zarc_rows), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(zarc_rows), width="stretch", hide_index=True)
         st.markdown("[Open official MAPA source](" + str(zarc_evidence.get("Source URL", "https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico")) + ")")
     else:
         st.caption(tx("No official ZARC row has been attached yet.", "Nenhum registro oficial ZARC foi vinculado ainda."))
@@ -714,7 +714,7 @@ with tab1:
     else:
         modis_years = (2020, 2025)
         st.caption(tx("Deeper retrieval: full MODIS 2020–2025 record. This may take longer on the first request.", "Consulta aprofundada: histórico MODIS completo de 2020–2025. A primeira consulta pode demorar mais."))
-    if st.button(tx("🛰️ Load environmental data", "🛰️ Carregar dados ambientais"), type="primary", use_container_width=True):
+    if st.button(tx("🛰️ Load environmental data", "🛰️ Carregar dados ambientais"), type="primary", width="stretch"):
         try:
             status = st.status(tx("Starting parallel data requests…", "Iniciando consultas paralelas…"), expanded=True)
             status.write(tx("NASA POWER: requesting daily climate series.", "NASA POWER: consultando a série climática diária."))
@@ -984,170 +984,183 @@ with tab_climate:
         "A source-traceable observatory of long-term global change. Values are updated when their providers publish new observations; this is not a real-time sensor feed.",
         "Um observatório rastreável da mudança climática de longo prazo. Os valores são atualizados quando as instituições publicam novas observações; isto não é um fluxo de sensores em tempo real."
     ))
-    if st.button(tx("↻ Update climate indicators", "↻ Atualizar indicadores climáticos"), type="primary"):
+    if st.button(tx("↻ Load / update climate indicators", "↻ Carregar / atualizar indicadores climáticos"), type="primary"):
         get_climate_watch_data.clear()
-    try:
-        with st.spinner(tx("Retrieving NASA and NOAA climate series…", "Consultando séries climáticas da NASA e NOAA…")):
-            climate_watch = get_climate_watch_data()
-        temperature = climate_watch["temperature"].copy()
-        co2 = climate_watch["co2"].copy()
-        ch4 = climate_watch["ch4"].copy()
-        n2o = climate_watch["n2o"].copy()
-        if any(series.empty for series in (temperature, co2, ch4, n2o)):
-            st.warning(tx("At least one source returned no usable observations. Check availability and retry.", "Pelo menos uma fonte não retornou observações utilizáveis. Confira a disponibilidade e tente novamente."))
-        else:
-            latest_temp = temperature.iloc[-1]
-            latest_co2 = co2.iloc[-1]
-            latest_ch4 = ch4.iloc[-1]
-            latest_n2o = n2o.iloc[-1]
-            annual = temperature.assign(Year=temperature["Date"].dt.year).groupby("Year")["Anomaly_C"].mean()
-            annual = annual[annual.index >= 1880]
-            previous_co2 = co2[co2["Date"] <= latest_co2["Date"] - pd.DateOffset(years=1)]
-            co2_delta = (latest_co2["CO2_ppm"] - previous_co2.iloc[-1]["CO2_ppm"]) if not previous_co2.empty else None
-            prev_ch4=ch4[ch4["Date"]<=latest_ch4["Date"]-pd.DateOffset(years=1)]
-            prev_n2o=n2o[n2o["Date"]<=latest_n2o["Date"]-pd.DateOffset(years=1)]
-            ch4_delta=latest_ch4["CH4_ppb"]-prev_ch4.iloc[-1]["CH4_ppb"] if not prev_ch4.empty else None
-            n2o_delta=latest_n2o["N2O_ppb"]-prev_n2o.iloc[-1]["N2O_ppb"] if not prev_n2o.empty else None
-            m1,m2,m3,m4=st.columns(4)
-            m1.metric(tx("Global temperature anomaly","Anomalia da temperatura global"),f"{latest_temp['Anomaly_C']:+.2f} °C",tx("vs 1951–1980","vs. 1951–1980"))
-            m2.metric(tx("Mauna Loa CO₂","CO₂ em Mauna Loa"),f"{latest_co2['CO2_ppm']:.1f} ppm",f"{co2_delta:+.1f} ppm" if co2_delta is not None else None)
-            m3.metric(tx("Global methane · CH₄","Metano global · CH₄"),f"{latest_ch4['CH4_ppb']:.1f} ppb",f"{ch4_delta:+.1f} ppb" if ch4_delta is not None else None)
-            m4.metric(tx("Global nitrous oxide · N₂O","Óxido nitroso global · N₂O"),f"{latest_n2o['N2O_ppb']:.2f} ppb",f"{n2o_delta:+.2f} ppb" if n2o_delta is not None else None)
-            st.caption(tx(
-                f"Latest observations: temperature {latest_temp['Date']:%b %Y}; CO₂ {latest_co2['Date']:%b %Y}; CH₄ {latest_ch4['Date']:%b %Y}; N₂O {latest_n2o['Date']:%b %Y}. Retrieved {climate_watch['retrieved_at']:%Y-%m-%d %H:%M UTC}.",
-                f"Últimas observações: temperatura {latest_temp['Date']:%m/%Y}; CO₂ {latest_co2['Date']:%m/%Y}; CH₄ {latest_ch4['Date']:%m/%Y}; N₂O {latest_n2o['Date']:%m/%Y}. Consulta em {climate_watch['retrieved_at']:%d/%m/%Y %H:%M UTC}."
-            ))
-            st.divider()
-            left, right = st.columns([1.25, 1])
-            with left:
-                st.subheader(tx("Global temperature anomaly", "Anomalia da temperatura global"))
-                st.line_chart(temperature.set_index("Date")[["Anomaly_C"]], height=300)
-                st.caption(tx(
-                    "Monthly global land-ocean temperature anomaly in °C relative to 1951–1980. Monthly values fluctuate; use annual means to discuss long-term trends.",
-                    "Anomalia mensal global de temperatura sobre continentes e oceanos, em °C, relativa a 1951–1980. Valores mensais oscilam; use médias anuais para discutir tendências de longo prazo."
-                ))
-            with right:
-                st.subheader(tx("Atmospheric CO₂ · Mauna Loa", "CO₂ atmosférico · Mauna Loa"))
-                st.line_chart(co2.set_index("Date")[["CO2_ppm"]], height=300)
-                st.caption(tx(
-                    "Monthly mean CO₂ measured at Mauna Loa, Hawaii. This is a long-running station record, not a global spatial average.",
-                    "Média mensal de CO₂ medida em Mauna Loa, Havaí. É uma série de uma estação de monitoramento, não uma média espacial global."
-                ))
-            gas_left,gas_right=st.columns(2)
-            with gas_left:
-                st.subheader(tx("Global atmospheric methane · CH₄","Metano atmosférico global · CH₄"))
-                st.line_chart(ch4.set_index("Date")[["CH4_ppb"]],height=260)
-                st.caption(tx("NOAA global marine-surface monthly means. Recent observations are preliminary and may be revised.","Médias mensais globais da rede de superfície marinha da NOAA. Observações recentes são preliminares e podem ser revisadas."))
-            with gas_right:
-                st.subheader(tx("Global atmospheric nitrous oxide · N₂O","Óxido nitroso atmosférico global · N₂O"))
-                st.line_chart(n2o.set_index("Date")[["N2O_ppb"]],height=260)
-                st.caption(tx("NOAA global marine-surface monthly means. The reliable series begins in 2001.","Médias mensais globais da rede de superfície marinha da NOAA. A série confiável começa em 2001."))
-            st.subheader(tx("Annual temperature signal", "Sinal anual de temperatura"))
-            annual_frame = annual.rename("Annual anomaly (°C)").to_frame()
-            st.area_chart(annual_frame, height=260)
-            st.caption(tx(
-                "Annual means are calculated here from the monthly NASA values. The reference baseline remains 1951–1980; this is not the pre-industrial (1850–1900) reference used in many 1.5°C assessments.",
-                "As médias anuais são calculadas aqui a partir dos valores mensais da NASA. A referência continua sendo 1951–1980; não é a linha de base pré-industrial (1850–1900) usada em muitas avaliações do limite de 1,5 °C."
-            ))
-            st.divider()
-            st.subheader(tx("Why this matters for agriculture", "Por que isso importa para a agricultura"))
-            a, b = st.columns(2)
-            with a:
-                st.markdown("**" + tx("Heat exposure", "Exposição ao calor") + "**")
-                st.write(tx(
-                    "Rising background temperatures can increase the frequency and intensity of heat stress during sensitive crop stages. Local exposure must be assessed with regional daily data and crop calendars.",
-                    "O aumento da temperatura de fundo pode elevar a frequência e a intensidade do estresse térmico em fases sensíveis das culturas. A exposição local precisa ser avaliada com dados diários regionais e calendários agrícolas."
-                ))
-                st.markdown("**" + tx("Water and rainfall variability", "Água e variabilidade das chuvas") + "**")
-                st.write(tx(
-                    "Changes in evaporation demand and rainfall patterns can affect soil-water balance, sowing windows and drought or excess-rain risk. Global indicators do not determine conditions on an individual farm.",
-                    "Mudanças na demanda evaporativa e nos padrões de chuva podem afetar o balanço hídrico do solo, janelas de semeadura e riscos de seca ou excesso de chuva. Indicadores globais não determinam as condições de uma propriedade específica."
-                ))
-            with b:
-                st.markdown("**" + tx("Greenhouse gases", "Gases de efeito estufa") + "**")
-                st.write(tx(
-                    "CO₂ is a major long-lived greenhouse gas. The Mauna Loa series is an atmospheric measurement record; it does not by itself attribute a particular local drought, flood or crop loss.",
-                    "O CO₂ é um importante gás de efeito estufa de longa permanência. A série de Mauna Loa é um registro de medição atmosférica; isoladamente, não atribui uma seca, enchente ou perda agrícola local."
-                ))
-                st.markdown("**" + tx("Next GUMA connection", "Próxima conexão no GUMA") + "**")
-                st.write(tx(
-                    "The next analytical layer is to compare regional heat and rainfall extremes with crop calendars, NASA POWER histories, MODIS vegetation signals and official Brazilian datasets.",
-                    "A próxima camada analítica é cruzar extremos regionais de calor e chuva com calendários agrícolas, históricos NASA POWER, sinais de vegetação MODIS e bases oficiais brasileiras."
-                ))
-            st.divider()
-            st.subheader(tx("Brazil · Local climate extremes", "Brasil · Extremos climáticos locais"))
-            st.write(tx(
-                "A location-level screening layer based on the NASA POWER daily series already loaded for the selected study point. Thresholds below are transparent indicators, not official heatwave or drought classifications.",
-                "Uma camada de triagem para o ponto de estudo selecionado, baseada na série diária NASA POWER já carregada. Os limites abaixo são indicadores transparentes, não classificações oficiais de onda de calor ou seca."
-            ))
-            local_climate = st.session_state.get("climate")
-            local_coords = st.session_state.get("coords")
-            if local_climate is not None and local_coords == (lat, lon):
-                hcol, rcol, dcol = st.columns(3)
-                hot_threshold = hcol.number_input(tx("Hot day threshold · Tmax (°C)", "Limite de dia quente · Tmax (°C)"), min_value=25.0, max_value=45.0, value=35.0, step=1.0, key="cw_hot_threshold")
-                rain_threshold = rcol.number_input(tx("Heavy-rain day (mm/day)", "Chuva intensa (mm/dia)"), min_value=10.0, max_value=150.0, value=50.0, step=5.0, key="cw_rain_threshold")
-                dry_threshold = dcol.number_input(tx("Dry day threshold (mm/day)", "Limite de dia seco (mm/dia)"), min_value=0.0, max_value=5.0, value=1.0, step=0.5, key="cw_dry_threshold")
-                try:
-                    local_extremes = summarize_local_extremes(
-                        local_climate, hot_day_c=float(hot_threshold),
-                        heavy_rain_mm=float(rain_threshold), dry_day_mm=float(dry_threshold)
-                    )
-                    if not local_extremes.empty:
-                        latest_year = local_extremes.iloc[-1]
-                        e1, e2, e3 = st.columns(3)
-                        e1.metric(tx("Hot days in latest year", "Dias quentes no último ano"), int(latest_year["Hot days (Tmax threshold)"]))
-                        e2.metric(tx("Heavy-rain days in latest year", "Dias de chuva intensa no último ano"), int(latest_year["Heavy-rain days"]))
-                        e3.metric(tx("Longest dry spell", "Maior sequência seca"), f"{int(latest_year['Longest dry spell (days)'])} d")
-                        st.line_chart(local_extremes.set_index("Year")[[
-                            "Hot days (Tmax threshold)", "Heavy-rain days"
-                        ]], height=260)
-                        st.dataframe(local_extremes, use_container_width=True, hide_index=True)
-                        st.caption(tx(
-                            f"Selected point: {lat:.4f}, {lon:.4f}. Latest year in the loaded NASA POWER record: {int(latest_year['Year'])}. Dry days are consecutive valid daily precipitation values below the selected threshold; missing dates break a spell.",
-                            f"Ponto selecionado: {lat:.4f}, {lon:.4f}. Último ano disponível na série NASA POWER: {int(latest_year['Year'])}. Dias secos são valores diários válidos de precipitação abaixo do limite escolhido; datas ausentes interrompem a sequência."
-                        ))
-                except Exception as local_exc:
-                    st.warning(tx("Could not calculate local indicators: ", "Não foi possível calcular os indicadores locais: ") + str(local_exc))
-            else:
-                st.info(tx(
-                    "Load the environmental data for your selected study area in the Environmental dashboard tab to calculate local indicators here.",
-                    "Carregue os dados ambientais da área escolhida na aba Painel ambiental para calcular os indicadores locais aqui."
-                ))
-            st.markdown(
-                "**" + tx("Ocean system references", "Referências do sistema oceânico") + "**\n"
-                "- [NASA Global Mean Sea Level — current indicator and methodology](https://sealevel.nasa.gov/understanding-sea-level/key-indicators/global-mean-sea-level/)\n"
-                "- [NOAA NCEI — monthly global ocean heat content, 0–700 m and 0–2000 m](https://www.ncei.noaa.gov/access/global-ocean-heat-content/monthly_analysis.html)"
-            )
-            st.caption(tx(
-                "Sea-level and ocean-heat datasets are linked as authoritative references but are not yet ingested into GUMA's plotted time series. NOAA's ocean-heat product uses in-situ subsurface observations and a documented climatological reference; its monthly fields have spatial-data and sampling uncertainty.",
-                "As bases de nível do mar e calor oceânico estão indicadas como referências oficiais, mas ainda não foram ingeridas nas séries gráficas do GUMA. O produto de calor oceânico da NOAA usa observações subsuperficiais in situ e uma referência climatológica documentada; seus campos mensais possuem incertezas espaciais e de amostragem."
-            ))
-            st.subheader(tx("Data provenance & update policy", "Proveniência dos dados e política de atualização"))
-            source_rows = [
-                {"Indicator": "Global temperature anomaly", "Provider": "NASA GISS", "Dataset": "GISTEMP v4", "Baseline": "1951–1980", "Frequency": "Monthly"},
-                {"Indicator": "Atmospheric CO₂", "Provider": "NOAA GML", "Dataset": "Mauna Loa monthly mean", "Baseline": "Station record", "Frequency": "Monthly"},
-                {"Indicator": "Atmospheric CH₄", "Provider": "NOAA GML", "Dataset": "Global marine-surface mean", "Baseline": "Global network", "Frequency": "Monthly"},
-                {"Indicator": "Atmospheric N₂O", "Provider": "NOAA GML", "Dataset": "Global marine-surface mean", "Baseline": "Global network", "Frequency": "Monthly"},
-            ]
-            st.dataframe(pd.DataFrame(source_rows), use_container_width=True, hide_index=True)
-            st.markdown(
-                "- [NASA GISTEMP v4 — data and methodology](https://data.giss.nasa.gov/gistemp/)\n"
-                "- [NASA GISTEMP source documentation](https://data.giss.nasa.gov/gistemp/sources/gistemp.html)\n"
-                "- [NOAA Global Monitoring Laboratory — CO₂ trends](https://gml.noaa.gov/ccgg/trends/)\\n"
-                "- [NOAA global methane trends and methods](https://gml.noaa.gov/ccgg/trends_ch4/)\\n"
-                "- [NOAA global nitrous oxide trends and methods](https://gml.noaa.gov/ccgg/trends_n2o/)"
-            )
-            with st.expander(tx("Scientific interpretation and limitations", "Interpretação científica e limitações")):
-                st.markdown(tx(
-                    "- NASA GISTEMP is an estimate of global surface temperature change, not a direct thermometer reading at every location.\n- Monthly anomalies are not the same as annual means or absolute global mean temperature.\n- GISTEMP uses a 1951–1980 baseline; do not compare its anomaly directly with indicators using 1850–1900 without a documented conversion.\n- Mauna Loa CO₂ is a station record and has seasonal variation; it is not the global marine-surface average.\n- NOAA CH₄ and N₂O are globally averaged monthly means from a marine-surface network; recent observations are preliminary and may be revised.\n- These indicators describe global context only; they do not establish local climate impacts or agricultural causation.\n- Global sea level, ocean heat, ice sheets and a Brazil-specific climate-extremes atlas are not yet integrated.",
-                    "- O NASA GISTEMP estima a mudança da temperatura superficial global; não é uma leitura direta de termômetro em cada local.\n- Anomalias mensais não são equivalentes a médias anuais nem à temperatura média global absoluta.\n- O GISTEMP usa a referência 1951–1980; não compare diretamente sua anomalia com indicadores baseados em 1850–1900 sem conversão documentada.\n- CO₂ de Mauna Loa é uma série de estação e apresenta variação sazonal; não é a média global da superfície oceânica.\n- CH₄ e N₂O da NOAA são médias mensais globais de uma rede de superfície marinha; observações recentes são preliminares e podem ser revisadas.\n- Esses indicadores descrevem o contexto global, mas não demonstram impactos climáticos locais nem causalidade agrícola.\n- Nível do mar, calor oceânico, mantos de gelo e atlas brasileiro de extremos climáticos ainda não estão integrados."
-                ))
-    except Exception as exc:
-        st.error(tx("Climate Watch could not retrieve the source datasets: ", "O Observatório climático não conseguiu consultar as bases: ") + str(exc))
+        try:
+            with st.spinner(tx("Retrieving NASA and NOAA climate series…", "Consultando séries climáticas da NASA e NOAA…")):
+                st.session_state["guma_global_climate"] = get_climate_watch_data()
+            st.success(tx("Climate indicators updated.", "Indicadores climáticos atualizados."))
+        except Exception as exc:
+            st.warning(tx("Could not update climate indicators: ", "Não foi possível atualizar os indicadores climáticos: ") + str(exc))
+
+    climate_watch = st.session_state.get("guma_global_climate")
+    if climate_watch is None:
         st.info(tx(
-            "Try again later. The dashboard does not replace missing live observations with invented or hard-coded values.",
-            "Tente novamente mais tarde. O painel não substitui observações indisponíveis por números inventados ou fixos."
+            "Climate data are loaded on demand to keep the main application responsive. Select Load / update climate indicators to retrieve the latest NASA and NOAA series.",
+            "Os dados climáticos são carregados sob demanda para manter o aplicativo responsivo. Selecione Carregar / atualizar indicadores climáticos para consultar as séries mais recentes da NASA e NOAA."
         ))
+    else:
+        try:
+            temperature = climate_watch["temperature"].copy()
+            co2 = climate_watch["co2"].copy()
+            ch4 = climate_watch["ch4"].copy()
+            n2o = climate_watch["n2o"].copy()
+            if any(series.empty for series in (temperature, co2, ch4, n2o)):
+                st.warning(tx("At least one source returned no usable observations. Check availability and retry.", "Pelo menos uma fonte não retornou observações utilizáveis. Confira a disponibilidade e tente novamente."))
+            else:
+                latest_temp = temperature.iloc[-1]
+                latest_co2 = co2.iloc[-1]
+                latest_ch4 = ch4.iloc[-1]
+                latest_n2o = n2o.iloc[-1]
+                annual = temperature.assign(Year=temperature["Date"].dt.year).groupby("Year")["Anomaly_C"].mean()
+                annual = annual[annual.index >= 1880]
+                previous_co2 = co2[co2["Date"] <= latest_co2["Date"] - pd.DateOffset(years=1)]
+                co2_delta = (latest_co2["CO2_ppm"] - previous_co2.iloc[-1]["CO2_ppm"]) if not previous_co2.empty else None
+                prev_ch4=ch4[ch4["Date"]<=latest_ch4["Date"]-pd.DateOffset(years=1)]
+                prev_n2o=n2o[n2o["Date"]<=latest_n2o["Date"]-pd.DateOffset(years=1)]
+                ch4_delta=latest_ch4["CH4_ppb"]-prev_ch4.iloc[-1]["CH4_ppb"] if not prev_ch4.empty else None
+                n2o_delta=latest_n2o["N2O_ppb"]-prev_n2o.iloc[-1]["N2O_ppb"] if not prev_n2o.empty else None
+                m1,m2,m3,m4=st.columns(4)
+                m1.metric(tx("Global temperature anomaly","Anomalia da temperatura global"),f"{latest_temp['Anomaly_C']:+.2f} °C",tx("vs 1951–1980","vs. 1951–1980"))
+                m2.metric(tx("Mauna Loa CO₂","CO₂ em Mauna Loa"),f"{latest_co2['CO2_ppm']:.1f} ppm",f"{co2_delta:+.1f} ppm" if co2_delta is not None else None)
+                m3.metric(tx("Global methane · CH₄","Metano global · CH₄"),f"{latest_ch4['CH4_ppb']:.1f} ppb",f"{ch4_delta:+.1f} ppb" if ch4_delta is not None else None)
+                m4.metric(tx("Global nitrous oxide · N₂O","Óxido nitroso global · N₂O"),f"{latest_n2o['N2O_ppb']:.2f} ppb",f"{n2o_delta:+.2f} ppb" if n2o_delta is not None else None)
+                st.caption(tx(
+                    f"Latest observations: temperature {latest_temp['Date']:%b %Y}; CO₂ {latest_co2['Date']:%b %Y}; CH₄ {latest_ch4['Date']:%b %Y}; N₂O {latest_n2o['Date']:%b %Y}. Retrieved {climate_watch['retrieved_at']:%Y-%m-%d %H:%M UTC}.",
+                    f"Últimas observações: temperatura {latest_temp['Date']:%m/%Y}; CO₂ {latest_co2['Date']:%m/%Y}; CH₄ {latest_ch4['Date']:%m/%Y}; N₂O {latest_n2o['Date']:%m/%Y}. Consulta em {climate_watch['retrieved_at']:%d/%m/%Y %H:%M UTC}."
+                ))
+                st.divider()
+                left, right = st.columns([1.25, 1])
+                with left:
+                    st.subheader(tx("Global temperature anomaly", "Anomalia da temperatura global"))
+                    st.line_chart(temperature.set_index("Date")[["Anomaly_C"]], height=300)
+                    st.caption(tx(
+                        "Monthly global land-ocean temperature anomaly in °C relative to 1951–1980. Monthly values fluctuate; use annual means to discuss long-term trends.",
+                        "Anomalia mensal global de temperatura sobre continentes e oceanos, em °C, relativa a 1951–1980. Valores mensais oscilam; use médias anuais para discutir tendências de longo prazo."
+                    ))
+                with right:
+                    st.subheader(tx("Atmospheric CO₂ · Mauna Loa", "CO₂ atmosférico · Mauna Loa"))
+                    st.line_chart(co2.set_index("Date")[["CO2_ppm"]], height=300)
+                    st.caption(tx(
+                        "Monthly mean CO₂ measured at Mauna Loa, Hawaii. This is a long-running station record, not a global spatial average.",
+                        "Média mensal de CO₂ medida em Mauna Loa, Havaí. É uma série de uma estação de monitoramento, não uma média espacial global."
+                    ))
+                gas_left,gas_right=st.columns(2)
+                with gas_left:
+                    st.subheader(tx("Global atmospheric methane · CH₄","Metano atmosférico global · CH₄"))
+                    st.line_chart(ch4.set_index("Date")[["CH4_ppb"]],height=260)
+                    st.caption(tx("NOAA global marine-surface monthly means. Recent observations are preliminary and may be revised.","Médias mensais globais da rede de superfície marinha da NOAA. Observações recentes são preliminares e podem ser revisadas."))
+                with gas_right:
+                    st.subheader(tx("Global atmospheric nitrous oxide · N₂O","Óxido nitroso atmosférico global · N₂O"))
+                    st.line_chart(n2o.set_index("Date")[["N2O_ppb"]],height=260)
+                    st.caption(tx("NOAA global marine-surface monthly means. The reliable series begins in 2001.","Médias mensais globais da rede de superfície marinha da NOAA. A série confiável começa em 2001."))
+                st.subheader(tx("Annual temperature signal", "Sinal anual de temperatura"))
+                annual_frame = annual.rename("Annual anomaly (°C)").to_frame()
+                st.area_chart(annual_frame, height=260)
+                st.caption(tx(
+                    "Annual means are calculated here from the monthly NASA values. The reference baseline remains 1951–1980; this is not the pre-industrial (1850–1900) reference used in many 1.5°C assessments.",
+                    "As médias anuais são calculadas aqui a partir dos valores mensais da NASA. A referência continua sendo 1951–1980; não é a linha de base pré-industrial (1850–1900) usada em muitas avaliações do limite de 1,5 °C."
+                ))
+                st.divider()
+                st.subheader(tx("Why this matters for agriculture", "Por que isso importa para a agricultura"))
+                a, b = st.columns(2)
+                with a:
+                    st.markdown("**" + tx("Heat exposure", "Exposição ao calor") + "**")
+                    st.write(tx(
+                        "Rising background temperatures can increase the frequency and intensity of heat stress during sensitive crop stages. Local exposure must be assessed with regional daily data and crop calendars.",
+                        "O aumento da temperatura de fundo pode elevar a frequência e a intensidade do estresse térmico em fases sensíveis das culturas. A exposição local precisa ser avaliada com dados diários regionais e calendários agrícolas."
+                    ))
+                    st.markdown("**" + tx("Water and rainfall variability", "Água e variabilidade das chuvas") + "**")
+                    st.write(tx(
+                        "Changes in evaporation demand and rainfall patterns can affect soil-water balance, sowing windows and drought or excess-rain risk. Global indicators do not determine conditions on an individual farm.",
+                        "Mudanças na demanda evaporativa e nos padrões de chuva podem afetar o balanço hídrico do solo, janelas de semeadura e riscos de seca ou excesso de chuva. Indicadores globais não determinam as condições de uma propriedade específica."
+                    ))
+                with b:
+                    st.markdown("**" + tx("Greenhouse gases", "Gases de efeito estufa") + "**")
+                    st.write(tx(
+                        "CO₂ is a major long-lived greenhouse gas. The Mauna Loa series is an atmospheric measurement record; it does not by itself attribute a particular local drought, flood or crop loss.",
+                        "O CO₂ é um importante gás de efeito estufa de longa permanência. A série de Mauna Loa é um registro de medição atmosférica; isoladamente, não atribui uma seca, enchente ou perda agrícola local."
+                    ))
+                    st.markdown("**" + tx("Next GUMA connection", "Próxima conexão no GUMA") + "**")
+                    st.write(tx(
+                        "The next analytical layer is to compare regional heat and rainfall extremes with crop calendars, NASA POWER histories, MODIS vegetation signals and official Brazilian datasets.",
+                        "A próxima camada analítica é cruzar extremos regionais de calor e chuva com calendários agrícolas, históricos NASA POWER, sinais de vegetação MODIS e bases oficiais brasileiras."
+                    ))
+                st.divider()
+                st.subheader(tx("Brazil · Local climate extremes", "Brasil · Extremos climáticos locais"))
+                st.write(tx(
+                    "A location-level screening layer based on the NASA POWER daily series already loaded for the selected study point. Thresholds below are transparent indicators, not official heatwave or drought classifications.",
+                    "Uma camada de triagem para o ponto de estudo selecionado, baseada na série diária NASA POWER já carregada. Os limites abaixo são indicadores transparentes, não classificações oficiais de onda de calor ou seca."
+                ))
+                local_climate = st.session_state.get("climate")
+                local_coords = st.session_state.get("coords")
+                if local_climate is not None and local_coords == (lat, lon):
+                    hcol, rcol, dcol = st.columns(3)
+                    hot_threshold = hcol.number_input(tx("Hot day threshold · Tmax (°C)", "Limite de dia quente · Tmax (°C)"), min_value=25.0, max_value=45.0, value=35.0, step=1.0, key="cw_hot_threshold")
+                    rain_threshold = rcol.number_input(tx("Heavy-rain day (mm/day)", "Chuva intensa (mm/dia)"), min_value=10.0, max_value=150.0, value=50.0, step=5.0, key="cw_rain_threshold")
+                    dry_threshold = dcol.number_input(tx("Dry day threshold (mm/day)", "Limite de dia seco (mm/dia)"), min_value=0.0, max_value=5.0, value=1.0, step=0.5, key="cw_dry_threshold")
+                    try:
+                        local_extremes = summarize_local_extremes(
+                            local_climate, hot_day_c=float(hot_threshold),
+                            heavy_rain_mm=float(rain_threshold), dry_day_mm=float(dry_threshold)
+                        )
+                        if not local_extremes.empty:
+                            latest_year = local_extremes.iloc[-1]
+                            e1, e2, e3 = st.columns(3)
+                            e1.metric(tx("Hot days in latest year", "Dias quentes no último ano"), int(latest_year["Hot days (Tmax threshold)"]))
+                            e2.metric(tx("Heavy-rain days in latest year", "Dias de chuva intensa no último ano"), int(latest_year["Heavy-rain days"]))
+                            e3.metric(tx("Longest dry spell", "Maior sequência seca"), f"{int(latest_year['Longest dry spell (days)'])} d")
+                            st.line_chart(local_extremes.set_index("Year")[[
+                                "Hot days (Tmax threshold)", "Heavy-rain days"
+                            ]], height=260)
+                            st.dataframe(local_extremes, width="stretch", hide_index=True)
+                            st.caption(tx(
+                                f"Selected point: {lat:.4f}, {lon:.4f}. Latest year in the loaded NASA POWER record: {int(latest_year['Year'])}. Dry days are consecutive valid daily precipitation values below the selected threshold; missing dates break a spell.",
+                                f"Ponto selecionado: {lat:.4f}, {lon:.4f}. Último ano disponível na série NASA POWER: {int(latest_year['Year'])}. Dias secos são valores diários válidos de precipitação abaixo do limite escolhido; datas ausentes interrompem a sequência."
+                            ))
+                    except Exception as local_exc:
+                        st.warning(tx("Could not calculate local indicators: ", "Não foi possível calcular os indicadores locais: ") + str(local_exc))
+                else:
+                    st.info(tx(
+                        "Load the environmental data for your selected study area in the Environmental dashboard tab to calculate local indicators here.",
+                        "Carregue os dados ambientais da área escolhida na aba Painel ambiental para calcular os indicadores locais aqui."
+                    ))
+                st.markdown(
+                    "**" + tx("Ocean system references", "Referências do sistema oceânico") + "**\n"
+                    "- [NASA Global Mean Sea Level — current indicator and methodology](https://sealevel.nasa.gov/understanding-sea-level/key-indicators/global-mean-sea-level/)\n"
+                    "- [NOAA NCEI — monthly global ocean heat content, 0–700 m and 0–2000 m](https://www.ncei.noaa.gov/access/global-ocean-heat-content/monthly_analysis.html)"
+                )
+                st.caption(tx(
+                    "Sea-level and ocean-heat datasets are linked as authoritative references but are not yet ingested into GUMA's plotted time series. NOAA's ocean-heat product uses in-situ subsurface observations and a documented climatological reference; its monthly fields have spatial-data and sampling uncertainty.",
+                    "As bases de nível do mar e calor oceânico estão indicadas como referências oficiais, mas ainda não foram ingeridas nas séries gráficas do GUMA. O produto de calor oceânico da NOAA usa observações subsuperficiais in situ e uma referência climatológica documentada; seus campos mensais possuem incertezas espaciais e de amostragem."
+                ))
+                st.subheader(tx("Data provenance & update policy", "Proveniência dos dados e política de atualização"))
+                source_rows = [
+                    {"Indicator": "Global temperature anomaly", "Provider": "NASA GISS", "Dataset": "GISTEMP v4", "Baseline": "1951–1980", "Frequency": "Monthly"},
+                    {"Indicator": "Atmospheric CO₂", "Provider": "NOAA GML", "Dataset": "Mauna Loa monthly mean", "Baseline": "Station record", "Frequency": "Monthly"},
+                    {"Indicator": "Atmospheric CH₄", "Provider": "NOAA GML", "Dataset": "Global marine-surface mean", "Baseline": "Global network", "Frequency": "Monthly"},
+                    {"Indicator": "Atmospheric N₂O", "Provider": "NOAA GML", "Dataset": "Global marine-surface mean", "Baseline": "Global network", "Frequency": "Monthly"},
+                ]
+                st.dataframe(pd.DataFrame(source_rows), width="stretch", hide_index=True)
+                st.markdown(
+                    "- [NASA GISTEMP v4 — data and methodology](https://data.giss.nasa.gov/gistemp/)\n"
+                    "- [NASA GISTEMP source documentation](https://data.giss.nasa.gov/gistemp/sources/gistemp.html)\n"
+                    "- [NOAA Global Monitoring Laboratory — CO₂ trends](https://gml.noaa.gov/ccgg/trends/)\\n"
+                    "- [NOAA global methane trends and methods](https://gml.noaa.gov/ccgg/trends_ch4/)\\n"
+                    "- [NOAA global nitrous oxide trends and methods](https://gml.noaa.gov/ccgg/trends_n2o/)"
+                )
+                with st.expander(tx("Scientific interpretation and limitations", "Interpretação científica e limitações")):
+                    st.markdown(tx(
+                        "- NASA GISTEMP is an estimate of global surface temperature change, not a direct thermometer reading at every location.\n- Monthly anomalies are not the same as annual means or absolute global mean temperature.\n- GISTEMP uses a 1951–1980 baseline; do not compare its anomaly directly with indicators using 1850–1900 without a documented conversion.\n- Mauna Loa CO₂ is a station record and has seasonal variation; it is not the global marine-surface average.\n- NOAA CH₄ and N₂O are globally averaged monthly means from a marine-surface network; recent observations are preliminary and may be revised.\n- These indicators describe global context only; they do not establish local climate impacts or agricultural causation.\n- Global sea level, ocean heat, ice sheets and a Brazil-specific climate-extremes atlas are not yet integrated.",
+                        "- O NASA GISTEMP estima a mudança da temperatura superficial global; não é uma leitura direta de termômetro em cada local.\n- Anomalias mensais não são equivalentes a médias anuais nem à temperatura média global absoluta.\n- O GISTEMP usa a referência 1951–1980; não compare diretamente sua anomalia com indicadores baseados em 1850–1900 sem conversão documentada.\n- CO₂ de Mauna Loa é uma série de estação e apresenta variação sazonal; não é a média global da superfície oceânica.\n- CH₄ e N₂O da NOAA são médias mensais globais de uma rede de superfície marinha; observações recentes são preliminares e podem ser revisadas.\n- Esses indicadores descrevem o contexto global, mas não demonstram impactos climáticos locais nem causalidade agrícola.\n- Nível do mar, calor oceânico, mantos de gelo e atlas brasileiro de extremos climáticos ainda não estão integrados."
+                    ))
+    
+        except Exception as exc:
+            st.error(tx("Climate Watch could not retrieve the source datasets: ", "O Observatório climático não conseguiu consultar as bases: ") + str(exc))
+            st.info(tx(
+                "Try again later. The dashboard does not replace missing live observations with invented or hard-coded values.",
+                "Tente novamente mais tarde. O painel não substitui observações indisponíveis por números inventados ou fixos."
+            ))
 
 if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
         climate = st.session_state["climate"]
@@ -1169,7 +1182,7 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
                 ))
             else:
                 st.success(tx("No basic completeness or range issue was detected in the loaded climate table.", "Nenhum problema básico de completude ou faixa foi detectado na tabela climática carregada."))
-            st.dataframe(pd.DataFrame(climate_qc["variables"]), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(climate_qc["variables"]), width="stretch", hide_index=True)
             modis_qc = modis_quality_report(st.session_state.get("modis", pd.DataFrame()))
             m1, m2, m3, m4, m5 = st.columns(5)
             m1.metric(tx("MODIS observations", "Observações MODIS"), modis_qc["rows"])
@@ -1202,13 +1215,13 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
         if not modis.empty and modis["NDVI"].notna().any():
             st.line_chart(modis.set_index("Date")[["NDVI"]])
             st.caption(f"MODIS/Terra MOD13Q1 · 16-day composites · {st.session_state.get('modis_years', (2023, 2025))[0]}–{st.session_state.get('modis_years', (2023, 2025))[1]} · QA reliability 0 (good) and 1 (marginal).")
-            st.dataframe(modis[["Date", "NDVI", "Quality label"]], use_container_width=True, hide_index=True)
+            st.dataframe(modis[["Date", "NDVI", "Quality label"]], width="stretch", hide_index=True)
             valid_modis = modis.dropna(subset=["NDVI"]).copy()
             if not valid_modis.empty:
                 valid_modis["Year"] = pd.to_datetime(valid_modis["Date"]).dt.year
                 annual_ndvi = valid_modis.groupby("Year")["NDVI"].agg(Observations="count", Mean="mean", Minimum="min", Maximum="max").reset_index()
                 st.markdown("**" + tx("Interannual vegetation summary", "Resumo interanual da vegetação") + "**")
-                st.dataframe(annual_ndvi.round({"Mean": 3, "Minimum": 3, "Maximum": 3}), use_container_width=True, hide_index=True)
+                st.dataframe(annual_ndvi.round({"Mean": 3, "Minimum": 3, "Maximum": 3}), width="stretch", hide_index=True)
                 st.caption(tx("Annual means summarize quality-screened 16-day observations. They are not crop classification, phenology or yield estimates.", "As médias anuais resumem observações de 16 dias com qualidade aceita. Não são classificação de cultura, fenologia ou estimativa de produtividade."))
                 st.bar_chart(modis["Quality label"].fillna("Unknown").value_counts())
         else:
@@ -1249,7 +1262,7 @@ def calculate_crop_climate_windows(climate_frame, sowing_month, selected_crops):
         cycle_days = round((profile["cycle_min"] + profile["cycle_max"]) / 2)
         for year in sorted(set(climate_frame.index.year)):
             start = pd.Timestamp(year=int(year), month=int(sowing_month), day=1)
-            end = start + pd.Timedelta(days=cycle_days - 1)
+            end = start + pd.Timedelta(cycle_days - 1, unit="D")
             window = climate_frame.loc[start:end]
             # Only compare complete daily windows; do not silently treat missing
             # months or an incomplete final year as zero rainfall.
@@ -1330,7 +1343,7 @@ with tab2:
                         "Indicative crop-water need (mm/cycle)": "Necessidade hídrica indicativa (mm/ciclo)",
                         "Reference": "Referência"
                     })
-                st.dataframe(display_summary, use_container_width=True, hide_index=True)
+                st.dataframe(display_summary, width="stretch", hide_index=True)
                 chart_data = summary.set_index("Crop")[["Median cycle rainfall (mm)"]]
                 st.markdown("**" + tx("Observed rainfall during representative crop cycles", "Chuva observada durante ciclos representativos") + "**")
                 st.bar_chart(chart_data)
@@ -1346,7 +1359,7 @@ with tab2:
                         "Mean solar radiation (kWh/m²/day)": "Radiação média (kWh/m²/dia)",
                         "Indicative crop-water need (mm/cycle)": "Necessidade hídrica indicativa (mm/ciclo)"
                     })
-                st.dataframe(season_view, use_container_width=True, hide_index=True)
+                st.dataframe(season_view, width="stretch", hide_index=True)
                 st.caption(tx(
                     "Method: the midpoint of each published crop-cycle range defines the observation window beginning on day 1 of the selected month. Only complete daily windows are included. The table reports historical observations, not future weather.",
                     "Método: o ponto médio da faixa publicada de duração do ciclo define a janela de observação, iniciada no primeiro dia do mês escolhido. Apenas janelas diárias completas entram no cálculo. A tabela mostra observações históricas, não previsão do tempo."
@@ -1389,7 +1402,7 @@ with tab2:
                 candidate_years = []
                 for candidate_year in sorted(set(climate.index.year)):
                     candidate_start = pd.Timestamp(year=int(candidate_year), month=int(sowing_month), day=int(water_sowing_day))
-                    candidate_end = candidate_start + pd.Timedelta(days=cycle_days - 1)
+                    candidate_end = candidate_start + pd.Timedelta(cycle_days - 1, unit="D")
                     candidate_weather = climate.loc[candidate_start:candidate_end]
                     candidate_et0 = et0_all.loc[candidate_start:candidate_end]
                     if (len(candidate_weather) == cycle_days
@@ -1462,7 +1475,7 @@ with tab2:
                     elif st.button(tx("Calculate daily water balance", "Calcular balanço hídrico diário"), type="primary", key="run_water_balance"):
                         try:
                             start = pd.Timestamp(year=int(water_year), month=int(sowing_month), day=int(water_sowing_day))
-                            end = start + pd.Timedelta(days=cycle_days - 1)
+                            end = start + pd.Timedelta(cycle_days - 1, unit="D")
                             weather_window = climate.loc[start:end]
                             et0_window = et0_all.loc[start:end]
                             kc_curve = crop_coefficient_curve(
@@ -1518,7 +1531,7 @@ with tab2:
                         b3.metric(tx("Gross irrigation estimate", "Estimativa de irrigação bruta"), f"{total_gross_irrigation:.0f} mm")
                         chart = balance.set_index("Date")[["Root-zone depletion (mm)", "RAW trigger (mm)"]]
                         st.line_chart(chart)
-                        st.dataframe(balance, use_container_width=True, hide_index=True)
+                        st.dataframe(balance, width="stretch", hide_index=True)
                         st.download_button(
                             tx("Download daily water-balance CSV", "Baixar CSV do balanço hídrico diário"),
                             balance.to_csv(index=False).encode("utf-8"),
@@ -1633,7 +1646,7 @@ with tab2:
                 dekad_frame = pd.DataFrame(dekad_rows)
                 if not dekad_frame.empty:
                     st.markdown("**" + tx("Official sowing windows by dekad", "Janelas oficiais de semeadura por decêndio") + "**")
-                    st.dataframe(dekad_frame, use_container_width=True, hide_index=True)
+                    st.dataframe(dekad_frame, width="stretch", hide_index=True)
                 metadata_columns = {
                     "Crop": crop_col, "UF": uf_col, "Municipality": municipality_col,
                     "Soil code": soil_col, "Cultivar group / cycle": cycle_col,
@@ -1659,7 +1672,7 @@ with tab2:
                     st.dataframe(pd.DataFrame([{
                         key: value for key, value in st.session_state["zarc_reference"].items()
                         if key not in ("Recommended decendios", "All decendios")
-                    }]), use_container_width=True, hide_index=True)
+                    }]), width="stretch", hide_index=True)
         except Exception as exc:
             st.error(tx("Could not load or query the official MAPA ZARC dataset: ", "Não foi possível carregar ou consultar a base oficial ZARC do MAPA: ") + str(exc))
             st.markdown("[Open MAPA ZARC open-data portal](https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico)")
@@ -1938,7 +1951,7 @@ with tab5:
                     else:
                         st.info(tx("R² is undefined because the station observations have zero variance.", "R² não está definido porque as observações da estação não apresentam variância."))
                     st.line_chart(paired.rename(columns={"model": "NASA POWER", "observed": "Weather station"}))
-                    st.dataframe(paired.assign(Error=paired["model"]-paired["observed"]), use_container_width=True)
+                    st.dataframe(paired.assign(Error=paired["model"]-paired["observed"]), width="stretch")
                     st.caption(tx(
                         "Bias = mean(POWER − station); MAE = mean absolute error; RMSE = root mean squared error; R² = 1 − SSE/SST. Missing pairs are excluded. These statistics describe this station, variable and period only; they are not a universal validation of NASA POWER or of crop predictions.",
                         "Viés = média(POWER − estação); MAE = erro absoluto médio; RMSE = raiz do erro quadrático médio; R² = 1 − SSE/SST. Pares ausentes são excluídos. Estas estatísticas descrevem somente esta estação, variável e período; não validam universalmente o NASA POWER nem previsões agrícolas."
@@ -1968,7 +1981,7 @@ with tab4:
                 st.caption(str(exc))
         saved = st.session_state.get("saved_projects", [])
         if saved:
-            st.dataframe(pd.DataFrame([{k: row.get(k) for k in ("project_name", "latitude", "longitude", "created_at")} for row in saved]), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame([{k: row.get(k) for k in ("project_name", "latitude", "longitude", "created_at")} for row in saved]), width="stretch", hide_index=True)
             project_options = {f"{row.get('project_name', 'Untitled')} · {row.get('created_at', '')[:10]}": row for row in saved}
             chosen_project = st.selectbox(tx("Choose a saved analysis", "Escolha uma análise salva"), list(project_options))
             if st.button(tx("Load selected analysis", "Carregar análise selecionada")):
@@ -2066,7 +2079,7 @@ with tab_rotation:
                     ))
                 else:
                     st.subheader(tx("Scenario comparison", "Comparação dos cenários"))
-                    st.dataframe(rotation_summary, use_container_width=True, hide_index=True)
+                    st.dataframe(rotation_summary, width="stretch", hide_index=True)
                     chart_data = rotation_summary.set_index("Scenario")[["Median daily rainfall (mm/day)"]]
                     st.bar_chart(chart_data)
                     st.caption(tx(
@@ -2074,7 +2087,7 @@ with tab_rotation:
                         "A taxa diária de chuva ajuda a comparar sequências com durações modeladas diferentes. A chuva total e a duração também são exibidas; nenhuma delas representa chuva efetiva, necessidade hídrica da cultura ou economia de água pela rotação."
                     ))
                     st.subheader(tx("Crop-window evidence", "Evidências por janela de cultivo"))
-                    st.dataframe(rotation_detail, use_container_width=True, hide_index=True)
+                    st.dataframe(rotation_detail, width="stretch", hide_index=True)
                     st.download_button(
                         tx("Download rotation comparison CSV", "Baixar comparação de rotação em CSV"),
                         rotation_detail.to_csv(index=False).encode("utf-8"),
@@ -2099,9 +2112,9 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
     with export_col1:
         csv_frame = climate_for_export.copy()
         csv_frame.index.name = "Date"
-        st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="guma_nasa_power.csv", mime="text/csv", use_container_width=True)
+        st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="guma_nasa_power.csv", mime="text/csv", width="stretch")
         if not modis_for_export.empty:
-            st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="guma_modis_ndvi.csv", mime="text/csv", use_container_width=True)
+            st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="guma_modis_ndvi.csv", mime="text/csv", width="stretch")
     with export_col2:
         water_for_export = st.session_state.get("latest_water_balance")
         if water_for_export and water_for_export.get("coords") != (float(lat), float(lon)):
@@ -2111,9 +2124,9 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
             water_balance=water_for_export,
             zarc_reference=st.session_state.get("zarc_reference")
         )
-        st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="guma_report.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="guma_report.pdf", mime="application/pdf", width="stretch")
     with export_col3:
-        if st.button(tx("Save project to account", "Salvar projeto na conta"), use_container_width=True):
+        if st.button(tx("Save project to account", "Salvar projeto na conta"), width="stretch"):
             project_name = st.session_state.get("project_name", f"Study {lat:.3f}, {lon:.3f}")
             climate_records = climate_for_export.reset_index().rename(columns={"index": "Date"})
             climate_records["Date"] = climate_records["Date"].astype(str)
@@ -2271,7 +2284,7 @@ with tab_commons:
             if filtered.empty:
                 st.info(tx("No public fingerprints match these filters yet. Be the first to contribute.", "Ainda não há assinaturas públicas com esses filtros. Você pode ser o primeiro a contribuir."))
             else:
-                st.dataframe(filtered[display_cols], use_container_width=True, hide_index=True)
+                st.dataframe(filtered[display_cols], width="stretch", hide_index=True)
                 if fingerprint is not None and "Similarity distance ↓" in filtered.columns:
                     st.caption(tx("The top rows are the closest climate fingerprints under this descriptive three-variable comparison — not the best places to farm.", "As primeiras linhas são as assinaturas climaticamente mais próximas nesta comparação descritiva de três variáveis — não os melhores lugares para plantar."))
                 if len(filtered) >= 2:
