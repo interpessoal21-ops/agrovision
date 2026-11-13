@@ -7,6 +7,7 @@ from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, sim
 from agrovision_rotation import ROTATION_SCENARIOS, compare_rotation_scenarios, scenario_disclosure
 from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
 from agrovision_climate import summarize_local_extremes
+from agrovision_commons import build_climate_fingerprint, comparison_distance
 import requests
 import folium
 import io
@@ -389,7 +390,8 @@ tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate = 
     tx("📚 Knowledge", "📚 Conhecimento"),
     tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado"),
     tx("🌾 Rotation Lab", "🌾 Laboratório de rotação"),
-    tx("🌍 Climate Watch", "🌍 Observatório climático")
+    tx("🌍 Climate Watch", "🌍 Observatório climático"),
+    tx("🧬 AGROVISION Commons", "🧬 Commons AGROVISION")
 ])
 
 
@@ -1467,6 +1469,49 @@ def fetch_saved_projects():
         raise RuntimeError(f"Project list failed (HTTP {response.status_code}): {response.text[:300]}")
     return response.json()
 
+
+def fetch_community_snapshots():
+    base_url, public_key, _ = supabase_settings()
+    if not base_url or not public_key:
+        return []
+    headers = {"apikey": public_key, "Authorization": f"Bearer {st.session_state.get('agrovision_access_token', public_key)}"}
+    response = requests.get(
+        f"{base_url}/rest/v1/community_snapshots?select=id,display_alias,macroregion,crop,season,metrics,source_metadata,created_at&published=eq.true&order=created_at.desc&limit=300",
+        headers=headers, timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Community board unavailable (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
+
+def publish_community_snapshot(alias, macroregion, crop, season, metrics):
+    base_url, headers = supabase_rest_headers()
+    if not headers:
+        raise RuntimeError("Sign in with an email account to publish a comparison. Visitor access can browse only.")
+    response = requests.post(
+        f"{base_url}/rest/v1/community_snapshots",
+        headers=headers,
+        json={
+            "display_alias": alias.strip(),
+            "macroregion": macroregion,
+            "crop": crop,
+            "season": season,
+            "metrics": metrics,
+            "source_metadata": {
+                "provider": "NASA POWER",
+                "method": "Daily point-series aggregate",
+                "period_start": metrics.get("period_start"),
+                "period_end": metrics.get("period_end"),
+                "shared_at": datetime.now(timezone.utc).isoformat()
+            },
+            "published": True
+        },
+        timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Publishing failed (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
 def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water_balance=None, zarc_reference=None):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
@@ -1798,5 +1843,138 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
                 st.session_state.pop("saved_projects", None)
             except Exception as exc:
                 st.error(str(exc))
+
+with tab_commons:
+    st.header("AGROVISION COMMONS")
+    st.caption(tx(
+        "A collaborative climate atlas built from opt-in, anonymized aggregate fingerprints — not a leaderboard.",
+        "Um atlas climático colaborativo construído com assinaturas agregadas e compartilhadas voluntariamente — não um placar de produtores."
+    ))
+    st.markdown("""
+    <div class="section-note">
+      <strong>CLIMATE FINGERPRINT / ASSINATURA CLIMÁTICA</strong><br>
+      Each contribution turns a daily climate series into a compact profile of heat, rainfall and seasonal rhythm.
+      Compare places and crop contexts without publishing farm coordinates, names or raw daily records.
+    </div>
+    """, unsafe_allow_html=True)
+    current_climate = st.session_state.get("climate")
+    current_coords = st.session_state.get("coords")
+    current_latlon = (float(lat), float(lon))
+    fingerprint = None
+    if current_climate is not None and current_coords == current_latlon:
+        try:
+            fingerprint = build_climate_fingerprint(current_climate)
+        except Exception as exc:
+            st.warning(tx("Could not build this climate fingerprint: ", "Não foi possível montar a assinatura climática: ") + str(exc))
+    else:
+        st.info(tx(
+            "Load NASA POWER data for your selected point in the Environmental dashboard to create a fingerprint.",
+            "Carregue os dados NASA POWER do ponto escolhido no Painel ambiental para criar uma assinatura."
+        ))
+    if fingerprint:
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric(tx("Mean temperature", "Temperatura média"), f"{fingerprint['mean_temp_c']:.1f} °C")
+        m2.metric(tx("Mean annual rainfall", "Chuva anual média"), f"{fingerprint['annual_precipitation_mm']:.0f} mm")
+        m3.metric(tx("Hot days ≥35 °C / year", "Dias ≥35 °C / ano"), f"{fingerprint['hot_days_35c_per_year']:.1f}")
+        m4.metric(tx("Valid daily records", "Registros diários válidos"), f"{fingerprint['valid_days']:,}")
+        monthly = pd.DataFrame({
+            "Month": list(range(1, 13)),
+            "Mean temperature (°C)": [fingerprint["monthly_temperature_c"].get(str(i)) for i in range(1,13)],
+            "Mean daily precipitation (mm)": [fingerprint["monthly_precipitation_mm_day"].get(str(i)) for i in range(1,13)]
+        }).set_index("Month")
+        left, right = st.columns(2)
+        with left:
+            st.markdown("**THERMAL RHYTHM / RITMO TÉRMICO**")
+            st.line_chart(monthly[["Mean temperature (°C)"]], height=220)
+        with right:
+            st.markdown("**RAIN SIGNATURE / ASSINATURA DE CHUVA**")
+            st.bar_chart(monthly[["Mean daily precipitation (mm)"]], height=220)
+        st.caption(tx(
+            f"Aggregate period: {fingerprint['period_start']} to {fingerprint['period_end']}. Monthly precipitation is the mean daily value for each calendar month, not a monthly total.",
+            f"Período agregado: {fingerprint['period_start']} a {fingerprint['period_end']}. A precipitação mensal exibida é a média diária de cada mês do calendário, não o total mensal."
+        ))
+    st.divider()
+    st.subheader(tx("Publish a climate fingerprint", "Compartilhe uma assinatura climática"))
+    st.warning(tx(
+        "Publishing is optional and public. Your alias, broad macroregion, crop, season and aggregate indicators will be visible to other users. Exact coordinates, email, farm name and raw daily data are not sent.",
+        "A publicação é opcional e pública. Seu apelido, macrorregião, cultura, safra e indicadores agregados ficarão visíveis a outros usuários. Coordenadas exatas, e-mail, nome da fazenda e dados diários brutos não são enviados."
+    ))
+    if st.session_state.get("agrovision_auth_mode") == "email":
+        with st.form("commons_publish_form"):
+            alias = st.text_input(tx("Public alias (not your email)", "Apelido público (não use seu e-mail)"), max_chars=32, placeholder="AgroLab-01")
+            macroregion = st.selectbox(tx("Macroregion", "Macrorregião"), ["Norte","Nordeste","Centro-Oeste","Sudeste","Sul"])
+            crop = st.selectbox(tx("Main crop context", "Cultura de referência"), ["Soja","Milho","Feijão","Café","Cana-de-açúcar","Algodão","Arroz","Trigo","Mandioca","Sistema diversificado","Outro"])
+            season = st.selectbox(tx("Season / reference year", "Safra / ano de referência"), ["2020–2025","2023–2025","2025","2024","2023","2022","2021","2020"])
+            consent = st.checkbox(tx("I understand this aggregate profile will be publicly visible.", "Entendo que esta assinatura agregada ficará visível publicamente."), value=False)
+            submitted = st.form_submit_button(tx("Publish my fingerprint", "Publicar minha assinatura"), type="primary", disabled=not bool(fingerprint))
+        if submitted:
+            if not alias.strip() or len(alias.strip()) < 2:
+                st.error(tx("Choose an alias with at least 2 characters.", "Escolha um apelido com pelo menos 2 caracteres."))
+            elif not consent:
+                st.error(tx("Explicit consent is required before publishing.", "É necessário consentimento explícito para publicar."))
+            else:
+                try:
+                    publish_community_snapshot(alias, macroregion, crop, season, fingerprint)
+                    st.success(tx("Your climate fingerprint is now on the Commons board.", "Sua assinatura climática já está no mural Commons."))
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
+    else:
+        st.info(tx("Sign in to publish. Visitors can explore the public comparison board.", "Entre na sua conta para publicar. Visitantes podem explorar o mural público."))
+    st.divider()
+    st.subheader(tx("Community comparison field", "Campo de comparação comunitária"))
+    st.write(tx(
+        "Filter public fingerprints by crop and season. The similarity distance compares mean temperature, mean annual precipitation and hot-day frequency using fixed scales. Lower means more similar; it is not a suitability, productivity or risk score.",
+        "Filtre assinaturas públicas por cultura e safra. A distância de similaridade compara temperatura média, precipitação anual média e frequência de dias quentes, com escalas fixas. Quanto menor, mais semelhantes; não é nota de aptidão, produtividade ou risco."
+    ))
+    try:
+        snapshots = fetch_community_snapshots()
+        if snapshots:
+            board = pd.DataFrame([{
+                "Alias": row.get("display_alias",""),
+                "Macroregion": row.get("macroregion",""),
+                "Crop": row.get("crop",""),
+                "Season": row.get("season",""),
+                "Mean temp (°C)": (row.get("metrics") or {}).get("mean_temp_c"),
+                "Mean annual rain (mm)": (row.get("metrics") or {}).get("annual_precipitation_mm"),
+                "Hot days ≥35 °C/year": (row.get("metrics") or {}).get("hot_days_35c_per_year"),
+                "Created": str(row.get("created_at",""))[:10],
+                "_metrics": row.get("metrics") or {}
+            } for row in snapshots])
+            f1, f2, f3 = st.columns(3)
+            crops = ["All"] + sorted(board["Crop"].dropna().unique().tolist())
+            seasons = ["All"] + sorted(board["Season"].dropna().unique().tolist())
+            regions = ["All"] + sorted(board["Macroregion"].dropna().unique().tolist())
+            crop_filter = f1.selectbox(tx("Crop filter","Filtrar cultura"),crops)
+            season_filter = f2.selectbox(tx("Season filter","Filtrar safra"),seasons)
+            region_filter = f3.selectbox(tx("Region filter","Filtrar região"),regions)
+            filtered = board.copy()
+            if crop_filter != "All": filtered = filtered[filtered["Crop"] == crop_filter]
+            if season_filter != "All": filtered = filtered[filtered["Season"] == season_filter]
+            if region_filter != "All": filtered = filtered[filtered["Macroregion"] == region_filter]
+            if fingerprint is not None and not filtered.empty:
+                filtered = filtered.copy()
+                filtered["Similarity distance ↓"] = filtered["_metrics"].apply(lambda item: comparison_distance(fingerprint,item) if all(k in item for k in ("mean_temp_c","annual_precipitation_mm","hot_days_35c_per_year")) else float("nan"))
+                filtered = filtered.sort_values("Similarity distance ↓", na_position="last")
+            display_cols = ["Alias","Macroregion","Crop","Season","Mean temp (°C)","Mean annual rain (mm)","Hot days ≥35 °C/year","Created"]
+            if "Similarity distance ↓" in filtered.columns: display_cols.append("Similarity distance ↓")
+            if filtered.empty:
+                st.info(tx("No public fingerprints match these filters yet. Be the first to contribute.", "Ainda não há assinaturas públicas com esses filtros. Você pode ser o primeiro a contribuir."))
+            else:
+                st.dataframe(filtered[display_cols], use_container_width=True, hide_index=True)
+                if fingerprint is not None and "Similarity distance ↓" in filtered.columns:
+                    st.caption(tx("The top rows are the closest climate fingerprints under this descriptive three-variable comparison — not the best places to farm.", "As primeiras linhas são as assinaturas climaticamente mais próximas nesta comparação descritiva de três variáveis — não os melhores lugares para plantar."))
+                if len(filtered) >= 2:
+                    st.markdown("**COMMUNITY CLIMATE SPACE / ESPAÇO CLIMÁTICO COMUNITÁRIO**")
+                    st.scatter_chart(filtered, x="Mean annual rain (mm)", y="Mean temp (°C)", color="Macroregion", size="Hot days ≥35 °C/year")
+        else:
+            st.info(tx("The public board is empty. Publish an opt-in fingerprint to start the shared atlas.", "O mural público está vazio. Publique uma assinatura voluntária para iniciar o atlas coletivo."))
+    except Exception as exc:
+        st.warning(tx("The community board needs the Supabase Commons migration. Run supabase/community_schema.sql in the Supabase SQL Editor. Details: ", "O mural comunitário precisa da migração Supabase Commons. Execute supabase/community_schema.sql no SQL Editor do Supabase. Detalhes: ") + str(exc))
+    st.caption(tx(
+        "Method note: profiles summarize a gridded NASA POWER point series. User-selected macroregion and crop are labels supplied by contributors, not independently verified farm boundaries or crop observations. Similarity is descriptive only.",
+        "Nota metodológica: as assinaturas resumem uma série pontual em grade do NASA POWER. Macrorregião e cultura são rótulos informados pelos participantes, não limites de fazenda ou observações de cultura verificados independentemente. A similaridade é apenas descritiva."
+    ))
+
 st.divider()
 st.caption("AGROVISION · Crop-specific climate screening · Research and validation in progress")
