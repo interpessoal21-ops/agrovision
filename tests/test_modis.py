@@ -1,6 +1,6 @@
 import unittest
 
-from agrovision_modis import parse_modis_subset
+from agrovision_modis import parse_modis_subset, calculate_ndvi_from_reflectance
 
 
 class ModisSubsetParsingTests(unittest.TestCase):
@@ -33,6 +33,26 @@ class ModisSubsetParsingTests(unittest.TestCase):
             ]
         })
         self.assertEqual(result, {})
+
+
+
+class ModisNdviQualityTests(unittest.TestCase):
+    def test_valid_good_and_marginal_pixels(self):
+        self.assertAlmostEqual(calculate_ndvi_from_reflectance(6000, 2000, 0), 0.5)
+        self.assertAlmostEqual(calculate_ndvi_from_reflectance(6000, 2000, 1), 0.5)
+
+    def test_fill_values_are_rejected(self):
+        self.assertIsNone(calculate_ndvi_from_reflectance(-1000, 2000, 0))
+        self.assertIsNone(calculate_ndvi_from_reflectance(6000, -1000, 0))
+
+    def test_out_of_range_reflectance_is_rejected(self):
+        self.assertIsNone(calculate_ndvi_from_reflectance(10001, 2000, 0))
+        self.assertIsNone(calculate_ndvi_from_reflectance(6000, -1, 0))
+
+    def test_bad_quality_missing_values_and_zero_denominator_are_rejected(self):
+        self.assertIsNone(calculate_ndvi_from_reflectance(6000, 2000, 2))
+        self.assertIsNone(calculate_ndvi_from_reflectance(0, 0, 0))
+        self.assertIsNone(calculate_ndvi_from_reflectance(None, 2000, 0))
 
 
 if __name__ == "__main__":
