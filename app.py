@@ -375,22 +375,23 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_home, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab, tab_partners, tab_systems = st.tabs([
+tab_home, tab_atlas, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab, tab_partners, tab_systems = st.tabs([
     tx("🌐 00 · Earth Observatory", "🌐 00 · Observatório da Terra"),
-    tx("👋 01 · Start here", "👋 01 · Comece aqui"),
-    tx("🛰️ 02 · Earth data", "🛰️ 02 · Dados da Terra"),
-    tx("🌱 03 · Crop intelligence", "🌱 03 · Inteligência agrícola"),
-    tx("📚 04 · Data & methods", "📚 04 · Dados e métodos"),
-    tx("🗂️ 05 · Workspace", "🗂️ 05 · Projetos"),
-    tx("🧪 06 · Validation", "🧪 06 · Validação"),
-    tx("📖 07 · Knowledge", "📖 07 · Conhecimento"),
-    tx("📊 08 · Evidence", "📊 08 · Evidências"),
-    tx("🌾 09 · Rotation Lab", "🌾 09 · Rotação de culturas"),
-    tx("🌍 10 · Climate Watch", "🌍 10 · Monitoramento climático"),
-    tx("🧬 11 · Commons", "🧬 11 · Comunidade"),
-    tx("🔬 12 · Field Lab", "🔬 12 · Laboratório de Campo"),
-    tx("🤝 13 · Partnerships", "🤝 13 · Alianças"),
-    tx("🌾 14 · Agronomic Systems", "🌾 14 · Sistemas agronômicos")
+    tx("🗺️ 01 · GUMA Atlas", "🗺️ 01 · Atlas GUMA"),
+    tx("👋 02 · Start here", "👋 02 · Comece aqui"),
+    tx("🛰️ 03 · Earth data", "🛰️ 03 · Dados da Terra"),
+    tx("🌱 04 · Crop intelligence", "🌱 04 · Inteligência agrícola"),
+    tx("📚 05 · Data & methods", "📚 05 · Dados e métodos"),
+    tx("🗂️ 06 · Workspace", "🗂️ 06 · Projetos"),
+    tx("🧪 07 · Validation", "🧪 07 · Validação"),
+    tx("📖 08 · Knowledge", "📖 08 · Conhecimento"),
+    tx("📊 09 · Evidence", "📊 09 · Evidências"),
+    tx("🌾 10 · Rotation Lab", "🌾 10 · Rotação de culturas"),
+    tx("🌍 11 · Climate Watch", "🌍 11 · Monitoramento climático"),
+    tx("🧬 12 · Commons", "🧬 12 · Comunidade"),
+    tx("🔬 13 · Field Lab", "🔬 13 · Laboratório de Campo"),
+    tx("🤝 14 · Partnerships", "🤝 14 · Alianças"),
+    tx("🌾 15 · Agronomic Systems", "🌾 15 · Sistemas agronômicos")
 ])
 
 
@@ -2435,6 +2436,104 @@ with tab_fieldlab:
 
 st.divider()
 st.caption("GUMA · Crop-specific climate screening · Research and validation in progress")
+
+
+
+with tab_atlas:
+    from agrovision_atlas import BIOMES, AGRICULTURAL_HUBS, validate_atlas_catalog
+    validate_atlas_catalog()
+    st.header(tx("GUMA Atlas · Brazil", "GUMA Atlas · Brasil"))
+    st.write(tx(
+        "Explore Brazil through biome reference points, agricultural hubs and selectable geographic basemaps. This is a first national overview, designed to connect environmental and agricultural layers as the atlas evolves.",
+        "Explore o Brasil por pontos de referência dos biomas, polos agrícolas e mapas-base geográficos selecionáveis. Esta é uma primeira visão nacional, criada para conectar camadas ambientais e agrícolas à medida que o atlas evolui."
+    ))
+    st.markdown(
+        '<div class="section-note"><strong>GEOGRAPHIC CONTEXT, NOT A BOUNDARY PRODUCT</strong><br>Biome markers are illustrative reference locations, not official biome polygons, farm boundaries or administrative limits. Use the linked IBGE geospatial product for authoritative biome boundaries.</div>',
+        unsafe_allow_html=True
+    )
+    selected_biomes = st.multiselect(
+        tx("Biome reference points", "Pontos de referência dos biomas"),
+        options=[b["name_pt"] for b in BIOMES],
+        default=[b["name_pt"] for b in BIOMES],
+        key="guma_atlas_biomes"
+    )
+    show_hubs = st.checkbox(tx("Show agricultural reference hubs", "Mostrar polos agrícolas de referência"), value=True, key="guma_atlas_hubs")
+    map_center = [-14.2, -51.9]
+    atlas_map = folium.Map(location=map_center, zoom_start=4, tiles=None, control_scale=True, prefer_canvas=True)
+    folium.TileLayer(
+        tiles="OpenStreetMap", name=tx("Street map", "Mapa de ruas"),
+        overlay=False, control=True
+    ).add_to(atlas_map)
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Tiles © Esri", name=tx("Satellite imagery", "Imagem de satélite"),
+        overlay=False, control=True
+    ).add_to(atlas_map)
+    folium.TileLayer(
+        tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        attr="Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap",
+        name=tx("Topography", "Topografia"), overlay=False, control=True
+    ).add_to(atlas_map)
+    biome_layer = folium.FeatureGroup(name=tx("Biome reference points", "Pontos de referência dos biomas"), show=True)
+    for biome in BIOMES:
+        if biome["name_pt"] not in selected_biomes:
+            continue
+        label = biome["name_pt"] if st.session_state.get("agrovision_language") == "Português" else biome["name_en"]
+        summary = biome["summary_pt"] if st.session_state.get("agrovision_language") == "Português" else biome["summary_en"]
+        folium.CircleMarker(
+            location=[biome["lat"], biome["lon"]], radius=9,
+            color="#24C8B5", weight=2, fill=True, fill_color="#B9F36B",
+            fill_opacity=0.88,
+            tooltip=label,
+            popup=folium.Popup(f"<b>{label}</b><br>{summary}<br><small>Illustrative reference point · IBGE biome source linked below</small>", max_width=300)
+        ).add_to(biome_layer)
+    biome_layer.add_to(atlas_map)
+    if show_hubs:
+        hub_layer = folium.FeatureGroup(name=tx("Agricultural reference hubs", "Polos agrícolas de referência"), show=True)
+        for hub in AGRICULTURAL_HUBS:
+            label = hub["name_pt"] if st.session_state.get("agrovision_language") == "Português" else hub["name_en"]
+            context = hub["context_pt"] if st.session_state.get("agrovision_language") == "Português" else hub["context_en"]
+            folium.Marker(
+                location=[hub["lat"], hub["lon"]],
+                tooltip=label,
+                popup=folium.Popup(f"<b>{label}</b><br>{context}<br><small>Reference city; not a production ranking.</small>", max_width=300),
+                icon=folium.Icon(color="green", icon="leaf", prefix="fa")
+            ).add_to(hub_layer)
+        hub_layer.add_to(atlas_map)
+    folium.LayerControl(collapsed=False).add_to(atlas_map)
+    st_folium(atlas_map, width=None, height=610, key="guma_brazil_atlas_map", returned_objects=[])
+    st.caption(tx(
+        "Basemaps are visual context. Satellite tiles are not a current land-cover classification, and the reference hubs are examples rather than a ranking of production.",
+        "Os mapas-base oferecem contexto visual. As imagens de satélite não são uma classificação atual de uso da terra, e os polos são exemplos, não um ranking de produção."
+    ))
+    st.subheader(tx("Brazil's six terrestrial biomes", "Os seis biomas terrestres brasileiros"))
+    biome_cols = st.columns(3)
+    for index, biome in enumerate(BIOMES):
+        title = biome["name_pt"] if st.session_state.get("agrovision_language") == "Português" else biome["name_en"]
+        summary = biome["summary_pt"] if st.session_state.get("agrovision_language") == "Português" else biome["summary_en"]
+        with biome_cols[index % 3]:
+            with st.container(border=True):
+                st.markdown(f"**{title}**")
+                st.write(summary)
+    st.divider()
+    st.subheader(tx("Connect to authoritative geospatial data", "Acesse dados geoespaciais de referência"))
+    source_cols = st.columns(3)
+    with source_cols[0]:
+        st.markdown("**IBGE · Biomes**")
+        st.write(tx("Official biome and coastal-marine system delimitation, compatible with 1:250,000 scale.", "Delimitação oficial dos biomas e do sistema costeiro-marinho, compatível com a escala 1:250.000."))
+        st.markdown("[IBGE · Biomas](https://www.ibge.gov.br/geociencias/informacoes-ambientais/vegetacao/15842-biomas.html)")
+    with source_cols[1]:
+        st.markdown("**INPE · TerraBrasilis**")
+        st.write(tx("PRODES, DETER and vegetation monitoring geospatial services. Their indicators have different purposes and update cycles.", "Serviços geoespaciais do PRODES, DETER e monitoramento da vegetação. Os indicadores têm objetivos e ciclos de atualização diferentes."))
+        st.markdown("[TerraBrasilis](https://www.terrabrasilis.dpi.inpe.br/)")
+    with source_cols[2]:
+        st.markdown("**MapBiomas**")
+        st.write(tx("Annual land-cover and land-use maps, historical series and thematic monitors.", "Mapas anuais de cobertura e uso da terra, séries históricas e monitores temáticos."))
+        st.markdown("[MapBiomas Brasil](https://brasil.mapbiomas.org/)")
+    st.info(tx(
+        "Next atlas layer candidates: official biome polygons, protected areas, land cover, hydrography, elevation and agricultural production. Each layer will need its own source, reference date, scale/resolution, license and quality notes before being represented as analytical evidence.",
+        "Próximas camadas candidatas: polígonos oficiais dos biomas, unidades de conservação, cobertura da terra, hidrografia, altitude e produção agrícola. Cada camada precisará de fonte, data de referência, escala/resolução, licença e notas de qualidade antes de ser tratada como evidência analítica."
+    ))
 
 
 with tab_systems:
