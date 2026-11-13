@@ -363,6 +363,11 @@ if map_event and map_event.get("last_clicked"):
 with st.sidebar:
     st.header(tx("Study area", "Área de estudo"))
     st.caption(tx("Enter the coordinates of the area you want to investigate.", "Informe as coordenadas da área que deseja investigar."))
+    if st.button(tx("📍 Use Rio Verde, GO pilot", "📍 Usar piloto de Rio Verde, GO"), use_container_width=True, help=tx("Loads the municipal-seat coordinates as a demonstration study point. Replace them with farm coordinates for local analysis.", "Carrega as coordenadas da sede municipal como ponto de demonstração. Substitua pelas coordenadas da propriedade para análise local.")):
+        st.session_state["lat_value"] = -17.79
+        st.session_state["lon_value"] = -50.91
+        st.session_state["elevation_m"] = 748.0
+        st.rerun()
     lat = st.number_input("Latitude", -90.0, 90.0, -15.8, 0.01, format="%.4f", key="lat_value", help="Decimal degrees. Locations south of the Equator use negative values.")
     lon = st.number_input("Longitude", -180.0, 180.0, -47.0, 0.01, format="%.4f", key="lon_value", help="Decimal degrees. Locations west of Greenwich use negative values.")
     elevation_m = st.number_input(tx("Elevation (m above sea level)", "Altitude (m acima do nível do mar)"), -500.0, 9000.0, 100.0, 1.0, key="elevation_m", help=tx("Required by FAO-56 atmospheric pressure and clear-sky radiation calculations. Enter a reliable local elevation.", "Necessária nos cálculos de pressão atmosférica e radiação de céu claro FAO-56. Informe uma altitude local confiável."))
