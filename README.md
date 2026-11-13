@@ -4,6 +4,10 @@
 
 The name is inspired by Guma, the character in Jorge Amado's *Mar Morto*. Its visual identity draws on the sea, navigation and the horizon. This is an independent cultural inspiration, not an official association with the author or publisher. See [the GUMA brand system](docs/GUMA_BRAND.md).
 
+## Institutional collaboration
+
+The [GUMA Institutional Kit](docs/GUMA_INSTITUTIONAL_KIT.md) contains the project brief, technical architecture, scientific-validation pilot, partnership model, demonstration script, outreach templates and a proposed 90-day roadmap. All listed organizations are prospective contacts only; no partnership or endorsement is implied.
+
 ## Current capabilities
 
 - Bilingual interface: English and Portuguese.
