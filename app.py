@@ -4,6 +4,7 @@ from agrovision_validation import paired_validation_metrics
 from agrovision_modis import parse_modis_subset
 from agrovision_quality import climate_quality_report, modis_quality_report
 from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
+from agrovision_rotation import ROTATION_SCENARIOS, compare_rotation_scenarios, scenario_disclosure
 from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
 import requests
 import folium
@@ -381,7 +382,7 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
     tx("Environmental dashboard", "Painel ambiental"),
     tx("Crop analysis", "Análise de culturas"),
@@ -389,7 +390,8 @@ tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     tx("Saved projects", "Projetos salvos"),
     tx("Scientific validation", "Validação científica"),
     tx("📚 Knowledge", "📚 Conhecimento"),
-    tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado")
+    tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado"),
+    tx("🌾 Rotation Lab", "🌾 Laboratório de rotação")
 ])
 
 
@@ -718,7 +720,85 @@ with tab1:
             except Exception:
                 pass
             st.error(f"Data request failed: {exc}")
-    if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
+    
+with tab_rotation:
+    st.header(tx("Crop Rotation Lab", "Laboratório de rotação de culturas"))
+    st.write(tx(
+        "Compare historical climate exposure across transparent soybean-based crop sequences. This is a screening tool, not a yield forecast or planting recommendation.",
+        "Compare a exposição climática histórica em sequências de cultivo baseadas em soja. Esta é uma ferramenta de triagem, não uma previsão de produtividade ou recomendação de plantio."
+    ))
+    st.info(tx(
+        "NASA POWER daily climate and quality-screened MODIS observations are used when loaded for the current coordinates. Soil texture, fertility and water regime below are local inputs; they are not measured by NASA.",
+        "São usados dados climáticos diários NASA POWER e observações MODIS filtradas por qualidade quando carregados para as coordenadas atuais. Textura, fertilidade e regime hídrico são dados locais informados pelo usuário; não são medidos pela NASA."
+    ))
+    if "climate" not in st.session_state or st.session_state.get("coords") != (float(lat), float(lon)):
+        st.warning(tx(
+            "Load environmental data in the Environmental dashboard first. The Rotation Lab uses the same selected coordinates.",
+            "Carregue primeiro os dados ambientais no Painel ambiental. O Laboratório de rotação usa as mesmas coordenadas selecionadas."
+        ))
+    else:
+        rotation_month = st.selectbox(
+            tx("Main-season sowing month", "Mês de semeadura da safra principal"),
+            list(range(1, 13)), index=9, format_func=lambda m: tx(
+                ["January","February","March","April","May","June","July","August","September","October","November","December"][m-1],
+                ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][m-1]
+            ), key="rotation_sowing_month"
+        )
+        scenario_names = list(ROTATION_SCENARIOS)
+        selected_scenarios = st.multiselect(
+            tx("Scenarios to compare", "Cenários para comparar"),
+            scenario_names, default=scenario_names, key="rotation_scenarios"
+        )
+        st.markdown("**" + tx("Local farm context", "Contexto local da propriedade") + "**")
+        c1, c2, c3 = st.columns(3)
+        c1.metric(tx("Soil texture", "Textura do solo"), str(soil))
+        c2.metric(tx("Soil fertility", "Fertilidade do solo"), str(fertility))
+        c3.metric(tx("Water regime", "Regime hídrico"), str(irrigation))
+        st.caption(tx(
+            "These local inputs are recorded as context only. They are not converted into measured available-water capacity or soil-health scores.",
+            "Esses dados locais são registrados apenas como contexto. Não são convertidos em capacidade de água disponível medida nem em índices de saúde do solo."
+        ))
+        if not selected_scenarios:
+            st.warning(tx("Select at least one scenario.", "Selecione pelo menos um cenário."))
+        else:
+            try:
+                rotation_detail, rotation_summary = compare_rotation_scenarios(
+                    st.session_state["climate"],
+                    st.session_state.get("modis", pd.DataFrame()),
+                    rotation_month,
+                    selected_scenarios
+                )
+                if rotation_detail.empty:
+                    st.warning(tx(
+                        "No complete crop-sequence windows were available for this month and historical period. Try another sowing month or load a longer dataset.",
+                        "Não há janelas completas de sequência de cultivo para este mês e período histórico. Tente outro mês ou carregue uma série mais longa."
+                    ))
+                else:
+                    st.subheader(tx("Scenario comparison", "Comparação dos cenários"))
+                    st.dataframe(rotation_summary, use_container_width=True, hide_index=True)
+                    chart_data = rotation_summary.set_index("Scenario")[["Median sequence rainfall (mm)"]]
+                    st.bar_chart(chart_data)
+                    st.caption(tx(
+                        "Rainfall is summed across modeled crop windows. It is not effective rainfall, crop water requirement, or water saved by a rotation.",
+                        "A chuva é somada nas janelas de cultivo modeladas. Não representa chuva efetiva, necessidade hídrica da cultura nem economia de água pela rotação."
+                    ))
+                    st.subheader(tx("Crop-window evidence", "Evidências por janela de cultivo"))
+                    st.dataframe(rotation_detail, use_container_width=True, hide_index=True)
+                    st.download_button(
+                        tx("Download rotation comparison CSV", "Baixar comparação de rotação em CSV"),
+                        rotation_detail.to_csv(index=False).encode("utf-8"),
+                        file_name="agrovision_rotation_windows.csv",
+                        mime="text/csv"
+                    )
+            except Exception as exc:
+                st.error(tx("Could not calculate the rotation comparison: ", "Não foi possível calcular a comparação de rotação: ") + str(exc))
+    with st.expander(tx("Method, assumptions and scientific limitations", "Método, hipóteses e limitações científicas"), expanded=True):
+        st.markdown("\n".join("- " + item for item in scenario_disclosure()))
+        st.markdown(
+            "[Rotation Lab methodology and validation plan](https://github.com/interpessoal21-ops/agrovision/blob/spaceapps-2026-rotation-lab/docs/ROTATION_LAB.md)"
+        )
+
+if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
         climate = st.session_state["climate"]
         with st.expander(tx("🔎 Automatic data-quality checks", "🔎 Verificações automáticas de qualidade dos dados"), expanded=False):
             climate_qc = climate_quality_report(climate)
