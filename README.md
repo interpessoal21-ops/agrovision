@@ -31,7 +31,7 @@ Data are cached for 24 hours and can be manually refreshed. The dashboard shows 
 
 This first release does not yet include global sea level, ocean heat content, methane, nitrous oxide, ice sheets or a Brazil-specific extremes atlas. Global indicators provide context only and do not establish local agricultural impacts or causal attribution. Planned next steps are regional Brazilian heat/rainfall extremes and crop-calendar exposure, with official source provenance and uncertainty notes.
 
-Parser regression tests: `python -m unittest tests.test_climate_watch`.
+Parser regression tests: `python -m unittest discover -s tests -p "test_climate_watch.py"`.
 
 ## Run locally
 
