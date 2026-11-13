@@ -71,7 +71,7 @@ def parse_noaa_co2_csv(text: str) -> pd.DataFrame:
     frame["Date"] = pd.to_datetime(dict(
         year=frame["year"].astype(int), month=frame["month"].astype(int), day=1
     ), errors="coerce")
-    return frame.dropna(subset=["Date"])[["Date", "CO2_ppm"]].rename(
+    return frame.dropna(subset=["Date"])[["Date", "average"]].rename(
         columns={"average": "CO2_ppm"}
     ).sort_values("Date").reset_index(drop=True)
 
