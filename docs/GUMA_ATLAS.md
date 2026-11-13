@@ -36,3 +36,15 @@ Before adding official analytical overlays, each layer must have:
 - A graceful unavailable-data state and tests for parsing and geometry validity.
 
 Candidate layers: official biome polygons, protected areas, hydrography, elevation, land cover, fire scars, vegetation suppression and agricultural production. Integrations should be incremental and must preserve provenance.
+
+
+## Official thematic layer integration status
+
+The Atlas now exposes the ANA Base Hidrográfica Ottocodificada (BHO) part 1 as an optional live WMS overlay. The service describes a multiscale hydrographic network built from Brazilian systematic mapping, with connected river reaches and Otto-Pfafstetter drainage basins. Part 1 covers Otto basins 1, 2 and 3 only; it is not a complete national layer. Its documented reference vintage is 2012. It must not be interpreted as real-time river-flow monitoring or current water availability. Service metadata: https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia_Parte_1/MapServer?f=pjson
+
+Other official datasets are linked but not rendered as map layers yet:
+- **ICMBio / INDE protected areas:** WMS/WFS capabilities: https://geoservicos.inde.gov.br/geoserver/ICMBio/ows?service=wms&version=1.3.0&request=GetCapabilities and https://geoservicos.inde.gov.br/geoserver/ICMBio/ows?service=wfs&version=2.0.0&request=GetCapabilities. Verify layer names, national coverage and dataset date before adding an overlay.
+- **IBGE biome boundaries:** authoritative product compatible with 1:250,000 scale: https://www.ibge.gov.br/geociencias/informacoes-ambientais/vegetacao/15842-biomas.html. Current biome points remain illustrative.
+- **MapBiomas land cover:** annual maps and thematic products: https://plataforma.brasil.mapbiomas.org/. Native raster ingestion is pending; collection and reference year must be explicit.
+
+The DATA_LAYERS catalog records source, integration status, vintage/scale and limitations.
