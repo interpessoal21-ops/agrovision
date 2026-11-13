@@ -316,9 +316,12 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
         if item.get("modis_date") and start_date <= item["modis_date"] <= end_date
     ]
     selected_dates = sorted(set(selected_dates))
-    records = {}
-    for offset in range(0, len(selected_dates), 10):
-        date_batch = selected_dates[offset:offset + 10]
+    date_batches = [
+        selected_dates[offset:offset + 10]
+        for offset in range(0, len(selected_dates), 10)
+    ]
+
+    def fetch_batch(date_batch):
         params = {
             **common,
             "startDate": date_batch[0],
@@ -333,8 +336,15 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
             attempts=4,
             backoff_seconds=2
         )
-        for day, bands in parse_modis_subset(response.json()).items():
-            records.setdefault(day, {}).update(bands)
+        return parse_modis_subset(response.json())
+
+    # Fetch a few independent date windows concurrently. This reduces the
+    # first-load wait without increasing pressure on ORNL excessively.
+    records = {}
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        for batch_records in executor.map(fetch_batch, date_batches):
+            for day, bands in batch_records.items():
+                records.setdefault(day, {}).update(bands)
     rows = []
     for day, bands in records.items():
         nir = bands.get("250m_16_days_NIR_reflectance")
