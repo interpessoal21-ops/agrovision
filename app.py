@@ -2450,7 +2450,7 @@ with tab_systems:
     )
     validate_catalog()
     categories = sorted({item["category"] for item in AGRONOMIC_SYSTEMS})
-    category_labels = {item["category"]: (item["category_pt"] if LANGUAGE == "pt" else item["category"]) for item in AGRONOMIC_SYSTEMS}
+    category_labels = {item["category"]: (item["category_pt"] if st.session_state.get("agrovision_language") == "Português" else item["category"]) for item in AGRONOMIC_SYSTEMS}
     category_keys = ["All categories"] + categories
     category_options = [tx("All categories", "Todas as categorias")] + [category_labels[key] for key in categories]
     selected_category_label = st.selectbox(tx("Explore by category", "Explorar por categoria"), category_options, key="guma_system_category")
@@ -2465,14 +2465,14 @@ with tab_systems:
     if not filtered_systems:
         st.info(tx("No systems match this search. Try another term.", "Nenhum sistema corresponde à busca. Tente outro termo."))
     for system in filtered_systems:
-        title = system["pt"] if LANGUAGE == "pt" else system["name"]
-        category = system["category_pt"] if LANGUAGE == "pt" else system["category"]
+        title = system["pt"] if st.session_state.get("agrovision_language") == "Português" else system["name"]
+        category = system["category_pt"] if st.session_state.get("agrovision_language") == "Português" else system["category"]
         with st.expander(f"{title} · {category}", expanded=False):
-            how = system["how_pt"] if LANGUAGE == "pt" else system["how"]
-            flow = system["flow_pt"] if LANGUAGE == "pt" else system["flow"]
-            strengths = system["strengths_pt"] if LANGUAGE == "pt" else system["strengths"]
-            limits = system["limits_pt"] if LANGUAGE == "pt" else system["limits"]
-            watch = system["watch_pt"] if LANGUAGE == "pt" else system["watch"]
+            how = system["how_pt"] if st.session_state.get("agrovision_language") == "Português" else system["how"]
+            flow = system["flow_pt"] if st.session_state.get("agrovision_language") == "Português" else system["flow"]
+            strengths = system["strengths_pt"] if st.session_state.get("agrovision_language") == "Português" else system["strengths"]
+            limits = system["limits_pt"] if st.session_state.get("agrovision_language") == "Português" else system["limits"]
+            watch = system["watch_pt"] if st.session_state.get("agrovision_language") == "Português" else system["watch"]
             st.markdown("**" + tx("How it works", "Como funciona") + "**")
             st.write(how)
             st.markdown("**" + tx("Typical operating sequence", "Sequência típica de funcionamento") + "**")
