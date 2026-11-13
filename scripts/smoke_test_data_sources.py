@@ -1,5 +1,11 @@
 """Live endpoint smoke checks for NASA POWER and ORNL MODIS at Rio Verde."""
+import sys
+from pathlib import Path
+
 import requests
+
+# Allow this script to import project modules when executed from scripts/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from agrovision_modis import parse_modis_subset
 
