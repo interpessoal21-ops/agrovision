@@ -89,6 +89,14 @@ Reference sources:
 - [Embrapa — Soybean water requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/soja/pre-producao/caracteristicas-da-especie-e-relacoes-com-o-ambiente/exigencias-climaticas/agua).
 - [Embrapa — Common bean climate requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/feijao/pre-producao/clima).
 
+## AGROVISION Field Lab — community research notebook
+
+Field Lab lets signed-in contributors publish a public research note with a hypothesis, management strategy, comparator, crop, Brazilian macroregion, season and optional contributor-reported metric values. The board supports crop/region/season filters and displays the notes with explicit "unverified community observation" status. It calculates a simple percentage difference only when both values are supplied and the reference is nonzero; this arithmetic is not a causal effect estimate.
+
+Run `supabase/community_schema.sql` in Supabase SQL Editor to create the RLS-protected `field_lab_trials` table (the same migration also creates the Commons table). Browsing is public; publication requires email sign-in and explicit consent. Exact coordinates, personal data and raw daily records are not fields in the Field Lab table. Contributors must avoid sharing confidential or identifying information.
+
+Field Lab is a hypothesis-sharing and evidence notebook, not a controlled-trial registry or peer-reviewed publication system. Contributor-reported values are not independently verified. Differences in soil, cultivar, management, weather, timing and measurement protocols can confound comparisons; do not infer causality or issue agronomic prescriptions from the board alone.
+
 ## AGROVISION Commons — opt-in community comparison\n\nThe Commons tab turns each loaded NASA POWER daily point series into a compact climate fingerprint: mean temperature, mean annual precipitation, annual hot-day frequency, and monthly temperature/rainfall rhythm. Signed-in users may explicitly publish this aggregate profile under a public alias and a broad Brazilian macroregion. Exact coordinates, email, farm name and raw daily records are not sent to the community table. The public board supports crop/season/region filters, a rainfall-versus-temperature climate-space plot, and a descriptive similarity distance. Similarity is not a crop-suitability, productivity or climate-risk score. Contributor labels are self-reported and not independently verified.\n\nTo enable it, run `supabase/community_schema.sql` in the same Supabase SQL Editor after the existing `supabase/schema.sql`. Publication is opt-in; browsing the board is public. Users should not enter identifying aliases or confidential farm information.\n\n## Supabase setup: save projects
 
 Email authentication uses the Supabase Auth REST API. To enable saving and restoring projects:
