@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
 from agrovision_validation import paired_validation_metrics
-from agrovision_modis import parse_modis_subset
+from agrovision_modis import parse_modis_subset, calculate_ndvi_from_reflectance
 from agrovision_quality import climate_quality_report, modis_quality_report
 from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
+from agrovision_rotation import ROTATION_SCENARIOS, compare_rotation_scenarios, scenario_disclosure
 from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
+from agrovision_climate import summarize_local_extremes
+from agrovision_commons import build_climate_fingerprint, comparison_distance
+from agrovision_fieldlab import ALLOWED_CROPS, ALLOWED_REGIONS, ALLOWED_METRICS, ALLOWED_STAGES, validate_trial_record, validate_trial_update, relative_difference
 import requests
 import folium
 import io
@@ -17,106 +21,112 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from streamlit_folium import st_folium
 
-st.set_page_config(page_title="AGROVISION", page_icon="🌱", layout="wide")
+st.set_page_config(page_title="GUMA — Earth Intelligence", page_icon="🌊", layout="wide")
 
 st.markdown("""
 <style>
     :root {
-        --agro-bg: #0b1712; --agro-panel: #14251d; --agro-panel-2: #1a3025;
-        --agro-green: #56a878; --agro-deep: #08130e; --agro-gold: #d6b36a;
-        --agro-text: #e6eee8; --agro-muted: #a8b9ae; --agro-border: #2b4436;
+        --guma-ink: #091722;
+        --guma-ocean: #15364A;
+        --guma-signal: #24C8B5;
+        --guma-lime: #B9F36B;
+        --guma-amber: #F0B66A;
+        --guma-text: #F0F5F3;
+        --guma-muted: #A9BEC5;
+        --guma-panel: #102638;
+        --guma-panel-2: #153044;
+        --guma-border: #29495A;
     }
     .stApp {
         background:
-          radial-gradient(ellipse at 85% 0%, rgba(76,139,98,.16) 0%, transparent 35%),
-          linear-gradient(180deg, #102219 0%, #0b1712 420px);
-        color: var(--agro-text);
+          radial-gradient(ellipse at 88% 0%, rgba(36,200,181,.12) 0%, transparent 34%),
+          radial-gradient(ellipse at 8% 30%, rgba(185,243,107,.055) 0%, transparent 32%),
+          linear-gradient(180deg, #0d2231 0%, var(--guma-ink) 460px);
+        color: var(--guma-text);
+        font-family: Inter, Manrope, ui-sans-serif, system-ui, sans-serif;
     }
-    [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainBlockContainer"] {
-        background: transparent;
-    }
+    [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainBlockContainer"] { background: transparent; }
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #102219 0%, #0d1b14 100%);
-        border-right: 1px solid var(--agro-border);
+        background: linear-gradient(180deg, #102638 0%, #091722 100%);
+        border-right: 1px solid var(--guma-border);
     }
-    [data-testid="stHeader"] { background: rgba(11,23,18,.88); }
+    [data-testid="stHeader"] { background: rgba(9,23,34,.88); }
     [data-testid="stToolbar"], [data-testid="stDecoration"] { background: transparent; }
-    .block-container { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1440px; }
-    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown, [data-testid="stCaptionContainer"] {
-        color: var(--agro-text);
-    }
-    [data-testid="stCaptionContainer"], .stCaption, small { color: var(--agro-muted) !important; }
-    a { color: #86d5a5 !important; }
+    .block-container { padding-top: 1.5rem; padding-bottom: 3rem; max-width: 1480px; }
+    h1,h2,h3,h4,h5,h6,p,li,label,.stMarkdown,[data-testid="stCaptionContainer"] { color: var(--guma-text); }
+    [data-testid="stCaptionContainer"], .stCaption, small { color: var(--guma-muted) !important; }
+    a { color: var(--guma-signal) !important; }
     div.stButton > button[kind="primary"], .stFormSubmitButton > button {
-        background: linear-gradient(105deg, #20583c, #347b52);
-        color: #fff; border: 1px solid #4c9569;
-        box-shadow: 0 5px 16px rgba(0,0,0,.22);
+        background: linear-gradient(105deg, #147F7A, #24AFA5);
+        color: #071923; border: 1px solid rgba(36,200,181,.65);
+        box-shadow: 0 5px 18px rgba(0,0,0,.24); font-weight: 750;
     }
     div.stButton > button {
-        border-radius: 11px; font-weight: 650; color: var(--agro-text);
-        background: #1b3025; border: 1px solid #385542;
+        border-radius: 12px; font-weight: 650; color: var(--guma-text);
+        background: #153044; border: 1px solid #31566A;
+        transition: border-color .18s ease, transform .18s ease, background .18s ease;
     }
-    div.stButton > button:hover { border-color: #79bd91; color: #fff; }
+    div.stButton > button:hover { border-color: var(--guma-lime); color: var(--guma-lime); transform: translateY(-1px); }
     [data-testid="stMetric"], div[data-testid="stMetric"] {
-        background: #172b21; border: 1px solid var(--agro-border);
-        padding: 1rem 1.1rem; border-radius: 14px;
-        box-shadow: 0 3px 12px rgba(0,0,0,.16);
+        background: linear-gradient(145deg, #153044, #102638);
+        border: 1px solid var(--guma-border); padding: 1rem 1.1rem;
+        border-radius: 15px; box-shadow: 0 5px 18px rgba(0,0,0,.16);
     }
-    [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {
-        color: var(--agro-text) !important;
+    [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] { color: var(--guma-text) !important; }
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: var(--guma-lime); }
+    .guma-hero {
+        padding: 2.2rem 2.25rem; border-radius: 24px; color: white; position: relative; overflow: hidden;
+        background:
+          radial-gradient(circle at 84% 12%, rgba(36,200,181,.24), transparent 24%),
+          radial-gradient(circle at 100% 100%, rgba(185,243,107,.12), transparent 34%),
+          linear-gradient(118deg, #091722 0%, #123449 58%, #155568 100%);
+        margin: .25rem 0 1.4rem 0; box-shadow: 0 16px 40px rgba(0,0,0,.28);
+        border: 1px solid rgba(89,185,185,.22);
     }
-    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #c4e6cf; }
-    .hero {
-        padding: 2rem 2.1rem; border-radius: 22px; color: white; position: relative; overflow: hidden;
-        background: radial-gradient(circle at 88% 18%, rgba(214,179,106,.27), transparent 23%), linear-gradient(118deg, #081b12 0%, #174b31 58%, #286b46 100%);
-        margin: .25rem 0 1.35rem 0; box-shadow: 0 14px 34px rgba(0,0,0,.28);
-        border: 1px solid rgba(151,201,164,.18);
-    }
-    .hero h1 { color: white; font-size: 2.35rem; margin: 0 0 .35rem 0; letter-spacing: -.04em; }
-    .hero p { color: #d5e9db; font-size: 1.02rem; margin: 0; max-width: 850px; }
-    .eyebrow { color: #d6c18f; text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 700; margin-bottom: .55rem; }
-    .step-card {
-        background: #172b21; border: 1px solid var(--agro-border); border-radius: 15px;
-        padding: 1rem; min-height: 142px; box-shadow: 0 3px 12px rgba(0,0,0,.16);
-    }
-    .step-number {
-        display: inline-flex; width: 30px; height: 30px; border-radius: 50%;
-        align-items: center; justify-content: center; background: #244a34;
-        color: #bce7c9; font-weight: 800; margin-bottom: .55rem;
-    }
-    .step-card strong { display: block; color: #d4eadb; margin-bottom: .3rem; }
-    .step-card span { color: #afc2b5; font-size: .88rem; line-height: 1.4; }
-    div[data-testid="stTabs"] button { color: #b9cabe; }
-    div[data-testid="stTabs"] button[aria-selected="true"] {
-        color: #a8e0b9; border-bottom-color: #65b783;
-    }
-    .section-note {
-        padding: .8rem 1rem; border-left: 4px solid #65b783; background: #193426;
-        border-radius: 0 10px 10px 0; color: #c7dfce; margin: .5rem 0 1rem 0;
-    }
+    .guma-brandline { display:flex; align-items:center; gap:.8rem; margin-bottom:1.45rem; }
+    .guma-mark { width:52px; height:52px; flex:0 0 52px; filter: drop-shadow(0 5px 14px rgba(36,200,181,.16)); }
+    .guma-wordmark { color:#F0F5F3; font-size:1.35rem; font-weight:850; letter-spacing:.16em; line-height:1.1; }
+    .guma-descriptor { color:#24C8B5; font-size:.65rem; letter-spacing:.17em; font-weight:750; margin-top:.35rem; }
+    .guma-hero h1 { color:#F0F5F3; font-size:2.55rem; margin:0 0 .55rem 0; letter-spacing:-.045em; line-height:1.08; }
+    .guma-hero h1 span { color:#B9F36B; }
+    .guma-hero p { color:#C3D4D8; font-size:1.02rem; margin:0; max-width:860px; line-height:1.6; }
+    .eyebrow { color:#F0B66A; text-transform:uppercase; letter-spacing:.16em; font-size:.7rem; font-weight:750; margin-bottom:.55rem; }
+    .step-card { background:#102638; border:1px solid var(--guma-border); border-radius:16px; padding:1rem; min-height:142px; box-shadow:0 4px 15px rgba(0,0,0,.15); }
+    .step-number { display:inline-flex; width:30px; height:30px; border-radius:50%; align-items:center; justify-content:center; background:rgba(36,200,181,.14); color:var(--guma-signal); font-weight:800; margin-bottom:.55rem; }
+    .step-card strong { display:block; color:#E6F1EF; margin-bottom:.3rem; }
+    .step-card span { color:#A9BEC5; font-size:.88rem; line-height:1.4; }
+    div[data-testid="stTabs"] button { color:#A9BEC5; font-weight:650; }
+    div[data-testid="stTabs"] button[aria-selected="true"] { color:#B9F36B; border-bottom-color:#24C8B5; }
+    .section-note { padding:.85rem 1rem; border-left:4px solid #24C8B5; background:#102F3D; border-radius:0 11px 11px 0; color:#C9E2E0; margin:.5rem 0 1rem 0; }
     [data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div,
     [data-testid="stDateInput"] input, [data-testid="stNumberInput"] input {
-        background: #172b21 !important; color: #e6eee8 !important;
-        border-color: #385542 !important;
+        background:#102638 !important; color:#F0F5F3 !important; border-color:#31566A !important;
     }
-    input, textarea { color: #e6eee8 !important; }
-    [data-baseweb="popover"], [data-baseweb="menu"], [role="listbox"] {
-        background: #172b21 !important; color: #e6eee8 !important;
-    }
-    [data-testid="stDataFrame"], [data-testid="stTable"] {
-        background: #14251d; border: 1px solid var(--agro-border); border-radius: 12px;
-    }
-    [data-testid="stAlert"] { background: #1b3025; color: #e6eee8; border: 1px solid #385542; }
-    hr { border-color: #2b4436 !important; }
-    @media (max-width: 700px) {
-        .hero { padding: 1.2rem; border-radius: 14px; }
-        .hero h1 { font-size: 1.8rem; }
+    input,textarea { color:#F0F5F3 !important; }
+    [data-baseweb="popover"],[data-baseweb="menu"],[role="listbox"] { background:#102638 !important; color:#F0F5F3 !important; }
+    [data-testid="stDataFrame"],[data-testid="stTable"] { background:#102638; border:1px solid var(--guma-border); border-radius:13px; }
+    [data-testid="stAlert"] { background:#153044; color:#F0F5F3; border:1px solid #31566A; }
+    hr { border-color:#29495A !important; }
+    @media (max-width:700px) {
+        .guma-hero { padding:1.25rem; border-radius:16px; }
+        .guma-hero h1 { font-size:1.9rem; }
+        .guma-mark { width:42px; height:42px; flex-basis:42px; }
     }
 </style>
-<div class="hero">
-  <div class="eyebrow">NASA Earth observation · Agricultural insights</div>
-  <h1>🌱 AGROVISION</h1>
-  <p>Explore climate, vegetation and crop-water indicators for your selected study area.</p>
+<div class="guma-hero">
+  <div class="guma-brandline">
+    <svg class="guma-mark" viewBox="0 0 64 64" role="img" aria-label="GUMA mark">
+      <circle cx="32" cy="32" r="25" fill="none" stroke="#24C8B5" stroke-width="1.7" opacity=".72"/>
+      <ellipse cx="32" cy="32" rx="12" ry="25" fill="none" stroke="#B9F36B" stroke-width="1.7" transform="rotate(38 32 32)"/>
+      <path d="M8 36c8-8 14-8 22 0s14 8 26 0" fill="none" stroke="#F0F5F3" stroke-width="3" stroke-linecap="round"/>
+      <path d="M12 44c7-5 13-5 20 0s13 5 20 0" fill="none" stroke="#24C8B5" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="48" cy="15" r="3.2" fill="#F0B66A"/>
+    </svg>
+    <div><div class="guma-wordmark">GUMA</div><div class="guma-descriptor">EARTH INTELLIGENCE</div></div>
+  </div>
+  <div class="eyebrow">CLIMATE · EARTH OBSERVATION · AGRICULTURE · SCIENCE</div>
+  <h1>Beyond the <span>horizon.</span></h1>
+  <p>Explore the connections between climate, territory, vegetation and agricultural systems through Earth observation and scientific data.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -187,11 +197,23 @@ def supabase_auth(endpoint, payload):
     return data
 
 with st.sidebar:
+    st.markdown("""
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 2px 18px 2px;">
+      <svg viewBox="0 0 64 64" width="42" height="42" aria-label="GUMA">
+        <circle cx="32" cy="32" r="25" fill="none" stroke="#24C8B5" stroke-width="2"/>
+        <ellipse cx="32" cy="32" rx="12" ry="25" fill="none" stroke="#B9F36B" stroke-width="2" transform="rotate(38 32 32)"/>
+        <path d="M8 36c8-8 14-8 22 0s14 8 26 0M12 44c7-5 13-5 20 0s13 5 20 0" fill="none" stroke="#F0F5F3" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="48" cy="15" r="3" fill="#F0B66A"/>
+      </svg>
+      <div><div style="color:#F0F5F3;font-weight:850;letter-spacing:.18em;font-size:1.08rem;">GUMA</div>
+      <div style="color:#24C8B5;font-size:.58rem;letter-spacing:.13em;font-weight:750;">EARTH INTELLIGENCE</div></div>
+    </div>
+    """, unsafe_allow_html=True)
     st.selectbox("Language / Idioma", ["English", "Português"], key="agrovision_language")
 
 auth_mode = st.session_state.get("agrovision_auth_mode")
 if auth_mode not in ("guest", "email"):
-    st.markdown("### " + tx("Welcome to AGROVISION", "Bem-vindo ao AGROVISION"))
+    st.markdown("### " + tx("Welcome to GUMA", "Bem-vindo ao GUMA"))
     st.write(tx("Choose how you want to explore the platform.", "Escolha como deseja explorar a plataforma."))
     login_tab, signup_tab = st.tabs([tx("✉️ Sign in", "✉️ Entrar"), tx("Create account", "Criar conta")])
     supabase_url, supabase_key, _supabase_key_source = supabase_settings()
@@ -311,16 +333,7 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
         nir = bands.get("250m_16_days_NIR_reflectance")
         red = bands.get("250m_16_days_red_reflectance")
         quality = bands.get("250m_16_days_pixel_reliability")
-        valid_reflectance = (
-            nir is not None and red is not None
-            and nir >= -1000 and red >= -1000
-            and nir + red != 0
-        )
-        ndvi = (
-            (nir - red) / (nir + red)
-            if valid_reflectance and quality in (0, 1)
-            else None
-        )
+        ndvi = calculate_ndvi_from_reflectance(nir, red, quality)
         rows.append({
             "Date": pd.Timestamp(day),
             "Quality": quality,
@@ -335,33 +348,14 @@ if "pending_study_coords" in st.session_state:
     st.session_state["lat_value"] = pending_lat
     st.session_state["lon_value"] = pending_lon
 
-st.subheader(tx("🗺️ Select your study area on the map", "🗺️ Selecione a área de estudo no mapa"))
-st.caption(tx("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.", "Clique no mapa para escolher um ponto ou informe as coordenadas no painel Área de estudo."))
-map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
-study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
-# Public Esri basemaps add satellite and topographic context without a CARTO API key.
-folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community", name="Satellite imagery", overlay=False, control=True).add_to(study_map)
-folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, increment P Corp.", name="Topographic map", overlay=False, control=True).add_to(study_map)
-folium.LayerControl(collapsed=True).add_to(study_map)
-folium.CircleMarker(
-    location=map_center, radius=8, color="#176b45", weight=3,
-    fill=True, fill_color="#4da978", fill_opacity=0.9,
-    tooltip="Current study area"
-).add_to(study_map)
-map_event = st_folium(study_map, height=360, use_container_width=True, returned_objects=["last_clicked"], key="agrovision_study_map")
-if map_event and map_event.get("last_clicked"):
-    clicked_lat = round(float(map_event["last_clicked"]["lat"]), 4)
-    clicked_lon = round(float(map_event["last_clicked"]["lng"]), 4)
-    clicked_point = (clicked_lat, clicked_lon)
-    if clicked_point != st.session_state.get("last_map_click"):
-        st.session_state["last_map_click"] = clicked_point
-        st.session_state["lat_value"] = clicked_lat
-        st.session_state["lon_value"] = clicked_lon
-        st.rerun()
-
 with st.sidebar:
     st.header(tx("Study area", "Área de estudo"))
     st.caption(tx("Enter the coordinates of the area you want to investigate.", "Informe as coordenadas da área que deseja investigar."))
+    if st.button(tx("📍 Use Rio Verde, GO pilot", "📍 Usar piloto de Rio Verde, GO"), use_container_width=True, help=tx("Loads the municipal-seat coordinates as a demonstration study point. Replace them with farm coordinates for local analysis.", "Carrega as coordenadas da sede municipal como ponto de demonstração. Substitua pelas coordenadas da propriedade para análise local.")):
+        st.session_state["lat_value"] = -17.79
+        st.session_state["lon_value"] = -50.91
+        st.session_state["elevation_m"] = 748.0
+        st.rerun()
     lat = st.number_input("Latitude", -90.0, 90.0, -15.8, 0.01, format="%.4f", key="lat_value", help="Decimal degrees. Locations south of the Equator use negative values.")
     lon = st.number_input("Longitude", -180.0, 180.0, -47.0, 0.01, format="%.4f", key="lon_value", help="Decimal degrees. Locations west of Greenwich use negative values.")
     elevation_m = st.number_input(tx("Elevation (m above sea level)", "Altitude (m acima do nível do mar)"), -500.0, 9000.0, 100.0, 1.0, key="elevation_m", help=tx("Required by FAO-56 atmospheric pressure and clear-sky radiation calculations. Enter a reliable local elevation.", "Necessária nos cálculos de pressão atmosférica e radiação de céu claro FAO-56. Informe uma altitude local confiável."))
@@ -381,20 +375,27 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
-    tx("Environmental dashboard", "Painel ambiental"),
-    tx("Crop analysis", "Análise de culturas"),
-    tx("Data & limitations", "Dados e limitações"),
-    tx("Saved projects", "Projetos salvos"),
-    tx("Scientific validation", "Validação científica"),
-    tx("📚 Knowledge", "📚 Conhecimento"),
-    tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado")
+tab_home, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab, tab_partners, tab_systems = st.tabs([
+    tx("🌐 00 · Earth Observatory", "🌐 00 · Observatório da Terra"),
+    tx("👋 01 · Start here", "👋 01 · Comece aqui"),
+    tx("🛰️ 02 · Earth data", "🛰️ 02 · Dados da Terra"),
+    tx("🌱 03 · Crop intelligence", "🌱 03 · Inteligência agrícola"),
+    tx("📚 04 · Data & methods", "📚 04 · Dados e métodos"),
+    tx("🗂️ 05 · Workspace", "🗂️ 05 · Projetos"),
+    tx("🧪 06 · Validation", "🧪 06 · Validação"),
+    tx("📖 07 · Knowledge", "📖 07 · Conhecimento"),
+    tx("📊 08 · Evidence", "📊 08 · Evidências"),
+    tx("🌾 09 · Rotation Lab", "🌾 09 · Rotação de culturas"),
+    tx("🌍 10 · Climate Watch", "🌍 10 · Monitoramento climático"),
+    tx("🧬 11 · Commons", "🧬 11 · Comunidade"),
+    tx("🔬 12 · Field Lab", "🔬 12 · Laboratório de Campo"),
+    tx("🤝 13 · Partnerships", "🤝 13 · Alianças"),
+    tx("🌾 14 · Agronomic Systems", "🌾 14 · Sistemas agronômicos")
 ])
 
 
 with tab6:
-    st.header(tx("AGROVISION Knowledge", "Conhecimento AGROVISION"))
+    st.header(tx("GUMA Knowledge", "Conhecimento GUMA"))
     st.write(tx(
         "A practical science library for understanding the data behind agricultural decisions.",
         "Uma biblioteca científica prática para entender os dados por trás das análises agrícolas."
@@ -515,8 +516,8 @@ with tab6:
     st.divider()
     st.subheader(tx("How to use this library", "Como usar esta biblioteca"))
     st.write(tx(
-        "Start with the explanation, open the primary reference, and then return to the relevant AGROVISION tool. Each material is educational: verify the source, date, geographic scope and assumptions before using information in a real-world decision.",
-        "Comece pela explicação, abra a referência primária e depois volte à ferramenta correspondente do AGROVISION. Os materiais são educativos: confira fonte, data, abrangência geográfica e hipóteses antes de usar a informação em uma decisão real."
+        "Start with the explanation, open the primary reference, and then return to the relevant GUMA tool. Each material is educational: verify the source, date, geographic scope and assumptions before using information in a real-world decision.",
+        "Comece pela explicação, abra a referência primária e depois volte à ferramenta correspondente do GUMA. Os materiais são educativos: confira fonte, data, abrangência geográfica e hipóteses antes de usar a informação em uma decisão real."
     ))
     st.caption(tx(
         "Editorial library · Foundational references, not a live news feed. New research and official updates are reviewed separately.",
@@ -616,7 +617,7 @@ with tab_help:
         - **Sandy / Loamy / Clayey:** choose the closest known soil texture. If you do not know it, leave **Unknown**.
         - **Soil fertility:** choose a low, medium, or high qualitative estimate based on local knowledge or soil analysis.
         """)
-        st.warning("These are user-provided context values. AGROVISION does not measure soil texture or fertility from NASA data.")
+        st.warning("These are user-provided context values. GUMA does not measure soil texture or fertility from NASA data.")
 
     with st.expander("3. Load the environmental data"):
         st.markdown("""
@@ -673,12 +674,12 @@ with tab_help:
     st.subheader(tx("What the platform does — and does not do", "O que a plataforma faz — e o que não faz"))
     left, right = st.columns(2)
     with left:
-        st.markdown("**AGROVISION can help you:**")
+        st.markdown("**GUMA can help you:**")
         st.markdown("- Explore climate indicators for a selected location.\n- View satellite-derived vegetation observations.\n- Compare historical climate during representative cycles of maize, soybean and common bean.\n- Review the reference ranges and assumptions behind each crop screen.")
     with right:
-        st.markdown("**AGROVISION does not currently:**")
+        st.markdown("**GUMA does not currently:**")
         st.markdown("- Measure soil properties directly.\n- Reproduce the full official ZARC/SARRA model.\n- Predict crop yield or farm profit.\n- Provide a certified planting or irrigation recommendation.\n- Display SMAP data in this public deployment.")
-    st.caption("AGROVISION · " + tx("First-visit guide · Agricultural climate analysis", "Guia inicial · Análise climática agrícola"))
+    st.caption("GUMA · " + tx("First-visit guide · Agricultural climate analysis", "Guia inicial · Análise climática agrícola"))
 
 with tab1:
     st.subheader(tx("Your study area, from space", "Sua área de estudo vista do espaço"))
@@ -718,7 +719,418 @@ with tab1:
             except Exception:
                 pass
             st.error(f"Data request failed: {exc}")
-    if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
+    
+    
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_climate_watch_data():
+    from agrovision_climate import fetch_climate_watch
+    return fetch_climate_watch()
+
+with tab_home:
+    st.markdown("""
+    <div style="padding:1.65rem 1.8rem;border:1px solid #29495A;border-radius:20px;
+      background:radial-gradient(circle at 90% 8%,rgba(36,200,181,.18),transparent 30%),
+      radial-gradient(circle at 4% 100%,rgba(185,243,107,.09),transparent 35%),
+      linear-gradient(115deg,#091722,#123449 68%,#155568);margin:.3rem 0 1rem 0">
+      <div style="color:#24C8B5;font-size:.7rem;letter-spacing:.2em;font-weight:800">GUMA · EARTH INTELLIGENCE PLATFORM</div>
+      <h1 style="color:#F0F5F3;margin:.35rem 0 .45rem 0;font-size:2.15rem">Observe the Earth. Understand the signals.</h1>
+      <p style="color:#C3D4D8;margin:0;max-width:900px;line-height:1.6">A connected workspace for planetary change, territorial evidence and agricultural systems — from global climate signals to a selected study point.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("**" + tx("THE OBSERVATORY", "O OBSERVATÓRIO") + "**")
+    st.caption(tx("One platform, four connected domains. Start with a territory, follow the environmental signals, and inspect the evidence behind each interpretation.",
+                 "Uma plataforma, quatro domínios conectados. Comece por um território, acompanhe os sinais ambientais e examine as evidências por trás de cada interpretação."))
+    d1,d2,d3,d4=st.columns(4)
+    d1.metric(tx("Territory", "Território"), f"{lat:.3f}, {lon:.3f}", tx("Selected study point", "Ponto de estudo selecionado"))
+    climate_loaded = "climate" in st.session_state and st.session_state.get("coords") == (lat,lon)
+    vegetation_loaded = climate_loaded and not st.session_state.get("modis", pd.DataFrame()).empty
+    d2.metric(tx("Climate data", "Dados climáticos"), tx("Loaded", "Carregados") if climate_loaded else tx("Not loaded", "Não carregados"))
+    d3.metric("MODIS NDVI", tx("Available", "Disponível") if vegetation_loaded else tx("Not loaded", "Não carregado"))
+    d4.metric(tx("Global observatory", "Observatório global"), tx("On demand", "Sob demanda"), tx("NASA · NOAA", "NASA · NOAA"))
+    st.divider()
+    st.subheader(tx("Explore the Earth", "Explore a Terra"))
+    map_left,map_right=st.columns([1.55,1])
+    with map_left:
+        st.caption(tx("Select a point to connect the platform's local analysis to a territory. Use the layer control to switch between street, satellite and topographic views.",
+                     "Selecione um ponto para conectar a análise local da plataforma a um território. Use o controle de camadas para alternar entre mapa de ruas, satélite e topografia."))
+        map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
+        study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
+        folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community", name="Satellite imagery", overlay=False, control=True).add_to(study_map)
+        folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, increment P Corp.", name="Topographic map", overlay=False, control=True).add_to(study_map)
+        folium.LayerControl(collapsed=True).add_to(study_map)
+        folium.CircleMarker(location=map_center, radius=8, color="#24C8B5", weight=3, fill=True, fill_color="#B9F36B", fill_opacity=.9, tooltip="Current study area").add_to(study_map)
+        map_event = st_folium(study_map, height=390, use_container_width=True, returned_objects=["last_clicked"], key="guma_observatory_map")
+        if map_event and map_event.get("last_clicked"):
+            clicked_lat = round(float(map_event["last_clicked"]["lat"]),4)
+            clicked_lon = round(float(map_event["last_clicked"]["lng"]),4)
+            clicked_point=(clicked_lat,clicked_lon)
+            if clicked_point != st.session_state.get("last_map_click"):
+                st.session_state["last_map_click"]=clicked_point
+                st.session_state["lat_value"]=clicked_lat
+                st.session_state["lon_value"]=clicked_lon
+                st.rerun()
+    with map_right:
+        st.markdown("**" + tx("A connected Earth system", "Um sistema terrestre conectado") + "**")
+        with st.container(border=True):
+            st.markdown("**01 · " + tx("Climate intelligence", "Inteligência climática") + "**")
+            st.caption(tx("Global temperature, greenhouse gases and local climate extremes.", "Temperatura global, gases de efeito estufa e extremos climáticos locais."))
+        with st.container(border=True):
+            st.markdown("**02 · " + tx("Earth observation", "Observação da Terra") + "**")
+            st.caption(tx("Satellite-derived vegetation signals and environmental context.", "Sinais de vegetação derivados de satélite e contexto ambiental."))
+        with st.container(border=True):
+            st.markdown("**03 · " + tx("Agricultural intelligence", "Inteligência agrícola") + "**")
+            st.caption(tx("Crop windows, water balance, rotation scenarios and official references.", "Janelas de cultivo, balanço hídrico, cenários de rotação e referências oficiais."))
+        with st.container(border=True):
+            st.markdown("**04 · " + tx("Research commons", "Pesquisa colaborativa") + "**")
+            st.caption(tx("Transparent methods, validation, shared observations and field hypotheses.", "Métodos transparentes, validação, observações compartilhadas e hipóteses de campo."))
+    st.divider()
+    st.subheader(tx("Global climate pulse", "Pulso climático global"))
+    st.caption(tx("Load the latest available NASA and NOAA monthly series. Publication dates differ by dataset; these are not real-time measurements.",
+                 "Carregue as séries mensais mais recentes disponíveis da NASA e NOAA. As datas de publicação variam por base; não são medições em tempo real."))
+    if st.button(tx("Retrieve global indicators", "Consultar indicadores globais"), type="primary", key="home_global_climate"):
+        try:
+            with st.spinner(tx("Retrieving NASA and NOAA datasets…", "Consultando bases da NASA e NOAA…")):
+                st.session_state["guma_global_climate"] = get_climate_watch_data()
+            st.success(tx("Global indicators updated.", "Indicadores globais atualizados."))
+        except Exception as exc:
+            st.warning(tx("Global indicators could not be retrieved: ", "Não foi possível consultar os indicadores globais: ") + str(exc))
+    global_data = st.session_state.get("guma_global_climate")
+    if global_data:
+        t=global_data["temperature"]; c=global_data["co2"]; m=global_data["ch4"]; n=global_data["n2o"]
+        if all(not x.empty for x in (t,c,m,n)):
+            last_t,last_c,last_m,last_n=t.iloc[-1],c.iloc[-1],m.iloc[-1],n.iloc[-1]
+            g1,g2,g3,g4=st.columns(4)
+            g1.metric(tx("Global temperature anomaly","Anomalia da temperatura global"),f"{last_t['Anomaly_C']:+.2f} °C",tx("vs 1951–1980","vs. 1951–1980"))
+            g2.metric("CO₂ · Mauna Loa",f"{last_c['CO2_ppm']:.1f} ppm",f"{last_c['Date']:%b %Y}")
+            g3.metric("CH₄ · NOAA",f"{last_m['CH4_ppb']:.1f} ppb",f"{last_m['Date']:%b %Y}")
+            g4.metric("N₂O · NOAA",f"{last_n['N2O_ppb']:.2f} ppb",f"{last_n['Date']:%b %Y}")
+            st.caption(tx(f"Retrieved {global_data['retrieved_at']:%Y-%m-%d %H:%M UTC}. Open Climate Watch for full time series, methodology and local extreme indicators.",
+                          f"Consulta em {global_data['retrieved_at']:%d/%m/%Y %H:%M UTC}. Abra Monitoramento climático para séries completas, metodologia e indicadores locais de extremos."))
+            annual=t.assign(Year=t["Date"].dt.year).groupby("Year")["Anomaly_C"].mean()
+            st.area_chart(annual.rename("Annual global temperature anomaly (°C)"),height=210)
+        else:
+            st.warning(tx("At least one climate dataset has no usable observations.", "Pelo menos uma série climática não possui observações utilizáveis."))
+    else:
+        st.info(tx("No global climate snapshot has been requested in this session yet.", "Nenhum retrato climático global foi solicitado nesta sessão."))
+    st.divider()
+    st.subheader(tx("Platform modules", "Módulos da plataforma"))
+    module_cards=[
+      ("🌍","Climate Watch",tx("Planetary warming, greenhouse gases and local extremes.","Aquecimento global, gases de efeito estufa e extremos locais."),"10"),
+      ("🛰️",tx("Earth data","Dados da Terra"),tx("NASA POWER climate series and MODIS vegetation observations.","Séries climáticas NASA POWER e observações de vegetação MODIS."),"02"),
+      ("🌱",tx("Crop intelligence","Inteligência agrícola"),tx("Crop-specific climate screening, FAO-56 water balance and ZARC references.","Análise climática por cultura, balanço hídrico FAO-56 e referências ZARC."),"03"),
+      ("🌾","Rotation Lab",tx("Compare transparent historical crop-window scenarios.","Compare cenários históricos transparentes de janelas de cultivo."),"09"),
+      ("📚",tx("Knowledge","Conhecimento"),tx("Methods, scientific references and data interpretation.","Métodos, referências científicas e interpretação de dados."),"07"),
+      ("🧪",tx("Validation & Field Lab","Validação e Laboratório de Campo"),tx("Compare station observations and document field hypotheses.","Compare observações de estações e documente hipóteses de campo."),"06 / 12"),
+      ("🧬","GUMA Commons",tx("Opt-in climate fingerprints and community comparisons.","Assinaturas climáticas voluntárias e comparações comunitárias."),"11"),
+      ("🗂️",tx("Workspace","Área de trabalho"),tx("Save and retrieve studies linked to your account.","Salve e recupere estudos vinculados à sua conta."),"05"),
+    ]
+    for start in range(0,len(module_cards),4):
+        cols=st.columns(4)
+        for col,item in zip(cols,module_cards[start:start+4]):
+            with col:
+                with st.container(border=True):
+                    st.markdown(f"### {item[0]} {item[1]}")
+                    st.caption(item[2])
+                    st.caption(tx("MODULE","MÓDULO")+" "+item[3])
+    st.subheader(tx("Beyond agriculture · Earth systems roadmap", "Além da agricultura · Roteiro dos sistemas terrestres"))
+    roadmap = [
+      ("🌊", tx("Oceans & cryosphere", "Oceanos e criosfera"), tx("Sea level, ocean heat, sea-surface conditions, glaciers and ice sheets.", "Nível do mar, calor oceânico, condições da superfície do mar, geleiras e mantos de gelo."), tx("Planned · source integration and uncertainty review", "Planejado · integração das fontes e revisão de incertezas")),
+      ("🌳", tx("Forests, biodiversity & fire", "Florestas, biodiversidade e fogo"), tx("Forest cover, restoration, habitat context, fire scars and ecosystem change.", "Cobertura florestal, restauração, contexto de habitats, cicatrizes de fogo e mudanças ecossistêmicas."), tx("Planned · Brazilian public datasets first", "Planejado · prioridade às bases públicas brasileiras")),
+      ("🗺️", tx("Land use & territorial change", "Uso do solo e transformação territorial"), tx("Annual land-cover transitions, agriculture, pasture, mining and urban expansion.", "Transições anuais de cobertura, agricultura, pastagem, mineração e expansão urbana."), tx("Planned · MapBiomas / INPE pathways", "Planejado · integração MapBiomas / INPE")),
+      ("💧", tx("Water & environmental risk", "Água e risco ambiental"), tx("River basins, water availability, floods, droughts, landslides and observation networks.", "Bacias hidrográficas, disponibilidade hídrica, enchentes, secas, deslizamentos e redes de observação."), tx("Planned · ANA / CEMADEN pathways", "Planejado · integração ANA / CEMADEN")),
+    ]
+    for row in roadmap:
+        with st.container(border=True):
+            c1,c2=st.columns([1,4])
+            c1.markdown(f"### {row[0]} {row[1]}")
+            c2.write(row[2])
+            c2.caption(row[3])
+    st.caption(tx("Roadmap only: these layers are not represented as integrated datasets until ingestion, provenance, licensing and quality checks are implemented.",
+                  "Apenas roteiro: essas camadas não são apresentadas como bases integradas até que ingestão, proveniência, licenciamento e controle de qualidade sejam implementados."))
+    st.caption(tx("Scientific transparency: GUMA distinguishes observed datasets, derived indicators, exploratory scenarios and user-provided context. No output on this page is a calibrated yield forecast or agronomic prescription.",
+                  "Transparência científica: GUMA distingue bases observadas, indicadores derivados, cenários exploratórios e contexto informado pelo usuário. Nenhum resultado desta página é previsão calibrada de produtividade ou prescrição agronômica."))
+
+with tab_partners:
+    st.markdown("""
+    <div style="padding:1.55rem 1.8rem;border:1px solid #29495A;border-radius:18px;
+      background:radial-gradient(circle at 92% 8%,rgba(36,200,181,.18),transparent 30%),
+      linear-gradient(115deg,#091722,#15364A 70%,#155568);margin:.3rem 0 1rem 0">
+      <div style="color:#24C8B5;font-size:.7rem;letter-spacing:.2em;font-weight:800">GUMA · ECOSYSTEM DEVELOPMENT</div>
+      <h1 style="color:#F0F5F3;margin:.3rem 0">PARTNERSHIPS & ALLIANCES</h1>
+      <p style="color:#C3D4D8;margin:0">Build the network behind better Earth intelligence — science, public data, infrastructure, field validation and responsible innovation.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.write(tx("This is a prospecting map, not a list of confirmed partners. Every organization below is an independent institution or initiative; no endorsement, agreement or active relationship with GUMA is implied.",
+                "Este é um mapa de prospecção, não uma lista de parceiros confirmados. Cada organização ou iniciativa abaixo é independente; não implica endosso, acordo ou relacionamento ativo com a GUMA."))
+    p1,p2,p3,p4=st.columns(4)
+    p1.metric(tx("Public-data pathways","Caminhos de dados públicos"),"6+")
+    p2.metric(tx("Research & funding routes","Rotas de pesquisa e fomento"),"5+")
+    p3.metric(tx("Private innovation routes","Rotas de inovação privada"),"3+")
+    p4.metric(tx("Priority","Prioridade"),tx("Evidence first","Evidência primeiro"))
+    st.divider()
+    st.subheader(tx("How alliances can strengthen GUMA","Como alianças podem fortalecer a GUMA"))
+    st.markdown(tx(
+      """- **Data & APIs:** authoritative datasets, documented access, metadata and update cadence.
+- **Scientific review:** independent review of methods, uncertainty, validation and reproducibility.
+- **Field pilots:** compare satellite and gridded products with stations, farms, watersheds and field observations.
+- **Compute & technology:** geospatial infrastructure, cloud credits, GIS, AI and engineering support.
+- **Funding & institutional support:** grants, research agreements, innovation calls and student/researcher networks.
+- **Distribution & adoption:** connect outputs to cooperatives, public managers, researchers and producers.""",
+      """- **Dados e APIs:** bases confiáveis, acesso documentado, metadados e frequência de atualização.
+- **Revisão científica:** avaliação independente de métodos, incertezas, validação e reprodutibilidade.
+- **Pilotos de campo:** comparar satélites e produtos em grade com estações, propriedades, bacias e observações de campo.
+- **Computação e tecnologia:** infraestrutura geoespacial, créditos de nuvem, SIG, IA e apoio de engenharia.
+- **Fomento e apoio institucional:** editais, acordos de pesquisa, chamadas de inovação e redes de estudantes/pesquisadores.
+- **Distribuição e adoção:** conectar resultados a cooperativas, gestores públicos, pesquisadores e produtores."""
+    ))
+    partners = [
+      {"name":"INPE","kind":"Public science & data","priority":"A · Strategic","fit":"Earth observation, land-cover monitoring, fire, deforestation and satellite products.","ask":"Technical dialogue, public datasets, methodological references and possible research collaboration.","offer":"A transparent integration layer, reproducible workflows, documented use cases and feedback on data usability.","url":"https://www.gov.br/inpe/pt-br","label":"Official institute"},
+      {"name":"INMET","kind":"Public data & validation","priority":"A · Strategic","fit":"Meteorological station observations and AgroMet context for Brazilian agricultural territories.","ask":"Documented access to station observations, metadata, quality flags and validation guidance.","offer":"Comparative dashboards, station-vs-grid validation notebooks and clear attribution.","url":"https://portal.inmet.gov.br/","label":"Official service"},
+      {"name":"EMBRAPA","kind":"Applied agricultural research","priority":"A · Strategic","fit":"Crop science, soil, agroclimatology, production systems and applied validation.","ask":"Scientific review, crop-calendar expertise, research questions and potential field pilot partners.","offer":"Exploratory geospatial tools, transparent climate screening and collaborative research prototypes.","url":"https://www.embrapa.br/","label":"Research institution"},
+      {"name":"CEMADEN","kind":"Public risk monitoring","priority":"B · High value","fit":"Rainfall, hydrology, geotechnical monitoring and disaster-risk observation networks.","ask":"Methods, station/network metadata and opportunities to compare environmental signals with risk observations.","offer":"Territorial visualizations and reproducible analysis of climate extremes, with limitations explicit.","url":"https://www.gov.br/cemaden/pt-br","label":"Public monitoring"},
+      {"name":"MMA · INDE","kind":"Public geospatial infrastructure","priority":"A · Strategic","fit":"Catalogued geospatial data on biodiversity, forests, water, climate and territorial policy.","ask":"Discovery of authoritative layers, metadata standards, services and licensing guidance.","offer":"Interoperable map views, source attribution and accessible territorial synthesis.","url":"https://www.gov.br/mma/pt-br/acesso-a-informacao/informacoes-ambientais/mapas-interativos","label":"Public data ecosystem"},
+      {"name":"MapBiomas","kind":"Research network & open data","priority":"A · Strategic","fit":"Annual land-cover/use, agriculture, pasture, fire, water, mining and soil-carbon datasets.","ask":"Use guidance, technical documentation, network contacts and potential research collaboration.","offer":"New interfaces for exploring public layers and cross-domain analysis with transparent citations.","url":"https://brasil.mapbiomas.org/","label":"Multi-institutional network"},
+      {"name":"FINEP · COOPERAMAIS","kind":"Public innovation funding","priority":"B · Eligibility-dependent","fit":"Funding pathways for technology development in family farming, agroindustry, digital transformation and climate resilience.","ask":"Eligibility guidance and a qualified institutional/company/cooperative consortium if a matching call is open.","offer":"A defined technical work package, measurable deliverables and transparent prototype evidence.","url":"https://www.finep.gov.br/l/1060720","label":"Funding call · check rules"},
+      {"name":"FAPESP / CONFAP / State FAPs","kind":"Research funding & networks","priority":"B · Eligibility-dependent","fit":"Research grants, cooperation agreements and state-level science/innovation ecosystems.","ask":"Academic host, principal investigator, research plan and fit with current calls.","offer":"Open, reproducible software and a research platform that can support a funded project.","url":"https://www.fapesp.br/acordos/","label":"Funding & cooperation"},
+      {"name":"EMBRAPII","kind":"Industry–research collaboration","priority":"B · Eligibility-dependent","fit":"Applied R&D through accredited research units and business partners.","ask":"Identify a suitable accredited unit and company challenge with a defined R&D scope.","offer":"Problem framing, geospatial prototype and a route to validate an applied solution.","url":"https://embrapii.org.br/","label":"Innovation ecosystem"},
+      {"name":"Petrobras · Open Innovation","kind":"Private-sector innovation","priority":"B · Challenge-dependent","fit":"Open innovation, technology transfer, solution acquisition and collaborative development; potentially relevant to ocean, climate, energy and geospatial monitoring.","ask":"Track published challenges and assess fit before submitting a proposal; no standing GUMA invitation is assumed.","offer":"A focused demonstrator for environmental monitoring or territorial intelligence with measurable technical criteria.","url":"https://petrobras.com.br/inovacao-e-tecnologia/inovacao-aberta","label":"Open innovation portal"},
+      {"name":"Agtech Innovation","kind":"Private-sector ecosystem","priority":"B · Program-dependent","fit":"Corporate innovation programs, startup connections and farmer-centered technology adoption.","ask":"Explore program fit, introductions to agribusiness partners and pilot opportunities when calls are open.","offer":"A research-led geospatial prototype for climate risk, crop systems and territorial intelligence.","url":"https://www.pwc.com.br/pt/consultoria/agtech-innovation-en/programs.html","label":"Innovation programs"},
+    ]
+    categories = [tx("All prospects","Todas as possibilidades"),"Public science & data","Applied agricultural research","Public risk monitoring","Public geospatial infrastructure","Research network & open data","Public innovation funding","Research funding & networks","Industry–research collaboration","Private-sector innovation","Private-sector ecosystem","Public data & validation"]
+    chosen = st.selectbox(tx("Filter the alliance landscape","Filtrar o mapa de alianças"),categories,key="guma_partner_filter")
+    visible = partners if chosen == categories[0] else [x for x in partners if x["kind"] == chosen]
+    partner_pt = {
+      "INPE":("Ciência e dados públicos","Observação da Terra, monitoramento do uso do solo, fogo, desmatamento e produtos de satélite.","Diálogo técnico, bases públicas, referências metodológicas e possível colaboração de pesquisa.","Uma camada transparente de integração, fluxos reproduzíveis, casos de uso documentados e retorno sobre a usabilidade dos dados.","Instituto oficial"),
+      "INMET":("Dados públicos e validação","Observações de estações meteorológicas e contexto AgroMet para territórios agrícolas brasileiros.","Acesso documentado a observações, metadados, indicadores de qualidade e orientação para validação.","Painéis comparativos, cadernos de validação estação versus grade e atribuição clara das fontes.","Serviço oficial"),
+      "EMBRAPA":("Pesquisa agrícola aplicada","Ciência das culturas, solos, agrometeorologia, sistemas produtivos e validação aplicada.","Revisão científica, conhecimento de calendários agrícolas, perguntas de pesquisa e possíveis pilotos de campo.","Ferramentas geoespaciais exploratórias, triagem climática transparente e protótipos colaborativos de pesquisa.","Instituição de pesquisa"),
+      "CEMADEN":("Monitoramento público de riscos","Chuva, hidrologia, monitoramento geotécnico e redes de observação de riscos e desastres.","Métodos, metadados das redes e oportunidades para comparar sinais ambientais com observações de risco.","Visualizações territoriais e análises reproduzíveis de extremos climáticos, com limitações explícitas.","Monitoramento público"),
+      "MMA · INDE":("Infraestrutura geoespacial pública","Dados geoespaciais catalogados sobre biodiversidade, florestas, água, clima e políticas territoriais.","Identificação de camadas oficiais, metadados, padrões de serviços e orientação sobre licenças.","Visualizações interoperáveis, atribuição de fontes e síntese territorial acessível.","Ecossistema de dados públicos"),
+      "MapBiomas":("Rede de pesquisa e dados abertos","Bases anuais de cobertura e uso da terra, agricultura, pastagem, fogo, água, mineração e carbono no solo.","Orientação de uso, documentação técnica, contatos da rede e possível colaboração de pesquisa.","Novas interfaces para explorar camadas públicas e análises entre domínios com citações transparentes.","Rede multi-institucional"),
+      "FINEP · COOPERAMAIS":("Fomento público à inovação","Caminhos de financiamento para tecnologia na agricultura familiar, agroindústria, transformação digital e resiliência climática.","Orientação sobre elegibilidade e eventual consórcio qualificado entre instituição, empresa e cooperativa, se houver chamada compatível.","Um pacote técnico definido, entregáveis mensuráveis e evidências transparentes do protótipo.","Edital · conferir regras"),
+      "FAPESP / CONFAP / State FAPs":("Fomento e redes de pesquisa","Auxílios à pesquisa, acordos de cooperação e ecossistemas estaduais de ciência e inovação.","Instituição anfitriã, pesquisador responsável, plano de pesquisa e aderência a chamadas vigentes.","Software aberto e reproduzível e uma plataforma de pesquisa para apoiar um projeto financiado.","Fomento e cooperação"),
+      "EMBRAPII":("Colaboração indústria–pesquisa","P&D aplicado por meio de unidades de pesquisa credenciadas e empresas parceiras.","Identificar unidade credenciada adequada e desafio empresarial com escopo de P&D definido.","Formulação do problema, protótipo geoespacial e caminho para validar uma solução aplicada.","Ecossistema de inovação"),
+      "Petrobras · Open Innovation":("Inovação do setor privado","Inovação aberta, transferência de tecnologia, aquisição de soluções e desenvolvimento colaborativo; potencialmente relevante para oceano, clima, energia e monitoramento geoespacial.","Acompanhar desafios publicados e avaliar aderência antes de submeter proposta; não se presume convite permanente à GUMA.","Um demonstrador focado em monitoramento ambiental ou inteligência territorial com critérios técnicos mensuráveis.","Portal de inovação aberta"),
+      "Agtech Innovation":("Ecossistema privado","Programas de inovação corporativa, conexões entre startups e adoção de tecnologia centrada no produtor.","Explorar aderência a programas, conexões com parceiros do agronegócio e oportunidades de piloto quando houver chamadas.","Um protótipo geoespacial orientado por pesquisa para risco climático, sistemas agrícolas e inteligência territorial.","Programas de inovação")
+    }
+    for item in visible:
+        pt = partner_pt.get(item["name"], ())
+        with st.expander(f"{item['name']}  ·  {item['priority']}"):
+            st.caption(tx(item["kind"],pt[0] if pt else item["kind"])+" · "+tx(item["label"],pt[4] if pt else item["label"]))
+            st.write("**"+tx("Why it matters","Por que importa")+":** "+tx(item["fit"],pt[1] if pt else item["fit"]))
+            st.write("**"+tx("What GUMA could seek","O que a GUMA poderia buscar")+":** "+tx(item["ask"],pt[2] if pt else item["ask"]))
+            st.write("**"+tx("What GUMA could contribute","O que a GUMA poderia oferecer")+":** "+tx(item["offer"],pt[3] if pt else item["offer"]))
+            st.markdown(f"[{tx('Official website / initiative','Site ou iniciativa oficial')}]({item['url']})")
+    st.divider()
+    st.subheader(tx("A realistic partnership sequence","Uma sequência realista de aproximação"))
+    sequence=[
+      ("01","Prepare the evidence pack","Preparar o pacote de evidências","One-page overview, architecture, live demo, methods, data sources, limitations, roadmap and a specific ask.","Apresentação de uma página, arquitetura, demonstração, métodos, fontes, limitações, roteiro e um pedido específico."),
+      ("02","Start with research and data stewards","Começar por pesquisa e gestores de dados","Prioritize INPE, INMET, Embrapa, MapBiomas and a university lab for technical conversations and validation.","Priorizar INPE, INMET, Embrapa, MapBiomas e um laboratório universitário para conversas técnicas e validação."),
+      ("03","Build one small validation pilot","Construir um piloto pequeno de validação","Choose one territory, compare NASA POWER with nearby station data, document gaps and publish reproducible results.","Escolher um território, comparar NASA POWER com estações próximas, documentar lacunas e publicar resultados reproduzíveis."),
+      ("04","Approach innovation and funding routes","Buscar inovação e fomento","Only after a credible pilot, approach EMBRAPII, FINEP, state FAPs and private innovation programs with a defined work package.","Depois de um piloto confiável, procurar EMBRAPII, FINEP, FAPs estaduais e programas privados com um pacote de trabalho definido."),
+      ("05","Formalize governance before scaling","Formalizar governança antes de escalar","Agree on data licensing, attribution, privacy, IP, publication rights, maintenance and responsibilities in writing.","Definir por escrito licenças de dados, atribuição, privacidade, propriedade intelectual, direitos de publicação, manutenção e responsabilidades.")
+    ]
+    for n,en,pt,detail,detail_pt in sequence:
+        with st.container(border=True):
+            st.markdown(f"**{n} · {tx(en,pt)}**")
+            st.caption(tx(detail,detail_pt))
+    st.info(tx("Important eligibility note: several funding mechanisms require an eligible company, university, accredited research unit, cooperative or formal consortium. GUMA should not assume it can apply as an individual project. Confirm the current call rules and legal applicant before investing time in an application.",
+               "Atenção à elegibilidade: diversos mecanismos exigem empresa, universidade, unidade de pesquisa credenciada, cooperativa ou consórcio formal. A GUMA não deve presumir que pode se candidatar como projeto individual. Confirme as regras do edital e a entidade proponente antes de preparar uma submissão."))
+    st.subheader(tx("Near-term action plan","Plano de ação imediato"))
+    st.markdown(tx(
+      """1. Publish a concise technical brief and a 90-second demo.
+2. Create a source register with license, API, spatial resolution, temporal coverage and known limitations.
+3. Invite one university/research group to review the climate and NDVI methods.
+4. Design a Brazilian pilot that compares gridded climate data with INMET station observations.
+5. Keep a public log of contacts, proposals and actual agreements — never display a prospect as a partner before written confirmation.""",
+      """1. Publicar uma apresentação técnica curta e uma demonstração de 90 segundos.
+2. Criar um inventário de fontes com licença, API, resolução espacial, cobertura temporal e limitações conhecidas.
+3. Convidar um grupo universitário/de pesquisa para revisar os métodos climáticos e de NDVI.
+4. Desenhar um piloto brasileiro que compare dados climáticos em grade com observações de estações do INMET.
+5. Manter um registro público de contatos, propostas e acordos reais — nunca apresentar um prospect como parceiro antes de confirmação formal."""
+    ))
+    st.caption(tx("Prospecting status: all entries are uncontacted opportunities unless explicitly updated by the project team. Program availability and eligibility can change; verify each official source before applying.",
+                  "Status de prospecção: todas as entradas são oportunidades ainda não contatadas, salvo atualização explícita pela equipe. Disponibilidade e elegibilidade podem mudar; verifique cada fonte oficial antes de se candidatar."))
+
+with tab_climate:
+    st.markdown("""
+    <div style="padding:1.6rem 1.8rem;border:1px solid #4b3940;border-radius:18px;
+      background:radial-gradient(circle at 90% 10%,rgba(226,91,66,.22),transparent 28%),
+      linear-gradient(115deg,#101c2a,#1d2632 60%,#342329);margin:.3rem 0 1rem 0">
+      <div style="color:#ffb18e;font-size:.72rem;letter-spacing:.18em;font-weight:800">PLANETARY SIGNALS · EARTH SYSTEM</div>
+      <h1 style="color:#f4f0ed;margin:.25rem 0">CLIMATE WATCH</h1>
+      <p style="color:#d0d9df;margin:0">Monitoramento de indicadores do sistema climático e suas implicações para a agricultura.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.write(tx(
+        "A source-traceable observatory of long-term global change. Values are updated when their providers publish new observations; this is not a real-time sensor feed.",
+        "Um observatório rastreável da mudança climática de longo prazo. Os valores são atualizados quando as instituições publicam novas observações; isto não é um fluxo de sensores em tempo real."
+    ))
+    if st.button(tx("↻ Update climate indicators", "↻ Atualizar indicadores climáticos"), type="primary"):
+        get_climate_watch_data.clear()
+    try:
+        with st.spinner(tx("Retrieving NASA and NOAA climate series…", "Consultando séries climáticas da NASA e NOAA…")):
+            climate_watch = get_climate_watch_data()
+        temperature = climate_watch["temperature"].copy()
+        co2 = climate_watch["co2"].copy()
+        ch4 = climate_watch["ch4"].copy()
+        n2o = climate_watch["n2o"].copy()
+        if any(series.empty for series in (temperature, co2, ch4, n2o)):
+            st.warning(tx("At least one source returned no usable observations. Check availability and retry.", "Pelo menos uma fonte não retornou observações utilizáveis. Confira a disponibilidade e tente novamente."))
+        else:
+            latest_temp = temperature.iloc[-1]
+            latest_co2 = co2.iloc[-1]
+            latest_ch4 = ch4.iloc[-1]
+            latest_n2o = n2o.iloc[-1]
+            annual = temperature.assign(Year=temperature["Date"].dt.year).groupby("Year")["Anomaly_C"].mean()
+            annual = annual[annual.index >= 1880]
+            previous_co2 = co2[co2["Date"] <= latest_co2["Date"] - pd.DateOffset(years=1)]
+            co2_delta = (latest_co2["CO2_ppm"] - previous_co2.iloc[-1]["CO2_ppm"]) if not previous_co2.empty else None
+            prev_ch4=ch4[ch4["Date"]<=latest_ch4["Date"]-pd.DateOffset(years=1)]
+            prev_n2o=n2o[n2o["Date"]<=latest_n2o["Date"]-pd.DateOffset(years=1)]
+            ch4_delta=latest_ch4["CH4_ppb"]-prev_ch4.iloc[-1]["CH4_ppb"] if not prev_ch4.empty else None
+            n2o_delta=latest_n2o["N2O_ppb"]-prev_n2o.iloc[-1]["N2O_ppb"] if not prev_n2o.empty else None
+            m1,m2,m3,m4=st.columns(4)
+            m1.metric(tx("Global temperature anomaly","Anomalia da temperatura global"),f"{latest_temp['Anomaly_C']:+.2f} °C",tx("vs 1951–1980","vs. 1951–1980"))
+            m2.metric(tx("Mauna Loa CO₂","CO₂ em Mauna Loa"),f"{latest_co2['CO2_ppm']:.1f} ppm",f"{co2_delta:+.1f} ppm" if co2_delta is not None else None)
+            m3.metric(tx("Global methane · CH₄","Metano global · CH₄"),f"{latest_ch4['CH4_ppb']:.1f} ppb",f"{ch4_delta:+.1f} ppb" if ch4_delta is not None else None)
+            m4.metric(tx("Global nitrous oxide · N₂O","Óxido nitroso global · N₂O"),f"{latest_n2o['N2O_ppb']:.2f} ppb",f"{n2o_delta:+.2f} ppb" if n2o_delta is not None else None)
+            st.caption(tx(
+                f"Latest observations: temperature {latest_temp['Date']:%b %Y}; CO₂ {latest_co2['Date']:%b %Y}; CH₄ {latest_ch4['Date']:%b %Y}; N₂O {latest_n2o['Date']:%b %Y}. Retrieved {climate_watch['retrieved_at']:%Y-%m-%d %H:%M UTC}.",
+                f"Últimas observações: temperatura {latest_temp['Date']:%m/%Y}; CO₂ {latest_co2['Date']:%m/%Y}; CH₄ {latest_ch4['Date']:%m/%Y}; N₂O {latest_n2o['Date']:%m/%Y}. Consulta em {climate_watch['retrieved_at']:%d/%m/%Y %H:%M UTC}."
+            ))
+            st.divider()
+            left, right = st.columns([1.25, 1])
+            with left:
+                st.subheader(tx("Global temperature anomaly", "Anomalia da temperatura global"))
+                st.line_chart(temperature.set_index("Date")[["Anomaly_C"]], height=300)
+                st.caption(tx(
+                    "Monthly global land-ocean temperature anomaly in °C relative to 1951–1980. Monthly values fluctuate; use annual means to discuss long-term trends.",
+                    "Anomalia mensal global de temperatura sobre continentes e oceanos, em °C, relativa a 1951–1980. Valores mensais oscilam; use médias anuais para discutir tendências de longo prazo."
+                ))
+            with right:
+                st.subheader(tx("Atmospheric CO₂ · Mauna Loa", "CO₂ atmosférico · Mauna Loa"))
+                st.line_chart(co2.set_index("Date")[["CO2_ppm"]], height=300)
+                st.caption(tx(
+                    "Monthly mean CO₂ measured at Mauna Loa, Hawaii. This is a long-running station record, not a global spatial average.",
+                    "Média mensal de CO₂ medida em Mauna Loa, Havaí. É uma série de uma estação de monitoramento, não uma média espacial global."
+                ))
+            gas_left,gas_right=st.columns(2)
+            with gas_left:
+                st.subheader(tx("Global atmospheric methane · CH₄","Metano atmosférico global · CH₄"))
+                st.line_chart(ch4.set_index("Date")[["CH4_ppb"]],height=260)
+                st.caption(tx("NOAA global marine-surface monthly means. Recent observations are preliminary and may be revised.","Médias mensais globais da rede de superfície marinha da NOAA. Observações recentes são preliminares e podem ser revisadas."))
+            with gas_right:
+                st.subheader(tx("Global atmospheric nitrous oxide · N₂O","Óxido nitroso atmosférico global · N₂O"))
+                st.line_chart(n2o.set_index("Date")[["N2O_ppb"]],height=260)
+                st.caption(tx("NOAA global marine-surface monthly means. The reliable series begins in 2001.","Médias mensais globais da rede de superfície marinha da NOAA. A série confiável começa em 2001."))
+            st.subheader(tx("Annual temperature signal", "Sinal anual de temperatura"))
+            annual_frame = annual.rename("Annual anomaly (°C)").to_frame()
+            st.area_chart(annual_frame, height=260)
+            st.caption(tx(
+                "Annual means are calculated here from the monthly NASA values. The reference baseline remains 1951–1980; this is not the pre-industrial (1850–1900) reference used in many 1.5°C assessments.",
+                "As médias anuais são calculadas aqui a partir dos valores mensais da NASA. A referência continua sendo 1951–1980; não é a linha de base pré-industrial (1850–1900) usada em muitas avaliações do limite de 1,5 °C."
+            ))
+            st.divider()
+            st.subheader(tx("Why this matters for agriculture", "Por que isso importa para a agricultura"))
+            a, b = st.columns(2)
+            with a:
+                st.markdown("**" + tx("Heat exposure", "Exposição ao calor") + "**")
+                st.write(tx(
+                    "Rising background temperatures can increase the frequency and intensity of heat stress during sensitive crop stages. Local exposure must be assessed with regional daily data and crop calendars.",
+                    "O aumento da temperatura de fundo pode elevar a frequência e a intensidade do estresse térmico em fases sensíveis das culturas. A exposição local precisa ser avaliada com dados diários regionais e calendários agrícolas."
+                ))
+                st.markdown("**" + tx("Water and rainfall variability", "Água e variabilidade das chuvas") + "**")
+                st.write(tx(
+                    "Changes in evaporation demand and rainfall patterns can affect soil-water balance, sowing windows and drought or excess-rain risk. Global indicators do not determine conditions on an individual farm.",
+                    "Mudanças na demanda evaporativa e nos padrões de chuva podem afetar o balanço hídrico do solo, janelas de semeadura e riscos de seca ou excesso de chuva. Indicadores globais não determinam as condições de uma propriedade específica."
+                ))
+            with b:
+                st.markdown("**" + tx("Greenhouse gases", "Gases de efeito estufa") + "**")
+                st.write(tx(
+                    "CO₂ is a major long-lived greenhouse gas. The Mauna Loa series is an atmospheric measurement record; it does not by itself attribute a particular local drought, flood or crop loss.",
+                    "O CO₂ é um importante gás de efeito estufa de longa permanência. A série de Mauna Loa é um registro de medição atmosférica; isoladamente, não atribui uma seca, enchente ou perda agrícola local."
+                ))
+                st.markdown("**" + tx("Next GUMA connection", "Próxima conexão no GUMA") + "**")
+                st.write(tx(
+                    "The next analytical layer is to compare regional heat and rainfall extremes with crop calendars, NASA POWER histories, MODIS vegetation signals and official Brazilian datasets.",
+                    "A próxima camada analítica é cruzar extremos regionais de calor e chuva com calendários agrícolas, históricos NASA POWER, sinais de vegetação MODIS e bases oficiais brasileiras."
+                ))
+            st.divider()
+            st.subheader(tx("Brazil · Local climate extremes", "Brasil · Extremos climáticos locais"))
+            st.write(tx(
+                "A location-level screening layer based on the NASA POWER daily series already loaded for the selected study point. Thresholds below are transparent indicators, not official heatwave or drought classifications.",
+                "Uma camada de triagem para o ponto de estudo selecionado, baseada na série diária NASA POWER já carregada. Os limites abaixo são indicadores transparentes, não classificações oficiais de onda de calor ou seca."
+            ))
+            local_climate = st.session_state.get("climate")
+            local_coords = st.session_state.get("coords")
+            if local_climate is not None and local_coords == (lat, lon):
+                hcol, rcol, dcol = st.columns(3)
+                hot_threshold = hcol.number_input(tx("Hot day threshold · Tmax (°C)", "Limite de dia quente · Tmax (°C)"), min_value=25.0, max_value=45.0, value=35.0, step=1.0, key="cw_hot_threshold")
+                rain_threshold = rcol.number_input(tx("Heavy-rain day (mm/day)", "Chuva intensa (mm/dia)"), min_value=10.0, max_value=150.0, value=50.0, step=5.0, key="cw_rain_threshold")
+                dry_threshold = dcol.number_input(tx("Dry day threshold (mm/day)", "Limite de dia seco (mm/dia)"), min_value=0.0, max_value=5.0, value=1.0, step=0.5, key="cw_dry_threshold")
+                try:
+                    local_extremes = summarize_local_extremes(
+                        local_climate, hot_day_c=float(hot_threshold),
+                        heavy_rain_mm=float(rain_threshold), dry_day_mm=float(dry_threshold)
+                    )
+                    if not local_extremes.empty:
+                        latest_year = local_extremes.iloc[-1]
+                        e1, e2, e3 = st.columns(3)
+                        e1.metric(tx("Hot days in latest year", "Dias quentes no último ano"), int(latest_year["Hot days (Tmax threshold)"]))
+                        e2.metric(tx("Heavy-rain days in latest year", "Dias de chuva intensa no último ano"), int(latest_year["Heavy-rain days"]))
+                        e3.metric(tx("Longest dry spell", "Maior sequência seca"), f"{int(latest_year['Longest dry spell (days)'])} d")
+                        st.line_chart(local_extremes.set_index("Year")[[
+                            "Hot days (Tmax threshold)", "Heavy-rain days"
+                        ]], height=260)
+                        st.dataframe(local_extremes, use_container_width=True, hide_index=True)
+                        st.caption(tx(
+                            f"Selected point: {lat:.4f}, {lon:.4f}. Latest year in the loaded NASA POWER record: {int(latest_year['Year'])}. Dry days are consecutive valid daily precipitation values below the selected threshold; missing dates break a spell.",
+                            f"Ponto selecionado: {lat:.4f}, {lon:.4f}. Último ano disponível na série NASA POWER: {int(latest_year['Year'])}. Dias secos são valores diários válidos de precipitação abaixo do limite escolhido; datas ausentes interrompem a sequência."
+                        ))
+                except Exception as local_exc:
+                    st.warning(tx("Could not calculate local indicators: ", "Não foi possível calcular os indicadores locais: ") + str(local_exc))
+            else:
+                st.info(tx(
+                    "Load the environmental data for your selected study area in the Environmental dashboard tab to calculate local indicators here.",
+                    "Carregue os dados ambientais da área escolhida na aba Painel ambiental para calcular os indicadores locais aqui."
+                ))
+            st.markdown(
+                "**" + tx("Ocean system references", "Referências do sistema oceânico") + "**\n"
+                "- [NASA Global Mean Sea Level — current indicator and methodology](https://sealevel.nasa.gov/understanding-sea-level/key-indicators/global-mean-sea-level/)\n"
+                "- [NOAA NCEI — monthly global ocean heat content, 0–700 m and 0–2000 m](https://www.ncei.noaa.gov/access/global-ocean-heat-content/monthly_analysis.html)"
+            )
+            st.caption(tx(
+                "Sea-level and ocean-heat datasets are linked as authoritative references but are not yet ingested into GUMA's plotted time series. NOAA's ocean-heat product uses in-situ subsurface observations and a documented climatological reference; its monthly fields have spatial-data and sampling uncertainty.",
+                "As bases de nível do mar e calor oceânico estão indicadas como referências oficiais, mas ainda não foram ingeridas nas séries gráficas do GUMA. O produto de calor oceânico da NOAA usa observações subsuperficiais in situ e uma referência climatológica documentada; seus campos mensais possuem incertezas espaciais e de amostragem."
+            ))
+            st.subheader(tx("Data provenance & update policy", "Proveniência dos dados e política de atualização"))
+            source_rows = [
+                {"Indicator": "Global temperature anomaly", "Provider": "NASA GISS", "Dataset": "GISTEMP v4", "Baseline": "1951–1980", "Frequency": "Monthly"},
+                {"Indicator": "Atmospheric CO₂", "Provider": "NOAA GML", "Dataset": "Mauna Loa monthly mean", "Baseline": "Station record", "Frequency": "Monthly"},
+                {"Indicator": "Atmospheric CH₄", "Provider": "NOAA GML", "Dataset": "Global marine-surface mean", "Baseline": "Global network", "Frequency": "Monthly"},
+                {"Indicator": "Atmospheric N₂O", "Provider": "NOAA GML", "Dataset": "Global marine-surface mean", "Baseline": "Global network", "Frequency": "Monthly"},
+            ]
+            st.dataframe(pd.DataFrame(source_rows), use_container_width=True, hide_index=True)
+            st.markdown(
+                "- [NASA GISTEMP v4 — data and methodology](https://data.giss.nasa.gov/gistemp/)\n"
+                "- [NASA GISTEMP source documentation](https://data.giss.nasa.gov/gistemp/sources/gistemp.html)\n"
+                "- [NOAA Global Monitoring Laboratory — CO₂ trends](https://gml.noaa.gov/ccgg/trends/)\\n"
+                "- [NOAA global methane trends and methods](https://gml.noaa.gov/ccgg/trends_ch4/)\\n"
+                "- [NOAA global nitrous oxide trends and methods](https://gml.noaa.gov/ccgg/trends_n2o/)"
+            )
+            with st.expander(tx("Scientific interpretation and limitations", "Interpretação científica e limitações")):
+                st.markdown(tx(
+                    "- NASA GISTEMP is an estimate of global surface temperature change, not a direct thermometer reading at every location.\n- Monthly anomalies are not the same as annual means or absolute global mean temperature.\n- GISTEMP uses a 1951–1980 baseline; do not compare its anomaly directly with indicators using 1850–1900 without a documented conversion.\n- Mauna Loa CO₂ is a station record and has seasonal variation; it is not the global marine-surface average.\n- NOAA CH₄ and N₂O are globally averaged monthly means from a marine-surface network; recent observations are preliminary and may be revised.\n- These indicators describe global context only; they do not establish local climate impacts or agricultural causation.\n- Global sea level, ocean heat, ice sheets and a Brazil-specific climate-extremes atlas are not yet integrated.",
+                    "- O NASA GISTEMP estima a mudança da temperatura superficial global; não é uma leitura direta de termômetro em cada local.\n- Anomalias mensais não são equivalentes a médias anuais nem à temperatura média global absoluta.\n- O GISTEMP usa a referência 1951–1980; não compare diretamente sua anomalia com indicadores baseados em 1850–1900 sem conversão documentada.\n- CO₂ de Mauna Loa é uma série de estação e apresenta variação sazonal; não é a média global da superfície oceânica.\n- CH₄ e N₂O da NOAA são médias mensais globais de uma rede de superfície marinha; observações recentes são preliminares e podem ser revisadas.\n- Esses indicadores descrevem o contexto global, mas não demonstram impactos climáticos locais nem causalidade agrícola.\n- Nível do mar, calor oceânico, mantos de gelo e atlas brasileiro de extremos climáticos ainda não estão integrados."
+                ))
+    except Exception as exc:
+        st.error(tx("Climate Watch could not retrieve the source datasets: ", "O Observatório climático não conseguiu consultar as bases: ") + str(exc))
+        st.info(tx(
+            "Try again later. The dashboard does not replace missing live observations with invented or hard-coded values.",
+            "Tente novamente mais tarde. O painel não substitui observações indisponíveis por números inventados ou fixos."
+        ))
+
+if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
         climate = st.session_state["climate"]
         with st.expander(tx("🔎 Automatic data-quality checks", "🔎 Verificações automáticas de qualidade dos dados"), expanded=False):
             climate_qc = climate_quality_report(climate)
@@ -782,8 +1194,8 @@ with tab1:
                 st.bar_chart(modis["Quality label"].fillna("Unknown").value_counts())
         else:
             st.info(tx("No usable MODIS observations were returned for this point and period.", "Não foram encontradas observações MODIS válidas para este ponto e período."))
-    else:
-        st.info(tx("Enter coordinates and click Load environmental data to query NASA.", "Informe as coordenadas e clique em Carregar dados ambientais para consultar a NASA."))
+else:
+    st.info(tx("Enter coordinates and click Load environmental data to query NASA.", "Informe as coordenadas e clique em Carregar dados ambientais para consultar a NASA."))
 
 # Crop screening uses crop-specific reference ranges and observed rainfall during
 # a user-selected sowing window. It deliberately does not create a suitability score.
@@ -1091,7 +1503,7 @@ with tab2:
                         st.download_button(
                             tx("Download daily water-balance CSV", "Baixar CSV do balanço hídrico diário"),
                             balance.to_csv(index=False).encode("utf-8"),
-                            file_name=f"agrovision_water_balance_{water_crop.lower().replace(' ','_')}_{water_year}.csv",
+                            file_name=f"guma_water_balance_{water_crop.lower().replace(' ','_')}_{water_year}.csv",
                             mime="text/csv"
                         )
                         st.warning(tx(
@@ -1281,12 +1693,122 @@ def fetch_saved_projects():
         raise RuntimeError(f"Project list failed (HTTP {response.status_code}): {response.text[:300]}")
     return response.json()
 
+
+def fetch_community_snapshots():
+    base_url, public_key, _ = supabase_settings()
+    if not base_url or not public_key:
+        return []
+    headers = {"apikey": public_key}
+    access_token = st.session_state.get("agrovision_access_token", "")
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    response = requests.get(
+        f"{base_url}/rest/v1/community_snapshots?select=id,display_alias,macroregion,crop,season,metrics,source_metadata,created_at&published=eq.true&order=created_at.desc&limit=300",
+        headers=headers, timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Community board unavailable (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
+
+def publish_community_snapshot(alias, macroregion, crop, season, metrics):
+    base_url, headers = supabase_rest_headers()
+    if not headers:
+        raise RuntimeError("Sign in with an email account to publish a comparison. Visitor access can browse only.")
+    response = requests.post(
+        f"{base_url}/rest/v1/community_snapshots",
+        headers=headers,
+        json={
+            "display_alias": alias.strip(),
+            "macroregion": macroregion,
+            "crop": crop,
+            "season": season,
+            "metrics": metrics,
+            "source_metadata": {
+                "provider": "NASA POWER",
+                "method": "Daily point-series aggregate",
+                "period_start": metrics.get("period_start"),
+                "period_end": metrics.get("period_end"),
+                "shared_at": datetime.now(timezone.utc).isoformat()
+            },
+            "published": True
+        },
+        timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Publishing failed (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
+
+def fetch_field_lab_trials():
+    base_url, public_key, _ = supabase_settings()
+    if not base_url or not public_key:
+        return []
+    headers = {"apikey": public_key}
+    access_token = st.session_state.get("agrovision_access_token", "")
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    response = requests.get(
+        f"{base_url}/rest/v1/field_lab_trials?select=id,title,display_alias,macroregion,crop,season,hypothesis,strategy,comparator,metric,unit,baseline_value,alternative_value,notes,status,created_at&published=eq.true&order=created_at.desc&limit=300",
+        headers=headers, timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Field Lab board unavailable (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
+
+def publish_field_lab_trial(record):
+    base_url, headers = supabase_rest_headers()
+    if not headers:
+        raise RuntimeError("Sign in with an email account to publish a Field Lab record.")
+    response = requests.post(
+        f"{base_url}/rest/v1/field_lab_trials",
+        headers=headers,
+        json=record,
+        timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Field Lab publication failed (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
+
+def fetch_field_lab_updates():
+    base_url, public_key, _ = supabase_settings()
+    if not base_url or not public_key:
+        return []
+    headers = {"apikey": public_key}
+    access_token = st.session_state.get("agrovision_access_token", "")
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    response = requests.get(
+        f"{base_url}/rest/v1/field_lab_updates?select=id,trial_id,display_alias,season,observation_date,stage,arm,observed_value,unit,method,notes,created_at&published=eq.true&order=observation_date.asc&limit=2000",
+        headers=headers, timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Field Lab timeline unavailable (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
+
+def publish_field_lab_update(record):
+    base_url, headers = supabase_rest_headers()
+    if not headers:
+        raise RuntimeError("Sign in with an email account to publish a follow-up.")
+    response = requests.post(
+        f"{base_url}/rest/v1/field_lab_updates",
+        headers=headers,
+        json=record,
+        timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Field Lab follow-up failed (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
 def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water_balance=None, zarc_reference=None):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
     styles = getSampleStyleSheet()
     story = [
-        Paragraph("AGROVISION — Environmental assessment", styles["Title"]),
+        Paragraph("GUMA — Earth intelligence assessment", styles["Title"]),
         Paragraph(f"Study coordinates: {latitude:.4f}, {longitude:.4f}", styles["Normal"]),
         Paragraph(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", styles["Normal"]),
         Spacer(1, 12),
@@ -1348,8 +1870,8 @@ def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water
 with tab5:
     st.subheader(tx("Independent validation against weather-station observations", "Validação independente com observações de estações meteorológicas"))
     st.markdown(tx(
-        "Upload a CSV containing daily observations from a traceable weather station. AGROVISION will align dates with NASA POWER and calculate paired error statistics. No station observations are bundled or fabricated.",
-        "Envie um CSV com observações diárias de uma estação meteorológica identificável. O AGROVISION alinhará as datas com o NASA POWER e calculará estatísticas de erro pareadas. Nenhuma observação de estação é embutida ou inventada."
+        "Upload a CSV containing daily observations from a traceable weather station. GUMA will align dates with NASA POWER and calculate paired error statistics. No station observations are bundled or fabricated.",
+        "Envie um CSV com observações diárias de uma estação meteorológica identificável. O GUMA alinhará as datas com o NASA POWER e calculará estatísticas de erro pareadas. Nenhuma observação de estação é embutida ou inventada."
     ))
     st.warning(tx(
         "Use the same location, physical variable, unit and daily aggregation. Document station ID, coordinates, elevation, instrument, source and quality control. A nearby station is not automatically representative of the satellite/grid cell.",
@@ -1470,6 +1992,84 @@ with tab4:
         else:
             st.caption(tx("No saved projects found yet.", "Nenhum projeto salvo ainda."))
 
+
+with tab_rotation:
+    st.header(tx("Crop Rotation Lab", "Laboratório de rotação de culturas"))
+    st.write(tx(
+        "Compare historical climate exposure across transparent soybean-based crop sequences. This is a screening tool, not a yield forecast or planting recommendation.",
+        "Compare a exposição climática histórica em sequências de cultivo baseadas em soja. Esta é uma ferramenta de triagem, não uma previsão de produtividade ou recomendação de plantio."
+    ))
+    st.info(tx(
+        "NASA POWER daily climate and quality-screened MODIS observations are used when loaded for the current coordinates. Soil texture, fertility and water regime below are local inputs; they are not measured by NASA.",
+        "São usados dados climáticos diários NASA POWER e observações MODIS filtradas por qualidade quando carregados para as coordenadas atuais. Textura, fertilidade e regime hídrico são dados locais informados pelo usuário; não são medidos pela NASA."
+    ))
+    if "climate" not in st.session_state or st.session_state.get("coords") != (float(lat), float(lon)):
+        st.warning(tx(
+            "Load environmental data in the Environmental dashboard first. The Rotation Lab uses the same selected coordinates.",
+            "Carregue primeiro os dados ambientais no Painel ambiental. O Laboratório de rotação usa as mesmas coordenadas selecionadas."
+        ))
+    else:
+        rotation_month = st.selectbox(
+            tx("Main-season sowing month", "Mês de semeadura da safra principal"),
+            list(range(1, 13)), index=9, format_func=lambda m: tx(
+                ["January","February","March","April","May","June","July","August","September","October","November","December"][m-1],
+                ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][m-1]
+            ), key="rotation_sowing_month"
+        )
+        scenario_names = list(ROTATION_SCENARIOS)
+        selected_scenarios = st.multiselect(
+            tx("Scenarios to compare", "Cenários para comparar"),
+            scenario_names, default=scenario_names, key="rotation_scenarios"
+        )
+        st.markdown("**" + tx("Local farm context", "Contexto local da propriedade") + "**")
+        c1, c2, c3 = st.columns(3)
+        c1.metric(tx("Soil texture", "Textura do solo"), str(soil))
+        c2.metric(tx("Soil fertility", "Fertilidade do solo"), str(fertility))
+        c3.metric(tx("Water regime", "Regime hídrico"), str(irrigation))
+        st.caption(tx(
+            "These local inputs are recorded as context only. They are not converted into measured available-water capacity or soil-health scores.",
+            "Esses dados locais são registrados apenas como contexto. Não são convertidos em capacidade de água disponível medida nem em índices de saúde do solo."
+        ))
+        if not selected_scenarios:
+            st.warning(tx("Select at least one scenario.", "Selecione pelo menos um cenário."))
+        else:
+            try:
+                rotation_detail, rotation_summary = compare_rotation_scenarios(
+                    st.session_state["climate"],
+                    st.session_state.get("modis", pd.DataFrame()),
+                    rotation_month,
+                    selected_scenarios
+                )
+                if rotation_detail.empty:
+                    st.warning(tx(
+                        "No complete crop-sequence windows were available for this month and historical period. Try another sowing month or load a longer dataset.",
+                        "Não há janelas completas de sequência de cultivo para este mês e período histórico. Tente outro mês ou carregue uma série mais longa."
+                    ))
+                else:
+                    st.subheader(tx("Scenario comparison", "Comparação dos cenários"))
+                    st.dataframe(rotation_summary, use_container_width=True, hide_index=True)
+                    chart_data = rotation_summary.set_index("Scenario")[["Median daily rainfall (mm/day)"]]
+                    st.bar_chart(chart_data)
+                    st.caption(tx(
+                        "Daily rainfall rate helps compare sequences of different modeled durations. Total sequence rainfall and duration are also shown; neither is effective rainfall, crop water requirement, nor water saved by a rotation.",
+                        "A taxa diária de chuva ajuda a comparar sequências com durações modeladas diferentes. A chuva total e a duração também são exibidas; nenhuma delas representa chuva efetiva, necessidade hídrica da cultura ou economia de água pela rotação."
+                    ))
+                    st.subheader(tx("Crop-window evidence", "Evidências por janela de cultivo"))
+                    st.dataframe(rotation_detail, use_container_width=True, hide_index=True)
+                    st.download_button(
+                        tx("Download rotation comparison CSV", "Baixar comparação de rotação em CSV"),
+                        rotation_detail.to_csv(index=False).encode("utf-8"),
+                        file_name="guma_rotation_windows.csv",
+                        mime="text/csv"
+                    )
+            except Exception as exc:
+                st.error(tx("Could not calculate the rotation comparison: ", "Não foi possível calcular a comparação de rotação: ") + str(exc))
+    with st.expander(tx("Method, assumptions and scientific limitations", "Método, hipóteses e limitações científicas"), expanded=True):
+        st.markdown("\n".join("- " + item for item in scenario_disclosure()))
+        st.markdown(
+            "[Rotation Lab methodology and validation plan](https://github.com/interpessoal21-ops/agrovision/blob/spaceapps-2026-rotation-lab/docs/ROTATION_LAB.md)"
+        )
+
 if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon):
     climate_for_export = st.session_state["climate"]
     modis_for_export = st.session_state.get("modis", pd.DataFrame())
@@ -1480,9 +2080,9 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
     with export_col1:
         csv_frame = climate_for_export.copy()
         csv_frame.index.name = "Date"
-        st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="agrovision_nasa_power.csv", mime="text/csv", use_container_width=True)
+        st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="guma_nasa_power.csv", mime="text/csv", use_container_width=True)
         if not modis_for_export.empty:
-            st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="agrovision_modis_ndvi.csv", mime="text/csv", use_container_width=True)
+            st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="guma_modis_ndvi.csv", mime="text/csv", use_container_width=True)
     with export_col2:
         water_for_export = st.session_state.get("latest_water_balance")
         if water_for_export and water_for_export.get("coords") != (float(lat), float(lon)):
@@ -1492,7 +2092,7 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
             water_balance=water_for_export,
             zarc_reference=st.session_state.get("zarc_reference")
         )
-        st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="agrovision_report.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="guma_report.pdf", mime="application/pdf", use_container_width=True)
     with export_col3:
         if st.button(tx("Save project to account", "Salvar projeto na conta"), use_container_width=True):
             project_name = st.session_state.get("project_name", f"Study {lat:.3f}, {lon:.3f}")
@@ -1534,5 +2134,366 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
                 st.session_state.pop("saved_projects", None)
             except Exception as exc:
                 st.error(str(exc))
+
+with tab_commons:
+    st.header("GUMA COMMONS")
+    st.caption(tx(
+        "A collaborative climate atlas built from opt-in, anonymized aggregate fingerprints — not a leaderboard.",
+        "Um atlas climático colaborativo construído com assinaturas agregadas e compartilhadas voluntariamente — não um placar de produtores."
+    ))
+    st.markdown("""
+    <div class="section-note">
+      <strong>CLIMATE FINGERPRINT / ASSINATURA CLIMÁTICA</strong><br>
+      Each contribution turns a daily climate series into a compact profile of heat, rainfall and seasonal rhythm.
+      Compare places and crop contexts without publishing farm coordinates, names or raw daily records.
+    </div>
+    """, unsafe_allow_html=True)
+    current_climate = st.session_state.get("climate")
+    current_coords = st.session_state.get("coords")
+    current_latlon = (float(lat), float(lon))
+    fingerprint = None
+    if current_climate is not None and current_coords == current_latlon:
+        try:
+            fingerprint = build_climate_fingerprint(current_climate)
+        except Exception as exc:
+            st.warning(tx("Could not build this climate fingerprint: ", "Não foi possível montar a assinatura climática: ") + str(exc))
+    else:
+        st.info(tx(
+            "Load NASA POWER data for your selected point in the Environmental dashboard to create a fingerprint.",
+            "Carregue os dados NASA POWER do ponto escolhido no Painel ambiental para criar uma assinatura."
+        ))
+    if fingerprint:
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric(tx("Mean temperature", "Temperatura média"), f"{fingerprint['mean_temp_c']:.1f} °C")
+        m2.metric(tx("Mean annual rainfall", "Chuva anual média"), f"{fingerprint['annual_precipitation_mm']:.0f} mm")
+        m3.metric(tx("Hot days ≥35 °C / year", "Dias ≥35 °C / ano"), f"{fingerprint['hot_days_35c_per_year']:.1f}")
+        m4.metric(tx("Valid daily records", "Registros diários válidos"), f"{fingerprint['valid_days']:,}")
+        monthly = pd.DataFrame({
+            "Month": list(range(1, 13)),
+            "Mean temperature (°C)": [fingerprint["monthly_temperature_c"].get(str(i)) for i in range(1,13)],
+            "Mean daily precipitation (mm)": [fingerprint["monthly_precipitation_mm_day"].get(str(i)) for i in range(1,13)]
+        }).set_index("Month")
+        left, right = st.columns(2)
+        with left:
+            st.markdown("**THERMAL RHYTHM / RITMO TÉRMICO**")
+            st.line_chart(monthly[["Mean temperature (°C)"]], height=220)
+        with right:
+            st.markdown("**RAIN SIGNATURE / ASSINATURA DE CHUVA**")
+            st.bar_chart(monthly[["Mean daily precipitation (mm)"]], height=220)
+        st.caption(tx(
+            f"Aggregate period: {fingerprint['period_start']} to {fingerprint['period_end']}. Monthly precipitation is the mean daily value for each calendar month, not a monthly total.",
+            f"Período agregado: {fingerprint['period_start']} a {fingerprint['period_end']}. A precipitação mensal exibida é a média diária de cada mês do calendário, não o total mensal."
+        ))
+    st.divider()
+    st.subheader(tx("Publish a climate fingerprint", "Compartilhe uma assinatura climática"))
+    st.warning(tx(
+        "Publishing is optional and public. Your alias, broad macroregion, crop, season and aggregate indicators will be visible to other users. Exact coordinates, email, farm name and raw daily data are not sent.",
+        "A publicação é opcional e pública. Seu apelido, macrorregião, cultura, safra e indicadores agregados ficarão visíveis a outros usuários. Coordenadas exatas, e-mail, nome da fazenda e dados diários brutos não são enviados."
+    ))
+    if st.session_state.get("agrovision_auth_mode") == "email":
+        with st.form("commons_publish_form"):
+            alias = st.text_input(tx("Public alias (not your email)", "Apelido público (não use seu e-mail)"), max_chars=32, placeholder="AgroLab-01")
+            macroregion = st.selectbox(tx("Macroregion", "Macrorregião"), ["Norte","Nordeste","Centro-Oeste","Sudeste","Sul"])
+            crop = st.selectbox(tx("Main crop context", "Cultura de referência"), ["Soja","Milho","Feijão","Café","Cana-de-açúcar","Algodão","Arroz","Trigo","Mandioca","Sistema diversificado","Outro"])
+            season = st.selectbox(tx("Season / reference year", "Safra / ano de referência"), ["2020–2025","2023–2025","2025","2024","2023","2022","2021","2020"])
+            consent = st.checkbox(tx("I understand this aggregate profile will be publicly visible.", "Entendo que esta assinatura agregada ficará visível publicamente."), value=False)
+            submitted = st.form_submit_button(tx("Publish my fingerprint", "Publicar minha assinatura"), type="primary", disabled=not bool(fingerprint))
+        if submitted:
+            if not alias.strip() or len(alias.strip()) < 2:
+                st.error(tx("Choose an alias with at least 2 characters.", "Escolha um apelido com pelo menos 2 caracteres."))
+            elif not consent:
+                st.error(tx("Explicit consent is required before publishing.", "É necessário consentimento explícito para publicar."))
+            else:
+                try:
+                    publish_community_snapshot(alias, macroregion, crop, season, fingerprint)
+                    st.success(tx("Your climate fingerprint is now on the Commons board.", "Sua assinatura climática já está no mural Commons."))
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
+    else:
+        st.info(tx("Sign in to publish. Visitors can explore the public comparison board.", "Entre na sua conta para publicar. Visitantes podem explorar o mural público."))
+    st.divider()
+    st.subheader(tx("Community comparison field", "Campo de comparação comunitária"))
+    st.write(tx(
+        "Filter public fingerprints by crop and season. The similarity distance compares mean temperature, mean annual precipitation and hot-day frequency using fixed scales. Lower means more similar; it is not a suitability, productivity or risk score.",
+        "Filtre assinaturas públicas por cultura e safra. A distância de similaridade compara temperatura média, precipitação anual média e frequência de dias quentes, com escalas fixas. Quanto menor, mais semelhantes; não é nota de aptidão, produtividade ou risco."
+    ))
+    try:
+        snapshots = fetch_community_snapshots()
+        if snapshots:
+            board = pd.DataFrame([{
+                "Alias": row.get("display_alias",""),
+                "Macroregion": row.get("macroregion",""),
+                "Crop": row.get("crop",""),
+                "Season": row.get("season",""),
+                "Mean temp (°C)": (row.get("metrics") or {}).get("mean_temp_c"),
+                "Mean annual rain (mm)": (row.get("metrics") or {}).get("annual_precipitation_mm"),
+                "Hot days ≥35 °C/year": (row.get("metrics") or {}).get("hot_days_35c_per_year"),
+                "Created": str(row.get("created_at",""))[:10],
+                "_metrics": row.get("metrics") or {}
+            } for row in snapshots])
+            f1, f2, f3 = st.columns(3)
+            crops = ["All"] + sorted(board["Crop"].dropna().unique().tolist())
+            seasons = ["All"] + sorted(board["Season"].dropna().unique().tolist())
+            regions = ["All"] + sorted(board["Macroregion"].dropna().unique().tolist())
+            crop_filter = f1.selectbox(tx("Crop filter","Filtrar cultura"),crops)
+            season_filter = f2.selectbox(tx("Season filter","Filtrar safra"),seasons)
+            region_filter = f3.selectbox(tx("Region filter","Filtrar região"),regions)
+            filtered = board.copy()
+            if crop_filter != "All": filtered = filtered[filtered["Crop"] == crop_filter]
+            if season_filter != "All": filtered = filtered[filtered["Season"] == season_filter]
+            if region_filter != "All": filtered = filtered[filtered["Macroregion"] == region_filter]
+            if fingerprint is not None and not filtered.empty:
+                filtered = filtered.copy()
+                filtered["Similarity distance ↓"] = filtered["_metrics"].apply(lambda item: comparison_distance(fingerprint,item) if all(k in item for k in ("mean_temp_c","annual_precipitation_mm","hot_days_35c_per_year")) else float("nan"))
+                filtered = filtered.sort_values("Similarity distance ↓", na_position="last")
+            display_cols = ["Alias","Macroregion","Crop","Season","Mean temp (°C)","Mean annual rain (mm)","Hot days ≥35 °C/year","Created"]
+            if "Similarity distance ↓" in filtered.columns: display_cols.append("Similarity distance ↓")
+            if filtered.empty:
+                st.info(tx("No public fingerprints match these filters yet. Be the first to contribute.", "Ainda não há assinaturas públicas com esses filtros. Você pode ser o primeiro a contribuir."))
+            else:
+                st.dataframe(filtered[display_cols], use_container_width=True, hide_index=True)
+                if fingerprint is not None and "Similarity distance ↓" in filtered.columns:
+                    st.caption(tx("The top rows are the closest climate fingerprints under this descriptive three-variable comparison — not the best places to farm.", "As primeiras linhas são as assinaturas climaticamente mais próximas nesta comparação descritiva de três variáveis — não os melhores lugares para plantar."))
+                if len(filtered) >= 2:
+                    st.markdown("**COMMUNITY CLIMATE SPACE / ESPAÇO CLIMÁTICO COMUNITÁRIO**")
+                    st.scatter_chart(filtered, x="Mean annual rain (mm)", y="Mean temp (°C)", color="Macroregion", size="Hot days ≥35 °C/year")
+        else:
+            st.info(tx("The public board is empty. Publish an opt-in fingerprint to start the shared atlas.", "O mural público está vazio. Publique uma assinatura voluntária para iniciar o atlas coletivo."))
+    except Exception as exc:
+        st.warning(tx("The community board needs the Supabase Commons migration. Run supabase/community_schema.sql in the Supabase SQL Editor. Details: ", "O mural comunitário precisa da migração Supabase Commons. Execute supabase/community_schema.sql no SQL Editor do Supabase. Detalhes: ") + str(exc))
+    st.caption(tx(
+        "Method note: profiles summarize a gridded NASA POWER point series. User-selected macroregion and crop are labels supplied by contributors, not independently verified farm boundaries or crop observations. Similarity is descriptive only.",
+        "Nota metodológica: as assinaturas resumem uma série pontual em grade do NASA POWER. Macrorregião e cultura são rótulos informados pelos participantes, não limites de fazenda ou observações de cultura verificados independentemente. A similaridade é apenas descritiva."
+    ))
+
+
+with tab_fieldlab:
+    st.header("GUMA FIELD LAB")
+    st.caption(tx(
+        "A public notebook for agricultural hypotheses, field comparisons and shared evidence.",
+        "Um caderno público de hipóteses agrícolas, comparações de campo e evidências compartilhadas."
+    ))
+    st.markdown("""
+    <div class="section-note">
+      <strong>FROM QUESTION TO EVIDENCE / DA PERGUNTA À EVIDÊNCIA</strong><br>
+      Propose a comparison, describe the management contrast, record the metric and inspect what other contributors have reported.
+      Field Lab entries are community research notes — not controlled trials unless the contributor documents that design.
+    </div>
+    """, unsafe_allow_html=True)
+    st.warning(tx(
+        "Do not publish exact farm locations, personal data, confidential business information or identifiable third-party information. Values and study descriptions are contributor-reported and are not independently verified.",
+        "Não publique localização exata de propriedades, dados pessoais, informações comerciais confidenciais ou dados identificáveis de terceiros. Valores e descrições são informados pelos participantes e não passam por verificação independente."
+    ))
+    st.subheader(tx("Design a field question", "Desenhe uma pergunta de campo"))
+    if st.session_state.get("agrovision_auth_mode") == "email":
+        with st.form("fieldlab_publish_form"):
+            title = st.text_input(tx("Study title", "Título do estudo"), max_chars=90, placeholder="Cobertura do solo e milho safrinha")
+            alias = st.text_input(tx("Public alias", "Apelido público"), max_chars=32, placeholder="Campo-07")
+            c1,c2,c3 = st.columns(3)
+            region = c1.selectbox(tx("Macroregion", "Macrorregião"), list(ALLOWED_REGIONS))
+            crop = c2.selectbox(tx("Crop", "Cultura"), list(ALLOWED_CROPS))
+            season = c3.text_input(tx("Season / year", "Safra / ano"), max_chars=20, value="2025/26")
+            hypothesis = st.text_area(tx("What do you expect to happen, and why?", "O que você espera que aconteça e por quê?"), max_chars=700, placeholder=tx("Example: soil cover may reduce exposure to high temperatures and rainfall variability.", "Exemplo: a cobertura do solo pode reduzir a exposição a temperaturas elevadas e à irregularidade das chuvas."))
+            strategy = st.text_area(tx("Strategy / treatment", "Estratégia / tratamento"), max_chars=500, placeholder=tx("Describe the management practice or intervention.", "Descreva a prática de manejo ou intervenção."))
+            comparator = st.text_area(tx("Comparator / reference", "Comparador / referência"), max_chars=500, placeholder=tx("Describe the reference condition.", "Descreva a condição de referência."))
+            c4,c5,c6 = st.columns(3)
+            metric = c4.selectbox(tx("Metric", "Indicador"), list(ALLOWED_METRICS))
+            unit = c5.text_input(tx("Unit", "Unidade"), max_chars=24, value="sacas/ha")
+            baseline = c6.text_input(tx("Reference value (optional)", "Valor de referência (opcional)"), placeholder="80")
+            alternative = st.text_input(tx("Alternative value (optional)", "Valor da estratégia (opcional)"), placeholder="84")
+            notes = st.text_area(tx("Method, period and limitations", "Método, período e limitações"), max_chars=1000)
+            consent = st.checkbox(tx("I consent to publishing this research note publicly under my alias.", "Autorizo a publicação pública desta nota de pesquisa sob meu apelido."), value=False)
+            submitted = st.form_submit_button(tx("Publish research note", "Publicar nota de pesquisa"), type="primary")
+        if submitted:
+            try:
+                record = validate_trial_record({
+                    "title":title,"display_alias":alias,"macroregion":region,"crop":crop,
+                    "season":season,"hypothesis":hypothesis,"strategy":strategy,
+                    "comparator":comparator,"metric":metric,"unit":unit,
+                    "baseline_value":baseline if baseline.strip() else None,
+                    "alternative_value":alternative if alternative.strip() else None,
+                    "notes":notes
+                })
+                if not consent:
+                    raise ValueError(tx("Explicit consent is required.", "É necessário consentimento explícito."))
+                publish_field_lab_trial(record)
+                st.success(tx("Research note published to the Field Lab.", "Nota de pesquisa publicada no Field Lab."))
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+    else:
+        st.info(tx("Sign in with your email account to publish. Public research notes can be explored below without signing in.", "Entre com sua conta de e-mail para publicar. As notas públicas podem ser exploradas abaixo sem entrar na conta."))
+    st.divider()
+    st.subheader(tx("Explore community experiments", "Explore experimentos da comunidade"))
+    try:
+        trials = fetch_field_lab_trials()
+        try:
+            updates = fetch_field_lab_updates()
+            updates_frame = pd.DataFrame(updates)
+        except Exception as update_exc:
+            updates_frame = pd.DataFrame()
+            st.warning(tx("The longitudinal timeline needs the latest Supabase migration. ", "A linha do tempo precisa da migração mais recente do Supabase.") + str(update_exc))
+        if not trials:
+            st.info(tx("No public field notes yet. The first contribution will open this research notebook.", "Ainda não há notas públicas de campo. A primeira contribuição abrirá este caderno de pesquisa."))
+        else:
+            frame = pd.DataFrame(trials)
+            f1,f2,f3 = st.columns(3)
+            crop_filter = f1.selectbox(tx("Crop", "Cultura"), ["All"] + sorted(frame["crop"].dropna().unique().tolist()), key="fl_crop")
+            region_filter = f2.selectbox(tx("Macroregion", "Macrorregião"), ["All"] + sorted(frame["macroregion"].dropna().unique().tolist()), key="fl_region")
+            season_filter = f3.selectbox(tx("Season", "Safra"), ["All"] + sorted(frame["season"].dropna().unique().tolist()), key="fl_season")
+            filtered = frame.copy()
+            if crop_filter != "All": filtered = filtered[filtered["crop"] == crop_filter]
+            if region_filter != "All": filtered = filtered[filtered["macroregion"] == region_filter]
+            if season_filter != "All": filtered = filtered[filtered["season"] == season_filter]
+            if filtered.empty:
+                st.info(tx("No records match these filters.", "Nenhum registro corresponde a esses filtros."))
+            else:
+                for _, trial in filtered.iterrows():
+                    with st.expander(f"{trial['title']} · {trial['crop']} · {trial['macroregion']}"):
+                        st.caption(f"{trial['display_alias']} · {trial['season']} · {trial['status']}")
+                        st.markdown("**" + tx("Hypothesis", "Hipótese") + "**")
+                        st.write(trial["hypothesis"])
+                        left,right = st.columns(2)
+                        with left:
+                            st.markdown("**" + tx("Strategy", "Estratégia") + "**")
+                            st.write(trial["strategy"])
+                        with right:
+                            st.markdown("**" + tx("Comparator", "Comparador") + "**")
+                            st.write(trial["comparator"])
+                        st.write(f"**{tx('Metric','Indicador')}:** {trial['metric']} ({trial['unit']})")
+                        base,alt = trial.get("baseline_value"),trial.get("alternative_value")
+                        if pd.notna(base) and pd.notna(alt):
+                            delta = relative_difference(base,alt)
+                            st.metric(tx("Contributor-reported difference", "Diferença informada pelo participante"), f"{delta:+.2f}%" if delta is not None else tx("Not calculable", "Não calculável"), help=tx("Descriptive arithmetic only; not a causal effect or verified result.", "Apenas cálculo descritivo; não é efeito causal nem resultado verificado."))
+                            st.caption(f"{tx('Reference','Referência')}: {base:g} · {tx('Alternative','Alternativa')}: {alt:g} {trial['unit']}")
+                        if trial.get("notes"):
+                            st.caption(trial["notes"])
+                        st.caption(tx("Community observation · unverified contributor report", "Observação comunitária · relato não verificado"))
+
+                        st.markdown("#### " + tx("Season-by-season timeline", "Linha do tempo por safra"))
+                        if not updates_frame.empty:
+                            history = updates_frame[updates_frame["trial_id"] == trial["id"]].sort_values(["observation_date", "created_at"])
+                        else:
+                            history = pd.DataFrame()
+                        if history.empty:
+                            st.caption(tx("No follow-up observations recorded yet.", "Ainda não há observações de acompanhamento."))
+                        else:
+                            for _, item in history.iterrows():
+                                st.markdown(
+                                    f"**{item['season']} · {item['stage']} · {item['arm']}** — "
+                                    f"{item['observed_value']:g} {item['unit']}"
+                                )
+                                st.caption(
+                                    f"{item['observation_date']} · {item['display_alias']} · "
+                                    f"{item['method']}"
+                                )
+                                if item.get("notes"):
+                                    st.caption(item["notes"])
+                        if st.session_state.get("agrovision_auth_mode") == "email":
+                            with st.form(f"fieldlab_followup_{trial['id']}"):
+                                st.markdown("**" + tx("Add a follow-up observation", "Adicionar observação de acompanhamento") + "**")
+                                u1,u2,u3 = st.columns(3)
+                                follow_alias = u1.text_input(tx("Public alias", "Apelido público"), max_chars=32, key=f"fl_alias_{trial['id']}")
+                                follow_season = u2.text_input(tx("Season", "Safra"), max_chars=20, key=f"fl_season_{trial['id']}", value=str(trial["season"]))
+                                follow_date = u3.date_input(tx("Observation date", "Data da observação"), value=datetime.now().date(), key=f"fl_date_{trial['id']}", max_value=datetime.now().date())
+                                u4,u5,u6 = st.columns(3)
+                                follow_stage = u4.selectbox(tx("Stage", "Etapa"), list(ALLOWED_STAGES), key=f"fl_stage_{trial['id']}")
+                                follow_arm = u5.selectbox(tx("Comparison arm", "Grupo de comparação"), ["Estratégia", "Comparador", "Outro"], key=f"fl_arm_{trial['id']}")
+                                follow_value = u6.text_input(tx("Observed value", "Valor observado"), key=f"fl_value_{trial['id']}")
+                                follow_method = st.text_input(tx("Measurement method / protocol", "Método de medição / protocolo"), max_chars=500, key=f"fl_method_{trial['id']}")
+                                follow_notes = st.text_area(tx("Context and limitations", "Contexto e limitações"), max_chars=1000, key=f"fl_notes_{trial['id']}")
+                                follow_consent = st.checkbox(tx("I consent to publishing this follow-up publicly.", "Autorizo a publicação pública deste acompanhamento."), key=f"fl_consent_{trial['id']}")
+                                follow_submit = st.form_submit_button(tx("Add to timeline", "Adicionar à linha do tempo"))
+                            if follow_submit:
+                                try:
+                                    follow_record = validate_trial_update({
+                                        "trial_id": str(trial["id"]),
+                                        "display_alias": follow_alias,
+                                        "season": follow_season,
+                                        "observation_date": follow_date.isoformat(),
+                                        "stage": follow_stage,
+                                        "arm": follow_arm,
+                                        "observed_value": follow_value,
+                                        "unit": str(trial["unit"]),
+                                        "method": follow_method,
+                                        "notes": follow_notes
+                                    })
+                                    if not follow_consent:
+                                        raise ValueError(tx("Explicit consent is required.", "É necessário consentimento explícito."))
+                                    publish_field_lab_update(follow_record)
+                                    st.success(tx("Follow-up added to the experiment timeline.", "Acompanhamento adicionado à linha do tempo do experimento."))
+                                    st.rerun()
+                                except Exception as follow_exc:
+                                    st.error(str(follow_exc))
+    except Exception as exc:
+        st.warning(tx("The Field Lab database migration is required. Run supabase/community_schema.sql in Supabase SQL Editor. Details: ", "A migração do Field Lab é necessária. Execute supabase/community_schema.sql no SQL Editor do Supabase. Detalhes: ") + str(exc))
+    st.caption(tx(
+        "Interpretation rule: comparisons are descriptive. Different soils, cultivars, dates, input rates, measurement protocols and weather can confound comparisons. Do not infer causality or recommend management from community entries alone.",
+        "Regra de interpretação: as comparações são descritivas. Solos, cultivares, datas, doses de insumos, protocolos de medição e clima diferentes podem confundir os resultados. Não infira causalidade nem recomende manejo apenas com registros comunitários."
+    ))
+
 st.divider()
-st.caption("AGROVISION · Crop-specific climate screening · Research and validation in progress")
+st.caption("GUMA · Crop-specific climate screening · Research and validation in progress")
+
+
+with tab_systems:
+    from agrovision_systems import AGRONOMIC_SYSTEMS, validate_catalog
+    st.header(tx("Agronomic Systems Library", "Biblioteca de Sistemas Agronômicos"))
+    st.write(tx(
+        "Explore how major farming and management systems are organized, how they operate, and what determines their performance.",
+        "Explore como os principais sistemas de produção e manejo são organizados, como funcionam e quais fatores condicionam seus resultados."
+    ))
+    st.markdown(
+        '<div class="section-note">Educational reference · Context-specific management · Not an agronomic prescription</div>',
+        unsafe_allow_html=True
+    )
+    validate_catalog()
+    categories = sorted({item["category"] for item in AGRONOMIC_SYSTEMS})
+    category_labels = {item["category"]: (item["category_pt"] if st.session_state.get("agrovision_language") == "Português" else item["category"]) for item in AGRONOMIC_SYSTEMS}
+    category_keys = ["All categories"] + categories
+    category_options = [tx("All categories", "Todas as categorias")] + [category_labels[key] for key in categories]
+    selected_category_label = st.selectbox(tx("Explore by category", "Explorar por categoria"), category_options, key="guma_system_category")
+    selected_category = None if selected_category_label == category_options[0] else next(key for key in categories if category_labels[key] == selected_category_label)
+    search_term = st.text_input(tx("Search systems", "Buscar sistemas"), placeholder=tx("Example: no-till, ILPF, irrigation...", "Ex.: plantio direto, ILPF, irrigação..."), key="guma_system_search").strip().casefold()
+    filtered_systems = [
+        item for item in AGRONOMIC_SYSTEMS
+        if (selected_category is None or item["category"] == selected_category)
+        and (not search_term or search_term in " ".join(str(value) for value in item.values()).casefold())
+    ]
+    st.caption(tx(f"{len(filtered_systems)} systems in this view · {len(AGRONOMIC_SYSTEMS)} in the library", f"{len(filtered_systems)} sistemas nesta visualização · {len(AGRONOMIC_SYSTEMS)} na biblioteca"))
+    if not filtered_systems:
+        st.info(tx("No systems match this search. Try another term.", "Nenhum sistema corresponde à busca. Tente outro termo."))
+    for system in filtered_systems:
+        title = system["pt"] if st.session_state.get("agrovision_language") == "Português" else system["name"]
+        category = system["category_pt"] if st.session_state.get("agrovision_language") == "Português" else system["category"]
+        with st.expander(f"{title} · {category}", expanded=False):
+            how = system["how_pt"] if st.session_state.get("agrovision_language") == "Português" else system["how"]
+            flow = system["flow_pt"] if st.session_state.get("agrovision_language") == "Português" else system["flow"]
+            strengths = system["strengths_pt"] if st.session_state.get("agrovision_language") == "Português" else system["strengths"]
+            limits = system["limits_pt"] if st.session_state.get("agrovision_language") == "Português" else system["limits"]
+            watch = system["watch_pt"] if st.session_state.get("agrovision_language") == "Português" else system["watch"]
+            st.markdown("**" + tx("How it works", "Como funciona") + "**")
+            st.write(how)
+            st.markdown("**" + tx("Typical operating sequence", "Sequência típica de funcionamento") + "**")
+            st.info(flow)
+            left, right = st.columns(2)
+            with left:
+                st.markdown("**" + tx("Potential strengths", "Potenciais vantagens") + "**")
+                st.write(strengths)
+            with right:
+                st.markdown("**" + tx("Limitations and trade-offs", "Limitações e contrapartidas") + "**")
+                st.write(limits)
+            st.markdown("**" + tx("What to monitor", "O que monitorar") + "**")
+            st.caption(watch)
+    st.divider()
+    st.subheader(tx("How to interpret this library", "Como interpretar esta biblioteca"))
+    st.write(tx(
+        "These entries describe different levels of a farming system. No-till is a soil-management approach; rotation and succession describe crop sequences; ILP/ILPF and agroforestry integrate production components; irrigation describes water supply. They can be combined, but they are not synonyms.",
+        "As entradas descrevem níveis diferentes de um sistema agrícola. Plantio direto é uma abordagem de manejo do solo; rotação e sucessão descrevem sequências de culturas; ILP/ILPF e SAF integram componentes produtivos; irrigação descreve o suprimento de água. Eles podem ser combinados, mas não são sinônimos."
+    ))
+    st.caption(tx(
+        "Suitability depends on local soil, climate, topography, water, crop, machinery, labor, market and regulation. Potential benefits are conditional, not guaranteed.",
+        "A adequação depende de solo, clima, relevo, água, cultura, máquinas, mão de obra, mercado e legislação locais. Benefícios potenciais são condicionais, não garantidos."
+    ))
+    st.markdown("[Technical references and methodology](https://github.com/interpessoal21-ops/agrovision/blob/spaceapps-2026-rotation-lab/docs/AGRONOMIC_SYSTEMS.md)")

@@ -1,0 +1,47 @@
+# Rotation Lab — prototype method and limitations
+
+## Purpose
+The Rotation Lab adds a transparent comparison of crop-sequence weather windows to AGROVISION. It is an exploratory decision-support prototype, not a calibrated crop model or a planting recommendation.
+
+## Demonstration study point
+Rio Verde, Goiás, is the proposed regional case study. The app includes an optional municipal-seat preset at approximately 17.79° S, 50.91° W (IBGE municipal map, edition 2021). The preset is a demonstration point, not a farm boundary or a claim of field-level representativeness. The municipal government reports an average municipal altitude of 748 m; use a surveyed/local elevation for an actual farm analysis.
+
+## Scenarios
+- A: soybean main-season window; the remainder is not modeled as a cover crop.
+- B: soybean followed by a second-season maize window.
+- C: the same cash-crop windows as B, with Brachiaria shown only as a management overlay. Brachiaria growth, water use, biomass and soil effects are not simulated.
+
+The cycle lengths use rounded midpoints of the indicative ranges already documented in `app.py`: soybean 135–150 days and maize 125–180 days. These are not cultivar-specific calendars.
+
+## Inputs and calculations
+- NASA POWER daily precipitation and near-surface air temperature for complete crop windows.
+- Optional MODIS/Terra MOD13Q1 NDVI observations overlapping each window. Reflectance fill values (`-1000`) and values outside the documented `0–10000` range are rejected; pixel-reliability classes 0 (good) and 1 (marginal) are retained, while classes 2 and 3 are excluded.
+- User-entered local context (soil texture, fertility and water regime) is displayed but is not treated as a measured hydraulic property.
+
+Only complete windows with at least 95% non-missing precipitation and temperature records are retained. Rainfall is summed over each crop window; temperature is averaged. MODIS NDVI is averaged over available overlapping composites. Sequence summaries report total modeled duration, total rainfall, and median daily rainfall (sequence rainfall divided by modeled days), alongside mean temperature. The duration-normalized rainfall rate is descriptive climate context, not crop water availability or water-use efficiency.
+
+Scenario A represents one modeled soybean crop only; the remainder of the year is not explicitly simulated as fallow. Scenarios B and C have identical modeled cash-crop windows; their distinction is solely the Brachiaria management overlay in C. They must therefore not be presented as different measured outcomes.
+
+## Critical interpretation
+- Rainfall is not effective rainfall and is not a soil-water balance.
+- MODIS NDVI is regional/pixel vegetation context, not crop identification.
+- No yield, profit, soil-carbon, soil-health, biomass or water-saving benefit is predicted.
+- Scenario C does not simulate Brachiaria.
+- No scenario receives a composite score or automated recommendation.
+- Check the exact current MAPA ZARC combination for municipality, crop, cultivar group, soil class, management and sowing dekad before any real-world use.
+
+## Next validation steps
+1. Unit-test date windows, missing records and aggregation.
+2. Compare POWER variables with quality-controlled station observations where available.
+3. Review crop-cycle assumptions with an agronomist and replace generic cycle lengths with locally justified cultivar/management values.
+4. Obtain laboratory soil properties before using a root-zone water balance in rotation comparisons.
+5. Compare the interpretation against multi-season field records before claiming agronomic performance.
+
+## Data provenance
+- NASA POWER Daily API: https://power.larc.nasa.gov/docs/services/api/temporal/daily/
+- MODIS/Terra MOD13Q1 via ORNL DAAC: https://modis.ornl.gov/data/modis_webservice.html
+- FAO-56: https://www.fao.org/4/X0490E/X0490E00.htm
+- MAPA ZARC: https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico
+- IBGE Rio Verde municipal map: https://geoftp.ibge.gov.br/cartas_e_mapas/mapas_municipais/colecao_de_mapas_municipais/2020/GO/rio_verde/5218805_MM.pdf
+- Rio Verde municipal location and climate: https://www.rioverde.go.gov.br/localizacao-e-clima/
+- Embrapa crop and production-system references: https://www.embrapa.br/

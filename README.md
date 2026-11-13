@@ -1,6 +1,12 @@
-# AGROVISION
+# GUMA — Earth Intelligence
 
-**Early-stage agricultural climate-screening platform using NASA Earth-observation data and published crop references.** Built for the NASA Space Apps Challenge 2026; scientific validation is in progress.
+**GUMA is an Earth-intelligence platform connecting climate, Earth observation, agricultural systems and collaborative research.** Built for the NASA Space Apps Challenge 2026; scientific validation is in progress.
+
+The name is inspired by Guma, the character in Jorge Amado's *Mar Morto*. Its visual identity draws on the sea, navigation and the horizon. This is an independent cultural inspiration, not an official association with the author or publisher. See [the GUMA brand system](docs/GUMA_BRAND.md).
+
+## Institutional collaboration
+
+The [GUMA Institutional Kit](docs/GUMA_INSTITUTIONAL_KIT.md) contains the project brief, technical architecture, scientific-validation pilot, partnership model, demonstration script, outreach templates and a proposed 90-day roadmap. All listed organizations are prospective contacts only; no partnership or endorsement is implied.
 
 ## Current capabilities
 
@@ -20,9 +26,27 @@
 - Supabase email authentication and optional per-user project persistence.
 - Saved projects include the queried climate and MODIS series plus any recorded FAO-56 water-balance run and ZARC reference, which can be restored in the app.
 
+## Climate Watch
+
+The **Climate Watch** tab is a global climate-indicator observatory, separate from the farm-scale screening tools. It retrieves four published monthly series:
+
+- **NASA GISS GISTEMP v4:** global land-ocean temperature anomalies from 1880 onward, relative to 1951–1980. Monthly values and annual means are displayed separately.
+- **NOAA Global Monitoring Laboratory — Mauna Loa:** monthly atmospheric CO₂ station observations in ppm; this is not a global marine-surface average.
+- **NOAA Global Monitoring Laboratory — CH₄:** globally averaged monthly methane from the marine-surface sampling network, in ppb; recent observations are preliminary.
+- **NOAA Global Monitoring Laboratory — N₂O:** globally averaged monthly nitrous oxide from the marine-surface sampling network, in ppb; the reliable series begins in 2001 and recent observations are preliminary.
+
+Data are cached for 24 hours and can be manually refreshed. The dashboard shows retrieval time, latest observation dates, source links, reference baseline and interpretation limits. Publication latency is expected; the indicators are not real-time telemetry. Do not compare anomaly values with different reference periods as if they were identical.
+
+Global sea-level and ocean-heat source references are exposed in the Climate Watch tab, but those datasets are not yet ingested into its plotted time series. The NASA PO.DAAC global sea-level indicator requires authenticated data access; GUMA does not silently substitute a different series. NOAA NCEI publishes monthly global ocean heat-content fields for 0–700 m and 0–2000 m, based on in-situ subsurface observations. A Brazil-specific national extremes atlas remains pending. The current Brazil/local panel calculates transparent hot-day, heavy-rain-day and consecutive-dry-spell indicators from the selected point's NASA POWER daily series; it is not an official national climate classification or a station observation.
+
+Local extreme-indicator thresholds are user-adjustable and the annual summary reports valid-data counts. Missing precipitation dates break dry spells. These metrics are descriptive screening statistics, not official heatwave/drought definitions or causal attribution.\n\nParser and local-extreme regression tests: `python -m unittest discover -s tests -p "test_climate_watch.py"`.
+
 ## Run locally
 
 Create a Python virtual environment, install dependencies with `pip install -r requirements.txt`, then start the app with `streamlit run app.py`.
+
+
+- **Rotation Lab (Space Apps 2026 preparation):** compares historical NASA POWER climate windows across soybean-only, soybean→maize, and soybean→maize with a Brachiaria management overlay. The Brachiaria component is not simulated; the comparison does not predict yield, soil-carbon change, profitability, or water savings. Optional MODIS NDVI is displayed only as date-overlapping vegetation context, not crop identification. See [Rotation Lab method and limitations](docs/ROTATION_LAB.md).
 
 ## Data sources
 
@@ -71,7 +95,15 @@ Reference sources:
 - [Embrapa — Soybean water requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/soja/pre-producao/caracteristicas-da-especie-e-relacoes-com-o-ambiente/exigencias-climaticas/agua).
 - [Embrapa — Common bean climate requirements](https://www.embrapa.br/web/agencia-de-informacao-tecnologica/cultivos/feijao/pre-producao/clima).
 
-## Supabase setup: save projects
+## GUMA Field Lab — community research notebook
+
+Field Lab lets signed-in contributors publish a public research note with a hypothesis, management strategy, comparator, crop, Brazilian macroregion, season and optional contributor-reported metric values. The board supports crop/region/season filters and displays the notes with explicit "unverified community observation" status. It calculates a simple percentage difference only when both values are supplied and the reference is nonzero; this arithmetic is not a causal effect estimate.
+
+Run `supabase/community_schema.sql` in Supabase SQL Editor to create the RLS-protected `field_lab_trials` table (the same migration also creates the Commons table). Browsing is public; publication requires email sign-in and explicit consent. Exact coordinates, personal data and raw daily records are not fields in the Field Lab table. Contributors must avoid sharing confidential or identifying information.
+
+Field Lab now supports longitudinal follow-up entries linked to an original hypothesis: dated observations by season, stage (planting, development, harvest, post-harvest or follow-up), and comparison arm (strategy/comparator). Each update stores its own reported value, unit, method and notes, creating a chronological history without overwriting earlier observations. Updates are contributor-reported and are not automatically verified or statistically adjusted.\n\nField Lab is a hypothesis-sharing and evidence notebook, not a controlled-trial registry or peer-reviewed publication system. Contributor-reported values are not independently verified. Differences in soil, cultivar, management, weather, timing and measurement protocols can confound comparisons; do not infer causality or issue agronomic prescriptions from the board alone.
+
+## GUMA Commons — opt-in community comparison\n\nThe Commons tab turns each loaded NASA POWER daily point series into a compact climate fingerprint: mean temperature, mean annual precipitation, annual hot-day frequency, and monthly temperature/rainfall rhythm. Signed-in users may explicitly publish this aggregate profile under a public alias and a broad Brazilian macroregion. Exact coordinates, email, farm name and raw daily records are not sent to the community table. The public board supports crop/season/region filters, a rainfall-versus-temperature climate-space plot, and a descriptive similarity distance. Similarity is not a crop-suitability, productivity or climate-risk score. Contributor labels are self-reported and not independently verified.\n\nTo enable it, run `supabase/community_schema.sql` in the same Supabase SQL Editor after the existing `supabase/schema.sql`. Publication is opt-in; browsing the board is public. Users should not enter identifying aliases or confidential farm information.\n\n## Supabase setup: save projects
 
 Email authentication uses the Supabase Auth REST API. To enable saving and restoring projects:
 
@@ -96,3 +128,8 @@ Saved project payloads include the selected coordinates, user-entered farm conte
 ## Deploy
 
 Deploy this repository on Streamlit Community Cloud using `app.py` as the main file. Streamlit Community Cloud automatically rebuilds after commits to the connected GitHub branch.
+
+
+## Agronomic Systems Library
+
+The GUMA app includes an educational library explaining major agricultural production and management systems, including conventional tillage, no-till, crop rotation, succession, intercropping, ILP, ILF, IPF, ILPF, agroforestry, agroecological and organic production, irrigation, protected cultivation and hydroponics. See [the technical guide](docs/AGRONOMIC_SYSTEMS.md). The library distinguishes system types and describes operating logic, potential strengths, limitations and monitoring points; it is not an agronomic prescription.
