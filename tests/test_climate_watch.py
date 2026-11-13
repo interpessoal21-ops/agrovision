@@ -46,9 +46,9 @@ class ClimateWatchParserTests(unittest.TestCase):
 
 
     def test_gistemp_skips_metadata_and_bom(self):
-        header="\\ufeffYear,Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec,J-D,D-N,D"
+        header="\ufeffYear,Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec,J-D,D-N,D"
         row="2023,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,0.6,0.6,0.6"
-        data=parse_gistemp_csv("Land-Ocean Temperature Index\\nSource: NASA GISS\\n"+header+"\\n"+row)
+        data=parse_gistemp_csv("Land-Ocean Temperature Index\nSource: NASA GISS\n"+header+"\n"+row)
         self.assertEqual(len(data),12)
         self.assertEqual(data.iloc[0]["Date"].year,2023)
         self.assertAlmostEqual(data.iloc[-1]["Anomaly_C"],1.2)
