@@ -197,6 +197,18 @@ def supabase_auth(endpoint, payload):
     return data
 
 with st.sidebar:
+    st.markdown("""
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 2px 18px 2px;">
+      <svg viewBox="0 0 64 64" width="42" height="42" aria-label="GUMA">
+        <circle cx="32" cy="32" r="25" fill="none" stroke="#24C8B5" stroke-width="2"/>
+        <ellipse cx="32" cy="32" rx="12" ry="25" fill="none" stroke="#B9F36B" stroke-width="2" transform="rotate(38 32 32)"/>
+        <path d="M8 36c8-8 14-8 22 0s14 8 26 0M12 44c7-5 13-5 20 0s13 5 20 0" fill="none" stroke="#F0F5F3" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="48" cy="15" r="3" fill="#F0B66A"/>
+      </svg>
+      <div><div style="color:#F0F5F3;font-weight:850;letter-spacing:.18em;font-size:1.08rem;">GUMA</div>
+      <div style="color:#24C8B5;font-size:.58rem;letter-spacing:.13em;font-weight:750;">EARTH INTELLIGENCE</div></div>
+    </div>
+    """, unsafe_allow_html=True)
     st.selectbox("Language / Idioma", ["English", "Português"], key="agrovision_language")
 
 auth_mode = st.session_state.get("agrovision_auth_mode")
@@ -398,13 +410,13 @@ tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, t
     tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado"),
     tx("🌾 Rotation Lab", "🌾 Laboratório de rotação"),
     tx("🌍 Climate Watch", "🌍 Observatório climático"),
-    tx("🧬 GUMA Commons", "🧬 Commons AGROVISION"),
+    tx("🧬 GUMA Commons", "🧬 Commons GUMA"),
     tx("🧪 Field Lab", "🧪 Laboratório de Campo")
 ])
 
 
 with tab6:
-    st.header(tx("GUMA Knowledge", "Conhecimento AGROVISION"))
+    st.header(tx("GUMA Knowledge", "Conhecimento GUMA"))
     st.write(tx(
         "A practical science library for understanding the data behind agricultural decisions.",
         "Uma biblioteca científica prática para entender os dados por trás das análises agrícolas."
@@ -525,8 +537,8 @@ with tab6:
     st.divider()
     st.subheader(tx("How to use this library", "Como usar esta biblioteca"))
     st.write(tx(
-        "Start with the explanation, open the primary reference, and then return to the relevant AGROVISION tool. Each material is educational: verify the source, date, geographic scope and assumptions before using information in a real-world decision.",
-        "Comece pela explicação, abra a referência primária e depois volte à ferramenta correspondente do AGROVISION. Os materiais são educativos: confira fonte, data, abrangência geográfica e hipóteses antes de usar a informação em uma decisão real."
+        "Start with the explanation, open the primary reference, and then return to the relevant GUMA tool. Each material is educational: verify the source, date, geographic scope and assumptions before using information in a real-world decision.",
+        "Comece pela explicação, abra a referência primária e depois volte à ferramenta correspondente do GUMA. Os materiais são educativos: confira fonte, data, abrangência geográfica e hipóteses antes de usar a informação em uma decisão real."
     ))
     st.caption(tx(
         "Editorial library · Foundational references, not a live news feed. New research and official updates are reviewed separately.",
@@ -626,7 +638,7 @@ with tab_help:
         - **Sandy / Loamy / Clayey:** choose the closest known soil texture. If you do not know it, leave **Unknown**.
         - **Soil fertility:** choose a low, medium, or high qualitative estimate based on local knowledge or soil analysis.
         """)
-        st.warning("These are user-provided context values. AGROVISION does not measure soil texture or fertility from NASA data.")
+        st.warning("These are user-provided context values. GUMA does not measure soil texture or fertility from NASA data.")
 
     with st.expander("3. Load the environmental data"):
         st.markdown("""
@@ -683,12 +695,12 @@ with tab_help:
     st.subheader(tx("What the platform does — and does not do", "O que a plataforma faz — e o que não faz"))
     left, right = st.columns(2)
     with left:
-        st.markdown("**AGROVISION can help you:**")
+        st.markdown("**GUMA can help you:**")
         st.markdown("- Explore climate indicators for a selected location.\n- View satellite-derived vegetation observations.\n- Compare historical climate during representative cycles of maize, soybean and common bean.\n- Review the reference ranges and assumptions behind each crop screen.")
     with right:
-        st.markdown("**AGROVISION does not currently:**")
+        st.markdown("**GUMA does not currently:**")
         st.markdown("- Measure soil properties directly.\n- Reproduce the full official ZARC/SARRA model.\n- Predict crop yield or farm profit.\n- Provide a certified planting or irrigation recommendation.\n- Display SMAP data in this public deployment.")
-    st.caption("AGROVISION · " + tx("First-visit guide · Agricultural climate analysis", "Guia inicial · Análise climática agrícola"))
+    st.caption("GUMA · " + tx("First-visit guide · Agricultural climate analysis", "Guia inicial · Análise climática agrícola"))
 
 with tab1:
     st.subheader(tx("Your study area, from space", "Sua área de estudo vista do espaço"))
@@ -834,7 +846,7 @@ with tab_climate:
                     "CO₂ is a major long-lived greenhouse gas. The Mauna Loa series is an atmospheric measurement record; it does not by itself attribute a particular local drought, flood or crop loss.",
                     "O CO₂ é um importante gás de efeito estufa de longa permanência. A série de Mauna Loa é um registro de medição atmosférica; isoladamente, não atribui uma seca, enchente ou perda agrícola local."
                 ))
-                st.markdown("**" + tx("Next AGROVISION connection", "Próxima conexão no AGROVISION") + "**")
+                st.markdown("**" + tx("Next GUMA connection", "Próxima conexão no GUMA") + "**")
                 st.write(tx(
                     "The next analytical layer is to compare regional heat and rainfall extremes with crop calendars, NASA POWER histories, MODIS vegetation signals and official Brazilian datasets.",
                     "A próxima camada analítica é cruzar extremos regionais de calor e chuva com calendários agrícolas, históricos NASA POWER, sinais de vegetação MODIS e bases oficiais brasileiras."
@@ -884,8 +896,8 @@ with tab_climate:
                 "- [NOAA NCEI — monthly global ocean heat content, 0–700 m and 0–2000 m](https://www.ncei.noaa.gov/access/global-ocean-heat-content/monthly_analysis.html)"
             )
             st.caption(tx(
-                "Sea-level and ocean-heat datasets are linked as authoritative references but are not yet ingested into AGROVISION's plotted time series. NOAA's ocean-heat product uses in-situ subsurface observations and a documented climatological reference; its monthly fields have spatial-data and sampling uncertainty.",
-                "As bases de nível do mar e calor oceânico estão indicadas como referências oficiais, mas ainda não foram ingeridas nas séries gráficas do AGROVISION. O produto de calor oceânico da NOAA usa observações subsuperficiais in situ e uma referência climatológica documentada; seus campos mensais possuem incertezas espaciais e de amostragem."
+                "Sea-level and ocean-heat datasets are linked as authoritative references but are not yet ingested into GUMA's plotted time series. NOAA's ocean-heat product uses in-situ subsurface observations and a documented climatological reference; its monthly fields have spatial-data and sampling uncertainty.",
+                "As bases de nível do mar e calor oceânico estão indicadas como referências oficiais, mas ainda não foram ingeridas nas séries gráficas do GUMA. O produto de calor oceânico da NOAA usa observações subsuperficiais in situ e uma referência climatológica documentada; seus campos mensais possuem incertezas espaciais e de amostragem."
             ))
             st.subheader(tx("Data provenance & update policy", "Proveniência dos dados e política de atualização"))
             source_rows = [
@@ -1654,8 +1666,8 @@ def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water
 with tab5:
     st.subheader(tx("Independent validation against weather-station observations", "Validação independente com observações de estações meteorológicas"))
     st.markdown(tx(
-        "Upload a CSV containing daily observations from a traceable weather station. AGROVISION will align dates with NASA POWER and calculate paired error statistics. No station observations are bundled or fabricated.",
-        "Envie um CSV com observações diárias de uma estação meteorológica identificável. O AGROVISION alinhará as datas com o NASA POWER e calculará estatísticas de erro pareadas. Nenhuma observação de estação é embutida ou inventada."
+        "Upload a CSV containing daily observations from a traceable weather station. GUMA will align dates with NASA POWER and calculate paired error statistics. No station observations are bundled or fabricated.",
+        "Envie um CSV com observações diárias de uma estação meteorológica identificável. O GUMA alinhará as datas com o NASA POWER e calculará estatísticas de erro pareadas. Nenhuma observação de estação é embutida ou inventada."
     ))
     st.warning(tx(
         "Use the same location, physical variable, unit and daily aggregation. Document station ID, coordinates, elevation, instrument, source and quality control. A nearby station is not automatically representative of the satellite/grid cell.",
@@ -1843,7 +1855,7 @@ with tab_rotation:
                     st.download_button(
                         tx("Download rotation comparison CSV", "Baixar comparação de rotação em CSV"),
                         rotation_detail.to_csv(index=False).encode("utf-8"),
-                        file_name="agrovision_rotation_windows.csv",
+                        file_name="guma_rotation_windows.csv",
                         mime="text/csv"
                     )
             except Exception as exc:
@@ -1864,9 +1876,9 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
     with export_col1:
         csv_frame = climate_for_export.copy()
         csv_frame.index.name = "Date"
-        st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="agrovision_nasa_power.csv", mime="text/csv", use_container_width=True)
+        st.download_button(tx("Download climate CSV", "Baixar CSV climático"), csv_frame.to_csv().encode("utf-8"), file_name="guma_nasa_power.csv", mime="text/csv", use_container_width=True)
         if not modis_for_export.empty:
-            st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="agrovision_modis_ndvi.csv", mime="text/csv", use_container_width=True)
+            st.download_button(tx("Download MODIS CSV", "Baixar CSV do MODIS"), modis_for_export.to_csv(index=False).encode("utf-8"), file_name="guma_modis_ndvi.csv", mime="text/csv", use_container_width=True)
     with export_col2:
         water_for_export = st.session_state.get("latest_water_balance")
         if water_for_export and water_for_export.get("coords") != (float(lat), float(lon)):
@@ -1876,7 +1888,7 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
             water_balance=water_for_export,
             zarc_reference=st.session_state.get("zarc_reference")
         )
-        st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="agrovision_report.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button(tx("Download PDF report", "Baixar relatório PDF"), pdf_bytes, file_name="guma_report.pdf", mime="application/pdf", use_container_width=True)
     with export_col3:
         if st.button(tx("Save project to account", "Salvar projeto na conta"), use_container_width=True):
             project_name = st.session_state.get("project_name", f"Study {lat:.3f}, {lon:.3f}")
@@ -1920,7 +1932,7 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
                 st.error(str(exc))
 
 with tab_commons:
-    st.header("AGROVISION COMMONS")
+    st.header("GUMA COMMONS")
     st.caption(tx(
         "A collaborative climate atlas built from opt-in, anonymized aggregate fingerprints — not a leaderboard.",
         "Um atlas climático colaborativo construído com assinaturas agregadas e compartilhadas voluntariamente — não um placar de produtores."
@@ -2053,7 +2065,7 @@ with tab_commons:
 
 
 with tab_fieldlab:
-    st.header("AGROVISION FIELD LAB")
+    st.header("GUMA FIELD LAB")
     st.caption(tx(
         "A public notebook for agricultural hypotheses, field comparisons and shared evidence.",
         "Um caderno público de hipóteses agrícolas, comparações de campo e evidências compartilhadas."
@@ -2218,4 +2230,4 @@ with tab_fieldlab:
     ))
 
 st.divider()
-st.caption("AGROVISION · Crop-specific climate screening · Research and validation in progress")
+st.caption("GUMA · Crop-specific climate screening · Research and validation in progress")
