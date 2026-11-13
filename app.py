@@ -2458,6 +2458,7 @@ with tab_atlas:
         key="guma_atlas_biomes"
     )
     show_hubs = st.checkbox(tx("Show agricultural reference hubs", "Mostrar polos agrícolas de referência"), value=True, key="guma_atlas_hubs")
+    show_hydrography = st.checkbox(tx("Show ANA hydrography network (BHO)", "Mostrar rede hidrográfica da ANA (BHO)"), value=False, key="guma_atlas_hydrography")
     map_center = [-14.2, -51.9]
     atlas_map = folium.Map(location=map_center, zoom_start=4, tiles=None, control_scale=True, prefer_canvas=True)
     folium.TileLayer(
@@ -2488,6 +2489,15 @@ with tab_atlas:
             popup=folium.Popup(f"<b>{label}</b><br>{summary}<br><small>Illustrative reference point · IBGE biome source linked below</small>", max_width=300)
         ).add_to(biome_layer)
     biome_layer.add_to(atlas_map)
+    if show_hydrography:
+        folium.raster_layers.WmsTileLayer(
+            url="https://portal1.snirh.gov.br/server/services/dados_abertos/Hidrografia_Parte_1/MapServer/WMSServer",
+            layers="Hidrografia_Parte_1",
+            name=tx("ANA · Hydrography (BHO, part 1)", "ANA · Hidrografia (BHO, parte 1)"),
+            fmt="image/png", transparent=True, version="1.3.0",
+            attr="ANA · Base Hidrográfica Ottocodificada Multiescalas 2012",
+            overlay=True, control=True, show=True
+        ).add_to(atlas_map)
     if show_hubs:
         hub_layer = folium.FeatureGroup(name=tx("Agricultural reference hubs", "Polos agrícolas de referência"), show=True)
         for hub in AGRICULTURAL_HUBS:
@@ -2503,8 +2513,8 @@ with tab_atlas:
     folium.LayerControl(collapsed=False).add_to(atlas_map)
     st_folium(atlas_map, width=None, height=610, key="guma_brazil_atlas_map", returned_objects=[])
     st.caption(tx(
-        "Basemaps are visual context. Satellite tiles are not a current land-cover classification, and the reference hubs are examples rather than a ranking of production.",
-        "Os mapas-base oferecem contexto visual. As imagens de satélite não são uma classificação atual de uso da terra, e os polos são exemplos, não um ranking de produção."
+        "Basemaps are visual context. Satellite tiles are not a current land-cover classification. The ANA BHO part 1 overlay is a 2012 reference hydrography network, not real-time river flow or water availability.",
+        "Os mapas-base oferecem contexto visual. As imagens de satélite não são uma classificação atual de uso da terra. A camada BHO parte 1 da ANA é uma rede hidrográfica de referência de 2012, não um dado de vazão ou disponibilidade hídrica em tempo real."
     ))
     st.subheader(tx("Brazil's six terrestrial biomes", "Os seis biomas terrestres brasileiros"))
     biome_cols = st.columns(3)
@@ -2530,9 +2540,16 @@ with tab_atlas:
         st.markdown("**MapBiomas**")
         st.write(tx("Annual land-cover and land-use maps, historical series and thematic monitors.", "Mapas anuais de cobertura e uso da terra, séries históricas e monitores temáticos."))
         st.markdown("[MapBiomas Brasil](https://brasil.mapbiomas.org/)")
+    st.subheader(tx("Official data services and layer status", "Serviços oficiais e situação das camadas"))
+    st.markdown("""
+- **ANA · Hydrography:** BHO multiscale 2012 is available as an optional live WMS overlay (part 1 only). [Service metadata](https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia_Parte_1/MapServer?f=pjson)
+- **ICMBio · Protected areas:** official WMS/WFS services are linked for GIS use; not rendered here until layer names and national coverage are verified. [WMS capabilities](https://geoservicos.inde.gov.br/geoserver/ICMBio/ows?service=wms&version=1.3.0&request=GetCapabilities) · [WFS capabilities](https://geoservicos.inde.gov.br/geoserver/ICMBio/ows?service=wfs&version=2.0.0&request=GetCapabilities)
+- **IBGE · Biomes:** official boundary product compatible with 1:250,000; current map still uses illustrative points. [IBGE product](https://www.ibge.gov.br/geociencias/informacoes-ambientais/vegetacao/15842-biomas.html)
+- **MapBiomas · Land cover:** annual maps and thematic products are available; native raster ingestion is pending. [MapBiomas platform](https://plataforma.brasil.mapbiomas.org/)
+""")
     st.info(tx(
-        "Next atlas layer candidates: official biome polygons, protected areas, land cover, hydrography, elevation and agricultural production. Each layer will need its own source, reference date, scale/resolution, license and quality notes before being represented as analytical evidence.",
-        "Próximas camadas candidatas: polígonos oficiais dos biomas, unidades de conservação, cobertura da terra, hidrografia, altitude e produção agrícola. Cada camada precisará de fonte, data de referência, escala/resolução, licença e notas de qualidade antes de ser tratada como evidência analítica."
+        "The Atlas distinguishes live map overlays from authoritative datasets that are linked but not yet ingested. Every future layer must carry source, dataset vintage, scale/resolution, license, update cadence and quality notes. ANA BHO part 1 is a 2012 reference dataset, not real-time monitoring.",
+        "O Atlas diferencia camadas exibidas ao vivo de bases oficiais apenas vinculadas, ainda não incorporadas. Toda camada deverá informar fonte, versão/data, escala/resolução, licença, frequência de atualização e notas de qualidade. A parte 1 da BHO da ANA é uma base de referência de 2012, não monitoramento em tempo real."
     ))
 
 
