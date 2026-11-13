@@ -936,16 +936,16 @@ with tab_partners:
                "Atenção à elegibilidade: diversos mecanismos exigem empresa, universidade, unidade de pesquisa credenciada, cooperativa ou consórcio formal. A GUMA não deve presumir que pode se candidatar como projeto individual. Confirme as regras do edital e a entidade proponente antes de preparar uma submissão."))
     st.subheader(tx("Near-term action plan","Plano de ação imediato"))
     st.markdown(tx(
-      "1. Publish a concise technical brief and a 90-second demo.
+      """1. Publish a concise technical brief and a 90-second demo.
 2. Create a source register with license, API, spatial resolution, temporal coverage and known limitations.
 3. Invite one university/research group to review the climate and NDVI methods.
 4. Design a Brazilian pilot that compares gridded climate data with INMET station observations.
-5. Keep a public log of contacts, proposals and actual agreements — never display a prospect as a partner before written confirmation.",
-      "1. Publicar uma apresentação técnica curta e uma demonstração de 90 segundos.
+5. Keep a public log of contacts, proposals and actual agreements — never display a prospect as a partner before written confirmation.""",
+      """1. Publicar uma apresentação técnica curta e uma demonstração de 90 segundos.
 2. Criar um inventário de fontes com licença, API, resolução espacial, cobertura temporal e limitações conhecidas.
 3. Convidar um grupo universitário/de pesquisa para revisar os métodos climáticos e de NDVI.
 4. Desenhar um piloto brasileiro que compare dados climáticos em grade com observações de estações do INMET.
-5. Manter um registro público de contatos, propostas e acordos reais — nunca apresentar um prospect como parceiro antes de confirmação formal."
+5. Manter um registro público de contatos, propostas e acordos reais — nunca apresentar um prospect como parceiro antes de confirmação formal."""
     ))
     st.caption(tx("Prospecting status: all entries are uncontacted opportunities unless explicitly updated by the project team. Program availability and eligibility can change; verify each official source before applying.",
                   "Status de prospecção: todas as entradas são oportunidades ainda não contatadas, salvo atualização explícita pela equipe. Disponibilidade e elegibilidade podem mudar; verifique cada fonte oficial antes de se candidatar."))
