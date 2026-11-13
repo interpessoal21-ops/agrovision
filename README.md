@@ -26,6 +26,18 @@ The [GUMA Institutional Kit](docs/GUMA_INSTITUTIONAL_KIT.md) contains the projec
 - Supabase email authentication and optional per-user project persistence.
 - Saved projects include the queried climate and MODIS series plus any recorded FAO-56 water-balance run and ZARC reference, which can be restored in the app.
 
+
+
+## GUMA Atlas — Brazil
+
+The **GUMA Atlas** provides a first national geographic overview with selectable OpenStreetMap, Esri satellite and OpenTopoMap basemaps; filterable illustrative reference points for Brazil's six terrestrial biomes; and example agricultural reference hubs. These markers are not official biome polygons, administrative boundaries, farm boundaries or production rankings. The tab links to authoritative geospatial portals:
+
+- **IBGE — Biomes and Coastal-Marine System:** official delimitation compatible with 1:250,000 scale. The six terrestrial biomes are Amazonia, Caatinga, Cerrado, Atlantic Forest, Pampa and Pantanal.
+- **INPE — TerraBrasilis:** geospatial monitoring products including PRODES and DETER. Their purposes and update cycles differ; DETER alerts are not equivalent to annual PRODES rates.
+- **MapBiomas:** annual land-cover and land-use mapping and thematic monitors.
+
+The current in-app atlas uses basemap tiles and illustrative point references. Official thematic polygons and analytical overlays are planned as separately sourced layers and are not yet claimed as integrated. See [IBGE Biomes](https://www.ibge.gov.br/geociencias/informacoes-ambientais/vegetacao/15842-biomas.html), [INPE TerraBrasilis](https://www.terrabrasilis.dpi.inpe.br/) and [MapBiomas](https://brasil.mapbiomas.org/).
+
 ## Climate Watch
 
 The **Climate Watch** tab is a global climate-indicator observatory, separate from the farm-scale screening tools. It retrieves four published monthly series:
