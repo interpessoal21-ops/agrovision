@@ -2492,7 +2492,7 @@ with tab_atlas:
     if show_hydrography:
         folium.raster_layers.WmsTileLayer(
             url="https://portal1.snirh.gov.br/server/services/dados_abertos/Hidrografia_Parte_1/MapServer/WMSServer",
-            layers="Hidrografia_Parte_1",
+            layers="0",
             name=tx("ANA · Hydrography (BHO, part 1)", "ANA · Hidrografia (BHO, parte 1)"),
             fmt="image/png", transparent=True, version="1.3.0",
             attr="ANA · Base Hidrográfica Ottocodificada Multiescalas 2012",
