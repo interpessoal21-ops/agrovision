@@ -17,19 +17,52 @@ SOURCES = {
 }
 
 def parse_gistemp_csv(text: str) -> pd.DataFrame:
-    frame=pd.read_csv(StringIO(text),skipinitialspace=True)
-    if "Year" not in frame.columns: raise ValueError("NASA GISTEMP file has no Year column.")
+    """Parse the monthly GISTEMP table even when NASA prepends metadata lines."""
     months=("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
-    cols=[m for m in months if m in frame.columns]
-    if len(cols)!=12: raise ValueError("NASA GISTEMP file does not contain all 12 monthly columns.")
-    long=frame[["Year",*cols]].melt(id_vars="Year",var_name="Month",value_name="Anomaly_C")
-    long["Year"]=pd.to_numeric(long["Year"],errors="coerce")
-    long["Anomaly_C"]=pd.to_numeric(long["Anomaly_C"],errors="coerce")
-    long["Month_Number"]=long["Month"].map({m:i for i,m in enumerate(months,1)})
-    long=long.dropna(subset=["Year","Month_Number","Anomaly_C"])
-    long=long[long["Anomaly_C"]>-90].copy()
-    long["Date"]=pd.to_datetime(dict(year=long["Year"].astype(int),month=long["Month_Number"],day=1))
-    return long[["Date","Anomaly_C"]].sort_values("Date").reset_index(drop=True)
+    cleaned = str(text).lstrip("\\ufeff")
+    header_index = None
+    for i, line in enumerate(cleaned.splitlines()):
+        cells = [cell.strip().strip('"').lstrip("\\ufeff") for cell in line.split(",")]
+        normalized = {cell.lower() for cell in cells}
+        if cells and cells[0].lower() == "year" and all(month.lower() in normalized for month in months):
+            header_index = i
+            break
+    if header_index is None:
+        preview = " ".join(cleaned.split())[:180]
+        raise ValueError(
+            "NASA GISTEMP response does not contain the expected monthly CSV header "
+            "(Year, Jan…Dec). The source may have returned an HTML/error page or changed format. "
+            f"Response begins: {preview!r}"
+        )
+    frame = pd.read_csv(StringIO("\\n".join(cleaned.splitlines()[header_index:])), skipinitialspace=True)
+    frame.columns = [str(column).strip().lstrip("\\ufeff") for column in frame.columns]
+    # Normalize harmless whitespace/case differences without accepting a different schema.
+    lookup = {str(column).strip().lower(): column for column in frame.columns}
+    if "year" not in lookup:
+        raise ValueError("NASA GISTEMP monthly table is missing its Year field after header parsing.")
+    month_columns = {}
+    for month in months:
+        source_column = lookup.get(month.lower())
+        if source_column is not None:
+            month_columns[month] = source_column
+    if len(month_columns) != 12:
+        missing = [month for month in months if month not in month_columns]
+        raise ValueError(f"NASA GISTEMP monthly table is missing month columns: {missing}")
+    year_column = lookup["year"]
+    selected = frame[[year_column, *month_columns.values()]].copy()
+    selected.columns = ["Year", *month_columns.keys()]
+    long = selected.melt(id_vars="Year", var_name="Month", value_name="Anomaly_C")
+    long["Year"] = pd.to_numeric(long["Year"], errors="coerce")
+    long["Anomaly_C"] = pd.to_numeric(long["Anomaly_C"], errors="coerce")
+    long["Month_Number"] = long["Month"].map({month: i for i, month in enumerate(months, 1)})
+    long = long.dropna(subset=["Year", "Month_Number", "Anomaly_C"])
+    long = long[long["Anomaly_C"] > -90].copy()
+    if long.empty:
+        raise ValueError("NASA GISTEMP monthly table was recognized but contained no valid monthly anomalies.")
+    long["Date"] = pd.to_datetime(dict(
+        year=long["Year"].astype(int), month=long["Month_Number"], day=1
+    ))
+    return long[["Date", "Anomaly_C"]].sort_values("Date").reset_index(drop=True)
 
 def _parse_noaa_monthly_csv(text: str,value_column: str,output_column: str) -> pd.DataFrame:
     lines=text.splitlines(); header_index=None; header_line=None
