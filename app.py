@@ -348,30 +348,6 @@ if "pending_study_coords" in st.session_state:
     st.session_state["lat_value"] = pending_lat
     st.session_state["lon_value"] = pending_lon
 
-st.subheader(tx("🗺️ Select your study area on the map", "🗺️ Selecione a área de estudo no mapa"))
-st.caption(tx("Click anywhere on the map to choose a point. You can also enter exact coordinates in the Study area panel.", "Clique no mapa para escolher um ponto ou informe as coordenadas no painel Área de estudo."))
-map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
-study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
-# Public Esri basemaps add satellite and topographic context without a CARTO API key.
-folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community", name="Satellite imagery", overlay=False, control=True).add_to(study_map)
-folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, increment P Corp.", name="Topographic map", overlay=False, control=True).add_to(study_map)
-folium.LayerControl(collapsed=True).add_to(study_map)
-folium.CircleMarker(
-    location=map_center, radius=8, color="#176b45", weight=3,
-    fill=True, fill_color="#4da978", fill_opacity=0.9,
-    tooltip="Current study area"
-).add_to(study_map)
-map_event = st_folium(study_map, height=360, use_container_width=True, returned_objects=["last_clicked"], key="agrovision_study_map")
-if map_event and map_event.get("last_clicked"):
-    clicked_lat = round(float(map_event["last_clicked"]["lat"]), 4)
-    clicked_lon = round(float(map_event["last_clicked"]["lng"]), 4)
-    clicked_point = (clicked_lat, clicked_lon)
-    if clicked_point != st.session_state.get("last_map_click"):
-        st.session_state["last_map_click"] = clicked_point
-        st.session_state["lat_value"] = clicked_lat
-        st.session_state["lon_value"] = clicked_lon
-        st.rerun()
-
 with st.sidebar:
     st.header(tx("Study area", "Área de estudo"))
     st.caption(tx("Enter the coordinates of the area you want to investigate.", "Informe as coordenadas da área que deseja investigar."))
@@ -399,19 +375,20 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab = st.tabs([
-    tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
-    tx("Environmental dashboard", "Painel ambiental"),
-    tx("Crop analysis", "Análise de culturas"),
-    tx("Data & limitations", "Dados e limitações"),
-    tx("Saved projects", "Projetos salvos"),
-    tx("Scientific validation", "Validação científica"),
-    tx("📚 Knowledge", "📚 Conhecimento"),
-    tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado"),
-    tx("🌾 Rotation Lab", "🌾 Laboratório de rotação"),
-    tx("🌍 Climate Watch", "🌍 Observatório climático"),
-    tx("🧬 GUMA Commons", "🧬 Commons GUMA"),
-    tx("🧪 Field Lab", "🧪 Laboratório de Campo")
+tab_home, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab = st.tabs([
+    tx("🌐 00 · Earth Observatory", "🌐 00 · Observatório da Terra"),
+    tx("👋 01 · Start here", "👋 01 · Comece aqui"),
+    tx("🛰️ 02 · Earth data", "🛰️ 02 · Dados da Terra"),
+    tx("🌱 03 · Crop intelligence", "🌱 03 · Inteligência agrícola"),
+    tx("📚 04 · Data & methods", "📚 04 · Dados e métodos"),
+    tx("🗂️ 05 · Workspace", "🗂️ 05 · Projetos"),
+    tx("🧪 06 · Validation", "🧪 06 · Validação"),
+    tx("📖 07 · Knowledge", "📖 07 · Conhecimento"),
+    tx("📊 08 · Evidence", "📊 08 · Evidências"),
+    tx("🌾 09 · Rotation Lab", "🌾 09 · Rotação de culturas"),
+    tx("🌍 10 · Climate Watch", "🌍 10 · Monitoramento climático"),
+    tx("🧬 11 · Commons", "🧬 11 · Comunidade"),
+    tx("🔬 12 · Field Lab", "🔬 12 · Laboratório de Campo")
 ])
 
 
@@ -746,6 +723,115 @@ with tab1:
 def get_climate_watch_data():
     from agrovision_climate import fetch_climate_watch
     return fetch_climate_watch()
+
+with tab_home:
+    st.markdown("""
+    <div style="padding:1.65rem 1.8rem;border:1px solid #29495A;border-radius:20px;
+      background:radial-gradient(circle at 90% 8%,rgba(36,200,181,.18),transparent 30%),
+      radial-gradient(circle at 4% 100%,rgba(185,243,107,.09),transparent 35%),
+      linear-gradient(115deg,#091722,#123449 68%,#155568);margin:.3rem 0 1rem 0">
+      <div style="color:#24C8B5;font-size:.7rem;letter-spacing:.2em;font-weight:800">GUMA · EARTH INTELLIGENCE PLATFORM</div>
+      <h1 style="color:#F0F5F3;margin:.35rem 0 .45rem 0;font-size:2.15rem">Observe the Earth. Understand the signals.</h1>
+      <p style="color:#C3D4D8;margin:0;max-width:900px;line-height:1.6">A connected workspace for planetary change, territorial evidence and agricultural systems — from global climate signals to a selected study point.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("**" + tx("THE OBSERVATORY", "O OBSERVATÓRIO") + "**")
+    st.caption(tx("One platform, four connected domains. Start with a territory, follow the environmental signals, and inspect the evidence behind each interpretation.",
+                 "Uma plataforma, quatro domínios conectados. Comece por um território, acompanhe os sinais ambientais e examine as evidências por trás de cada interpretação."))
+    d1,d2,d3,d4=st.columns(4)
+    d1.metric(tx("Territory", "Território"), f"{lat:.3f}, {lon:.3f}", tx("Selected study point", "Ponto de estudo selecionado"))
+    climate_loaded = "climate" in st.session_state and st.session_state.get("coords") == (lat,lon)
+    vegetation_loaded = climate_loaded and not st.session_state.get("modis", pd.DataFrame()).empty
+    d2.metric(tx("Climate data", "Dados climáticos"), tx("Loaded", "Carregados") if climate_loaded else tx("Not loaded", "Não carregados"))
+    d3.metric("MODIS NDVI", tx("Available", "Disponível") if vegetation_loaded else tx("Not loaded", "Não carregado"))
+    d4.metric(tx("Global observatory", "Observatório global"), tx("On demand", "Sob demanda"), tx("NASA · NOAA", "NASA · NOAA"))
+    st.divider()
+    st.subheader(tx("Explore the Earth", "Explore a Terra"))
+    map_left,map_right=st.columns([1.55,1])
+    with map_left:
+        st.caption(tx("Select a point to connect the platform's local analysis to a territory. Use the layer control to switch between street, satellite and topographic views.",
+                     "Selecione um ponto para conectar a análise local da plataforma a um território. Use o controle de camadas para alternar entre mapa de ruas, satélite e topografia."))
+        map_center = [st.session_state.get("lat_value", -15.8), st.session_state.get("lon_value", -47.0)]
+        study_map = folium.Map(location=map_center, zoom_start=5, control_scale=True, tiles="OpenStreetMap")
+        folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community", name="Satellite imagery", overlay=False, control=True).add_to(study_map)
+        folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, increment P Corp.", name="Topographic map", overlay=False, control=True).add_to(study_map)
+        folium.LayerControl(collapsed=True).add_to(study_map)
+        folium.CircleMarker(location=map_center, radius=8, color="#24C8B5", weight=3, fill=True, fill_color="#B9F36B", fill_opacity=.9, tooltip="Current study area").add_to(study_map)
+        map_event = st_folium(study_map, height=390, use_container_width=True, returned_objects=["last_clicked"], key="guma_observatory_map")
+        if map_event and map_event.get("last_clicked"):
+            clicked_lat = round(float(map_event["last_clicked"]["lat"]),4)
+            clicked_lon = round(float(map_event["last_clicked"]["lng"]),4)
+            clicked_point=(clicked_lat,clicked_lon)
+            if clicked_point != st.session_state.get("last_map_click"):
+                st.session_state["last_map_click"]=clicked_point
+                st.session_state["lat_value"]=clicked_lat
+                st.session_state["lon_value"]=clicked_lon
+                st.rerun()
+    with map_right:
+        st.markdown("**" + tx("A connected Earth system", "Um sistema terrestre conectado") + "**")
+        with st.container(border=True):
+            st.markdown("**01 · " + tx("Climate intelligence", "Inteligência climática") + "**")
+            st.caption(tx("Global temperature, greenhouse gases and local climate extremes.", "Temperatura global, gases de efeito estufa e extremos climáticos locais."))
+        with st.container(border=True):
+            st.markdown("**02 · " + tx("Earth observation", "Observação da Terra") + "**")
+            st.caption(tx("Satellite-derived vegetation signals and environmental context.", "Sinais de vegetação derivados de satélite e contexto ambiental."))
+        with st.container(border=True):
+            st.markdown("**03 · " + tx("Agricultural intelligence", "Inteligência agrícola") + "**")
+            st.caption(tx("Crop windows, water balance, rotation scenarios and official references.", "Janelas de cultivo, balanço hídrico, cenários de rotação e referências oficiais."))
+        with st.container(border=True):
+            st.markdown("**04 · " + tx("Research commons", "Pesquisa colaborativa") + "**")
+            st.caption(tx("Transparent methods, validation, shared observations and field hypotheses.", "Métodos transparentes, validação, observações compartilhadas e hipóteses de campo."))
+    st.divider()
+    st.subheader(tx("Global climate pulse", "Pulso climático global"))
+    st.caption(tx("Load the latest available NASA and NOAA monthly series. Publication dates differ by dataset; these are not real-time measurements.",
+                 "Carregue as séries mensais mais recentes disponíveis da NASA e NOAA. As datas de publicação variam por base; não são medições em tempo real."))
+    if st.button(tx("Retrieve global indicators", "Consultar indicadores globais"), type="primary", key="home_global_climate"):
+        try:
+            with st.spinner(tx("Retrieving NASA and NOAA datasets…", "Consultando bases da NASA e NOAA…")):
+                st.session_state["guma_global_climate"] = get_climate_watch_data()
+            st.success(tx("Global indicators updated.", "Indicadores globais atualizados."))
+        except Exception as exc:
+            st.warning(tx("Global indicators could not be retrieved: ", "Não foi possível consultar os indicadores globais: ") + str(exc))
+    global_data = st.session_state.get("guma_global_climate")
+    if global_data:
+        t=global_data["temperature"]; c=global_data["co2"]; m=global_data["ch4"]; n=global_data["n2o"]
+        if all(not x.empty for x in (t,c,m,n)):
+            last_t,last_c,last_m,last_n=t.iloc[-1],c.iloc[-1],m.iloc[-1],n.iloc[-1]
+            g1,g2,g3,g4=st.columns(4)
+            g1.metric(tx("Global temperature anomaly","Anomalia da temperatura global"),f"{last_t['Anomaly_C']:+.2f} °C",tx("vs 1951–1980","vs. 1951–1980"))
+            g2.metric("CO₂ · Mauna Loa",f"{last_c['CO2_ppm']:.1f} ppm",f"{last_c['Date']:%b %Y}")
+            g3.metric("CH₄ · NOAA",f"{last_m['CH4_ppb']:.1f} ppb",f"{last_m['Date']:%b %Y}")
+            g4.metric("N₂O · NOAA",f"{last_n['N2O_ppb']:.2f} ppb",f"{last_n['Date']:%b %Y}")
+            st.caption(tx(f"Retrieved {global_data['retrieved_at']:%Y-%m-%d %H:%M UTC}. Open Climate Watch for full time series, methodology and local extreme indicators.",
+                          f"Consulta em {global_data['retrieved_at']:%d/%m/%Y %H:%M UTC}. Abra Monitoramento climático para séries completas, metodologia e indicadores locais de extremos."))
+            annual=t.assign(Year=t["Date"].dt.year).groupby("Year")["Anomaly_C"].mean()
+            st.area_chart(annual.rename("Annual global temperature anomaly (°C)"),height=210)
+        else:
+            st.warning(tx("At least one climate dataset has no usable observations.", "Pelo menos uma série climática não possui observações utilizáveis."))
+    else:
+        st.info(tx("No global climate snapshot has been requested in this session yet.", "Nenhum retrato climático global foi solicitado nesta sessão."))
+    st.divider()
+    st.subheader(tx("Platform modules", "Módulos da plataforma"))
+    module_cards=[
+      ("🌍","Climate Watch",tx("Planetary warming, greenhouse gases and local extremes.","Aquecimento global, gases de efeito estufa e extremos locais."),"10"),
+      ("🛰️",tx("Earth data","Dados da Terra"),tx("NASA POWER climate series and MODIS vegetation observations.","Séries climáticas NASA POWER e observações de vegetação MODIS."),"02"),
+      ("🌱",tx("Crop intelligence","Inteligência agrícola"),tx("Crop-specific climate screening, FAO-56 water balance and ZARC references.","Análise climática por cultura, balanço hídrico FAO-56 e referências ZARC."),"03"),
+      ("🌾","Rotation Lab",tx("Compare transparent historical crop-window scenarios.","Compare cenários históricos transparentes de janelas de cultivo."),"09"),
+      ("📚",tx("Knowledge","Conhecimento"),tx("Methods, scientific references and data interpretation.","Métodos, referências científicas e interpretação de dados."),"07"),
+      ("🧪",tx("Validation & Field Lab","Validação e Laboratório de Campo"),tx("Compare station observations and document field hypotheses.","Compare observações de estações e documente hipóteses de campo."),"06 / 12"),
+      ("🧬","GUMA Commons",tx("Opt-in climate fingerprints and community comparisons.","Assinaturas climáticas voluntárias e comparações comunitárias."),"11"),
+      ("🗂️",tx("Workspace","Área de trabalho"),tx("Save and retrieve studies linked to your account.","Salve e recupere estudos vinculados à sua conta."),"05"),
+    ]
+    for start in range(0,len(module_cards),4):
+        cols=st.columns(4)
+        for col,item in zip(cols,module_cards[start:start+4]):
+            with col:
+                with st.container(border=True):
+                    st.markdown(f"### {item[0]} {item[1]}")
+                    st.caption(item[2])
+                    st.caption(tx("MODULE","MÓDULO")+" "+item[3])
+    st.caption(tx("Scientific transparency: GUMA distinguishes observed datasets, derived indicators, exploratory scenarios and user-provided context. No output on this page is a calibrated yield forecast or agronomic prescription.",
+                  "Transparência científica: GUMA distingue bases observadas, indicadores derivados, cenários exploratórios e contexto informado pelo usuário. Nenhum resultado desta página é previsão calibrada de produtividade ou prescrição agronômica."))
 
 with tab_climate:
     st.markdown("""
