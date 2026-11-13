@@ -22,14 +22,16 @@
 
 ## Climate Watch
 
-The **Climate Watch** tab is a global climate-indicator observatory, separate from the farm-scale screening tools. Its first release retrieves two published monthly series:
+The **Climate Watch** tab is a global climate-indicator observatory, separate from the farm-scale screening tools. It retrieves four published monthly series:
 
 - **NASA GISS GISTEMP v4:** global land-ocean temperature anomalies from 1880 onward, relative to 1951–1980. Monthly values and annual means are displayed separately.
-- **NOAA Global Monitoring Laboratory — Mauna Loa:** monthly atmospheric CO₂ station observations in ppm. This is not a global marine-surface average.
+- **NOAA Global Monitoring Laboratory — Mauna Loa:** monthly atmospheric CO₂ station observations in ppm; this is not a global marine-surface average.
+- **NOAA Global Monitoring Laboratory — CH₄:** globally averaged monthly methane from the marine-surface sampling network, in ppb; recent observations are preliminary.
+- **NOAA Global Monitoring Laboratory — N₂O:** globally averaged monthly nitrous oxide from the marine-surface sampling network, in ppb; the reliable series begins in 2001 and recent observations are preliminary.
 
 Data are cached for 24 hours and can be manually refreshed. The dashboard shows retrieval time, latest observation dates, source links, reference baseline and interpretation limits. Publication latency is expected; the indicators are not real-time telemetry. Do not compare anomaly values with different reference periods as if they were identical.
 
-This first release does not yet include global sea level, ocean heat content, methane, nitrous oxide, ice sheets or a Brazil-specific extremes atlas. Global indicators provide context only and do not establish local agricultural impacts or causal attribution. Planned next steps are regional Brazilian heat/rainfall extremes and crop-calendar exposure, with official source provenance and uncertainty notes.
+Global sea level and ocean heat content are not yet integrated. The NASA-SSH global sea-level indicator is discoverable, but its AWS distribution is controlled-access and requires Earthdata/AWS credentials; AGROVISION will not silently substitute a different series. A Brazil-specific extremes atlas is also still pending. Global indicators provide context only and do not establish local agricultural impacts or causal attribution.
 
 Parser regression tests: `python -m unittest discover -s tests -p "test_climate_watch.py"`.
 
