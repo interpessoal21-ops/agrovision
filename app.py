@@ -771,10 +771,6 @@ with tab_climate:
                 f"Latest observations: temperature {latest_temp['Date']:%b %Y}; CO₂ {latest_co2['Date']:%b %Y}; CH₄ {latest_ch4['Date']:%b %Y}; N₂O {latest_n2o['Date']:%b %Y}. Retrieved {climate_watch['retrieved_at']:%Y-%m-%d %H:%M UTC}.",
                 f"Últimas observações: temperatura {latest_temp['Date']:%m/%Y}; CO₂ {latest_co2['Date']:%m/%Y}; CH₄ {latest_ch4['Date']:%m/%Y}; N₂O {latest_n2o['Date']:%m/%Y}. Consulta em {climate_watch['retrieved_at']:%d/%m/%Y %H:%M UTC}."
             ))
-            st.caption(tx(
-                f"Most recent observations in the downloaded files: temperature {latest_temp['Date']:%b %Y}; CO₂ {latest_co2['Date']:%b %Y}. Retrieved {climate_watch['retrieved_at']:%Y-%m-%d %H:%M UTC}.",
-                f"Observações mais recentes nos arquivos consultados: temperatura {latest_temp['Date']:%m/%Y}; CO₂ {latest_co2['Date']:%m/%Y}. Consulta realizada em {climate_watch['retrieved_at']:%d/%m/%Y %H:%M UTC}."
-            ))
             st.divider()
             left, right = st.columns([1.25, 1])
             with left:
