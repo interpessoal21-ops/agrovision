@@ -745,25 +745,32 @@ with tab_climate:
             climate_watch = get_climate_watch_data()
         temperature = climate_watch["temperature"].copy()
         co2 = climate_watch["co2"].copy()
-        if temperature.empty or co2.empty:
-            st.warning(tx("A source returned no usable observations.", "Uma das fontes não retornou observações utilizáveis."))
+        ch4 = climate_watch["ch4"].copy()
+        n2o = climate_watch["n2o"].copy()
+        if any(series.empty for series in (temperature, co2, ch4, n2o)):
+            st.warning(tx("At least one source returned no usable observations. Check availability and retry.", "Pelo menos uma fonte não retornou observações utilizáveis. Confira a disponibilidade e tente novamente."))
         else:
             latest_temp = temperature.iloc[-1]
             latest_co2 = co2.iloc[-1]
+            latest_ch4 = ch4.iloc[-1]
+            latest_n2o = n2o.iloc[-1]
             annual = temperature.assign(Year=temperature["Date"].dt.year).groupby("Year")["Anomaly_C"].mean()
             annual = annual[annual.index >= 1880]
             previous_co2 = co2[co2["Date"] <= latest_co2["Date"] - pd.DateOffset(years=1)]
             co2_delta = (latest_co2["CO2_ppm"] - previous_co2.iloc[-1]["CO2_ppm"]) if not previous_co2.empty else None
-            m1, m2, m3 = st.columns(3)
-            m1.metric(tx("Latest monthly temperature anomaly", "Última anomalia mensal de temperatura"),
-                f"{latest_temp['Anomaly_C']:+.2f} °C",
-                tx("vs 1951–1980", "vs. 1951–1980"))
-            m2.metric(tx("Mauna Loa CO₂", "CO₂ em Mauna Loa"),
-                f"{latest_co2['CO2_ppm']:.1f} ppm",
-                f"{co2_delta:+.1f} ppm" if co2_delta is not None else None)
-            m3.metric(tx("Temperature record", "Série de temperatura"),
-                f"{int(temperature['Date'].dt.year.min())}–{int(temperature['Date'].dt.year.max())}",
-                tx("NASA GISTEMP v4", "NASA GISTEMP v4"))
+            prev_ch4=ch4[ch4["Date"]<=latest_ch4["Date"]-pd.DateOffset(years=1)]
+            prev_n2o=n2o[n2o["Date"]<=latest_n2o["Date"]-pd.DateOffset(years=1)]
+            ch4_delta=latest_ch4["CH4_ppb"]-prev_ch4.iloc[-1]["CH4_ppb"] if not prev_ch4.empty else None
+            n2o_delta=latest_n2o["N2O_ppb"]-prev_n2o.iloc[-1]["N2O_ppb"] if not prev_n2o.empty else None
+            m1,m2,m3,m4=st.columns(4)
+            m1.metric(tx("Global temperature anomaly","Anomalia da temperatura global"),f"{latest_temp['Anomaly_C']:+.2f} °C",tx("vs 1951–1980","vs. 1951–1980"))
+            m2.metric(tx("Mauna Loa CO₂","CO₂ em Mauna Loa"),f"{latest_co2['CO2_ppm']:.1f} ppm",f"{co2_delta:+.1f} ppm" if co2_delta is not None else None)
+            m3.metric(tx("Global methane · CH₄","Metano global · CH₄"),f"{latest_ch4['CH4_ppb']:.1f} ppb",f"{ch4_delta:+.1f} ppb" if ch4_delta is not None else None)
+            m4.metric(tx("Global nitrous oxide · N₂O","Óxido nitroso global · N₂O"),f"{latest_n2o['N2O_ppb']:.2f} ppb",f"{n2o_delta:+.2f} ppb" if n2o_delta is not None else None)
+            st.caption(tx(
+                f"Latest observations: temperature {latest_temp['Date']:%b %Y}; CO₂ {latest_co2['Date']:%b %Y}; CH₄ {latest_ch4['Date']:%b %Y}; N₂O {latest_n2o['Date']:%b %Y}. Retrieved {climate_watch['retrieved_at']:%Y-%m-%d %H:%M UTC}.",
+                f"Últimas observações: temperatura {latest_temp['Date']:%m/%Y}; CO₂ {latest_co2['Date']:%m/%Y}; CH₄ {latest_ch4['Date']:%m/%Y}; N₂O {latest_n2o['Date']:%m/%Y}. Consulta em {climate_watch['retrieved_at']:%d/%m/%Y %H:%M UTC}."
+            ))
             st.caption(tx(
                 f"Most recent observations in the downloaded files: temperature {latest_temp['Date']:%b %Y}; CO₂ {latest_co2['Date']:%b %Y}. Retrieved {climate_watch['retrieved_at']:%Y-%m-%d %H:%M UTC}.",
                 f"Observações mais recentes nos arquivos consultados: temperatura {latest_temp['Date']:%m/%Y}; CO₂ {latest_co2['Date']:%m/%Y}. Consulta realizada em {climate_watch['retrieved_at']:%d/%m/%Y %H:%M UTC}."
@@ -784,6 +791,15 @@ with tab_climate:
                     "Monthly mean CO₂ measured at Mauna Loa, Hawaii. This is a long-running station record, not a global spatial average.",
                     "Média mensal de CO₂ medida em Mauna Loa, Havaí. É uma série de uma estação de monitoramento, não uma média espacial global."
                 ))
+            gas_left,gas_right=st.columns(2)
+            with gas_left:
+                st.subheader(tx("Global atmospheric methane · CH₄","Metano atmosférico global · CH₄"))
+                st.line_chart(ch4.set_index("Date")[["CH4_ppb"]],height=260)
+                st.caption(tx("NOAA global marine-surface monthly means. Recent observations are preliminary and may be revised.","Médias mensais globais da rede de superfície marinha da NOAA. Observações recentes são preliminares e podem ser revisadas."))
+            with gas_right:
+                st.subheader(tx("Global atmospheric nitrous oxide · N₂O","Óxido nitroso atmosférico global · N₂O"))
+                st.line_chart(n2o.set_index("Date")[["N2O_ppb"]],height=260)
+                st.caption(tx("NOAA global marine-surface monthly means. The reliable series begins in 2001.","Médias mensais globais da rede de superfície marinha da NOAA. A série confiável começa em 2001."))
             st.subheader(tx("Annual temperature signal", "Sinal anual de temperatura"))
             annual_frame = annual.rename("Annual anomaly (°C)").to_frame()
             st.area_chart(annual_frame, height=260)
@@ -820,6 +836,8 @@ with tab_climate:
             source_rows = [
                 {"Indicator": "Global temperature anomaly", "Provider": "NASA GISS", "Dataset": "GISTEMP v4", "Baseline": "1951–1980", "Frequency": "Monthly"},
                 {"Indicator": "Atmospheric CO₂", "Provider": "NOAA GML", "Dataset": "Mauna Loa monthly mean", "Baseline": "Station record", "Frequency": "Monthly"},
+                {"Indicator": "Atmospheric CH₄", "Provider": "NOAA GML", "Dataset": "Global marine-surface mean", "Baseline": "Global network", "Frequency": "Monthly"},
+                {"Indicator": "Atmospheric N₂O", "Provider": "NOAA GML", "Dataset": "Global marine-surface mean", "Baseline": "Global network", "Frequency": "Monthly"},
             ]
             st.dataframe(pd.DataFrame(source_rows), use_container_width=True, hide_index=True)
             st.markdown(
