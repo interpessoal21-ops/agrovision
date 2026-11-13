@@ -31,9 +31,9 @@ The **Climate Watch** tab is a global climate-indicator observatory, separate fr
 
 Data are cached for 24 hours and can be manually refreshed. The dashboard shows retrieval time, latest observation dates, source links, reference baseline and interpretation limits. Publication latency is expected; the indicators are not real-time telemetry. Do not compare anomaly values with different reference periods as if they were identical.
 
-Global sea level and ocean heat content are not yet integrated. The NASA-SSH global sea-level indicator is discoverable, but its AWS distribution is controlled-access and requires Earthdata/AWS credentials; AGROVISION will not silently substitute a different series. A Brazil-specific extremes atlas is also still pending. Global indicators provide context only and do not establish local agricultural impacts or causal attribution.
+Global sea-level and ocean-heat source references are exposed in the Climate Watch tab, but those datasets are not yet ingested into its plotted time series. The NASA PO.DAAC global sea-level indicator requires authenticated data access; AGROVISION does not silently substitute a different series. NOAA NCEI publishes monthly global ocean heat-content fields for 0–700 m and 0–2000 m, based on in-situ subsurface observations. A Brazil-specific national extremes atlas remains pending. The current Brazil/local panel calculates transparent hot-day, heavy-rain-day and consecutive-dry-spell indicators from the selected point's NASA POWER daily series; it is not an official national climate classification or a station observation.
 
-Parser regression tests: `python -m unittest discover -s tests -p "test_climate_watch.py"`.
+Local extreme-indicator thresholds are user-adjustable and the annual summary reports valid-data counts. Missing precipitation dates break dry spells. These metrics are descriptive screening statistics, not official heatwave/drought definitions or causal attribution.\n\nParser and local-extreme regression tests: `python -m unittest discover -s tests -p "test_climate_watch.py"`.
 
 ## Run locally
 
