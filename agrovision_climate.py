@@ -68,3 +68,55 @@ def fetch_climate_watch(timeout: int=35) -> dict:
     return {"temperature":parse_gistemp_csv(raw["temperature"]),"co2":parse_noaa_co2_csv(raw["co2"]),
       "ch4":parse_noaa_global_gas_csv(raw["ch4"],"ch4"),"n2o":parse_noaa_global_gas_csv(raw["n2o"],"n2o"),
       "retrieved_at":pd.Timestamp.now(tz="UTC"),"sources":SOURCES}
+
+
+def summarize_local_extremes(
+    climate: pd.DataFrame,
+    hot_day_c: float = 35.0,
+    heavy_rain_mm: float = 50.0,
+    dry_day_mm: float = 1.0,
+) -> pd.DataFrame:
+    """Summarize transparent daily extremes from a NASA POWER point series.
+
+    Counts are screening indicators, not official heatwave/drought classifications.
+    Missing precipitation days break dry spells; missing temperature days are excluded.
+    """
+    required = {"PRECTOTCORR", "T2M_MAX"}
+    missing = required.difference(climate.columns)
+    if missing:
+        raise ValueError(f"Climate series missing required columns: {sorted(missing)}")
+    if not isinstance(climate.index, pd.DatetimeIndex):
+        raise ValueError("Climate series must use a DatetimeIndex.")
+    if climate.empty:
+        return pd.DataFrame(columns=[
+            "Year", "Hot days (Tmax threshold)", "Heavy-rain days",
+            "Longest dry spell (days)", "Valid temperature days",
+            "Valid precipitation days"
+        ])
+    rows = []
+    work = climate[["PRECTOTCORR", "T2M_MAX"]].copy().sort_index()
+    for year, group in work.groupby(work.index.year):
+        rain = pd.to_numeric(group["PRECTOTCORR"], errors="coerce")
+        tmax = pd.to_numeric(group["T2M_MAX"], errors="coerce")
+        dry = rain.lt(dry_day_mm).where(rain.notna(), False)
+        # A missing day breaks a spell; group consecutive calendar dates only.
+        longest = current = 0
+        previous_date = None
+        for date, is_dry in dry.items():
+            if previous_date is not None and (date - previous_date).days != 1:
+                current = 0
+            if bool(is_dry):
+                current += 1
+                longest = max(longest, current)
+            else:
+                current = 0
+            previous_date = date
+        rows.append({
+            "Year": int(year),
+            "Hot days (Tmax threshold)": int(tmax.ge(hot_day_c).sum()),
+            "Heavy-rain days": int(rain.ge(heavy_rain_mm).sum()),
+            "Longest dry spell (days)": int(longest),
+            "Valid temperature days": int(tmax.notna().sum()),
+            "Valid precipitation days": int(rain.notna().sum()),
+        })
+    return pd.DataFrame(rows).sort_values("Year").reset_index(drop=True)
