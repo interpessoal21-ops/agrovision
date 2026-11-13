@@ -1,0 +1,102 @@
+name: Export GUMA source package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/export-source.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build source package organized by language
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          import zipfile
+
+          root = Path(".")
+          staging = Path("guma-source-package")
+          if staging.exists():
+              shutil.rmtree(staging)
+          original = staging / "original-repository"
+          original.mkdir(parents=True)
+
+          ignored_dirs = {".git", ".venv", "__pycache__", ".pytest_cache"}
+          ignored_files = {"export-source.yml"}
+          extension_groups = {
+              ".py": "Python",
+              ".sql": "SQL",
+              ".yml": "YAML",
+              ".yaml": "YAML",
+              ".json": "JSON",
+              ".svg": "SVG",
+              ".md": "Markdown",
+              ".txt": "Text",
+              ".toml": "TOML",
+          }
+
+          files = []
+          for path in root.rglob("*"):
+              if not path.is_file():
+                  continue
+              rel = path.relative_to(root)
+              if any(part in ignored_dirs for part in rel.parts):
+                  continue
+              if rel.as_posix() == ".github/workflows/export-source.yml":
+                  continue
+              if rel.parts and rel.parts[0] == "guma-source-package":
+                  continue
+              files.append((path, rel))
+
+          for path, rel in files:
+              target = original / rel
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(path, target)
+
+          grouped = staging / "by-language"
+          for path, rel in files:
+              group = extension_groups.get(path.suffix.lower())
+              if not group:
+                  continue
+              target = grouped / group / rel
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(path, target)
+
+          readme = staging / "INDEX.txt"
+          readme.write_text(
+              "GUMA — complete source package\n"
+              "Snapshot: current main branch at export time.\n\n"
+              "original-repository/: exact repository structure for running/deploying the app.\n"
+              "by-language/: copies grouped by file language/format for easier inspection.\n\n"
+              "Main application: original-repository/app.py\n"
+              "Dependencies: original-repository/requirements.txt\n"
+              "SQL schemas: original-repository/supabase/\n"
+              "Tests: original-repository/tests/\n"
+              "Documentation: original-repository/docs/\n",
+              encoding="utf-8",
+          )
+
+          archive = Path("guma-source-main.zip")
+          with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+              for path in staging.rglob("*"):
+                  if path.is_file():
+                      zf.write(path, path.relative_to(staging.parent))
+          print(f"Packaged {len(files)} repository files into {archive}")
+          PY
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: guma-complete-source
+          path: guma-source-main.zip
+          if-no-files-found: error
+          retention-days: 7
