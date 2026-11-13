@@ -6,6 +6,7 @@ from agrovision_quality import climate_quality_report, modis_quality_report
 from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
 from agrovision_rotation import ROTATION_SCENARIOS, compare_rotation_scenarios, scenario_disclosure
 from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
+from agrovision_climate import summarize_local_extremes
 import requests
 import folium
 import io
@@ -721,7 +722,7 @@ with tab1:
     
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_climate_watch_data():
-    from agrovision_climate import fetch_climate_watch, summarize_local_extremes
+    from agrovision_climate import fetch_climate_watch
     return fetch_climate_watch()
 
 with tab_climate:
