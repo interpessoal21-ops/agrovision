@@ -33,3 +33,44 @@ create policy "Users can delete their own AGROVISION snapshots"
     using (auth.uid() = user_id);
 grant select on public.community_snapshots to anon, authenticated;
 grant insert, delete on public.community_snapshots to authenticated;
+
+
+-- AGROVISION Field Lab: public, opt-in experiment notes and contributor-reported comparisons.
+create table if not exists public.field_lab_trials (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+    title text not null check (char_length(title) between 3 and 90),
+    display_alias text not null check (char_length(display_alias) between 2 and 32),
+    macroregion text not null check (macroregion in ('Norte','Nordeste','Centro-Oeste','Sudeste','Sul')),
+    crop text not null check (char_length(crop) between 2 and 40),
+    season text not null check (char_length(season) between 4 and 20),
+    hypothesis text not null check (char_length(hypothesis) between 5 and 700),
+    strategy text not null check (char_length(strategy) between 2 and 500),
+    comparator text not null check (char_length(comparator) between 2 and 500),
+    metric text not null check (char_length(metric) between 2 and 50),
+    unit text not null check (char_length(unit) between 1 and 24),
+    baseline_value double precision,
+    alternative_value double precision,
+    notes text not null default '' check (char_length(notes) <= 1000),
+    status text not null default 'community observation',
+    published boolean not null default true,
+    created_at timestamptz not null default now()
+);
+create index if not exists field_lab_trials_public_idx
+    on public.field_lab_trials (crop, season, macroregion, created_at desc)
+    where published = true;
+alter table public.field_lab_trials enable row level security;
+drop policy if exists "Anyone can read published Field Lab records" on public.field_lab_trials;
+create policy "Anyone can read published Field Lab records"
+    on public.field_lab_trials for select to anon, authenticated
+    using (published = true or auth.uid() = user_id);
+drop policy if exists "Users can publish their own Field Lab records" on public.field_lab_trials;
+create policy "Users can publish their own Field Lab records"
+    on public.field_lab_trials for insert to authenticated
+    with check (auth.uid() = user_id and published = true);
+drop policy if exists "Users can delete their own Field Lab records" on public.field_lab_trials;
+create policy "Users can delete their own Field Lab records"
+    on public.field_lab_trials for delete to authenticated
+    using (auth.uid() = user_id);
+grant select on public.field_lab_trials to anon, authenticated;
+grant insert, delete on public.field_lab_trials to authenticated;
