@@ -923,8 +923,8 @@ if "climate" in st.session_state and st.session_state.get("coords") == (lat, lon
                 st.bar_chart(modis["Quality label"].fillna("Unknown").value_counts())
         else:
             st.info(tx("No usable MODIS observations were returned for this point and period.", "Não foram encontradas observações MODIS válidas para este ponto e período."))
-    else:
-        st.info(tx("Enter coordinates and click Load environmental data to query NASA.", "Informe as coordenadas e clique em Carregar dados ambientais para consultar a NASA."))
+else:
+    st.info(tx("Enter coordinates and click Load environmental data to query NASA.", "Informe as coordenadas e clique em Carregar dados ambientais para consultar a NASA."))
 
 # Crop screening uses crop-specific reference ranges and observed rainfall during
 # a user-selected sowing window. It deliberately does not create a suitability score.
