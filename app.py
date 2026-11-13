@@ -8,6 +8,7 @@ from agrovision_rotation import ROTATION_SCENARIOS, compare_rotation_scenarios, 
 from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
 from agrovision_climate import summarize_local_extremes
 from agrovision_commons import build_climate_fingerprint, comparison_distance
+from agrovision_fieldlab import ALLOWED_CROPS, ALLOWED_REGIONS, ALLOWED_METRICS, validate_trial_record, relative_difference
 import requests
 import folium
 import io
@@ -380,7 +381,7 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons = st.tabs([
+tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab = st.tabs([
     tx("👋 Start here · Help", "👋 Comece aqui · Ajuda"),
     tx("Environmental dashboard", "Painel ambiental"),
     tx("Crop analysis", "Análise de culturas"),
@@ -391,7 +392,8 @@ tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, t
     tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado"),
     tx("🌾 Rotation Lab", "🌾 Laboratório de rotação"),
     tx("🌍 Climate Watch", "🌍 Observatório climático"),
-    tx("🧬 AGROVISION Commons", "🧬 Commons AGROVISION")
+    tx("🧬 AGROVISION Commons", "🧬 Commons AGROVISION"),
+    tx("🧪 Field Lab", "🧪 Laboratório de Campo")
 ])
 
 
@@ -1515,6 +1517,38 @@ def publish_community_snapshot(alias, macroregion, crop, season, metrics):
         raise RuntimeError(f"Publishing failed (HTTP {response.status_code}): {response.text[:250]}")
     return response.json()
 
+
+def fetch_field_lab_trials():
+    base_url, public_key, _ = supabase_settings()
+    if not base_url or not public_key:
+        return []
+    headers = {"apikey": public_key}
+    access_token = st.session_state.get("agrovision_access_token", "")
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    response = requests.get(
+        f"{base_url}/rest/v1/field_lab_trials?select=id,title,display_alias,macroregion,crop,season,hypothesis,strategy,comparator,metric,unit,baseline_value,alternative_value,notes,status,created_at&published=eq.true&order=created_at.desc&limit=300",
+        headers=headers, timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Field Lab board unavailable (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
+
+def publish_field_lab_trial(record):
+    base_url, headers = supabase_rest_headers()
+    if not headers:
+        raise RuntimeError("Sign in with an email account to publish a Field Lab record.")
+    response = requests.post(
+        f"{base_url}/rest/v1/field_lab_trials",
+        headers=headers,
+        json=record,
+        timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Field Lab publication failed (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
 def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water_balance=None, zarc_reference=None):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
@@ -1977,6 +2011,110 @@ with tab_commons:
     st.caption(tx(
         "Method note: profiles summarize a gridded NASA POWER point series. User-selected macroregion and crop are labels supplied by contributors, not independently verified farm boundaries or crop observations. Similarity is descriptive only.",
         "Nota metodológica: as assinaturas resumem uma série pontual em grade do NASA POWER. Macrorregião e cultura são rótulos informados pelos participantes, não limites de fazenda ou observações de cultura verificados independentemente. A similaridade é apenas descritiva."
+    ))
+
+
+with tab_fieldlab:
+    st.header("AGROVISION FIELD LAB")
+    st.caption(tx(
+        "A public notebook for agricultural hypotheses, field comparisons and shared evidence.",
+        "Um caderno público de hipóteses agrícolas, comparações de campo e evidências compartilhadas."
+    ))
+    st.markdown("""
+    <div class="section-note">
+      <strong>FROM QUESTION TO EVIDENCE / DA PERGUNTA À EVIDÊNCIA</strong><br>
+      Propose a comparison, describe the management contrast, record the metric and inspect what other contributors have reported.
+      Field Lab entries are community research notes — not controlled trials unless the contributor documents that design.
+    </div>
+    """, unsafe_allow_html=True)
+    st.warning(tx(
+        "Do not publish exact farm locations, personal data, confidential business information or identifiable third-party information. Values and study descriptions are contributor-reported and are not independently verified.",
+        "Não publique localização exata de propriedades, dados pessoais, informações comerciais confidenciais ou dados identificáveis de terceiros. Valores e descrições são informados pelos participantes e não passam por verificação independente."
+    ))
+    st.subheader(tx("Design a field question", "Desenhe uma pergunta de campo"))
+    if st.session_state.get("agrovision_auth_mode") == "email":
+        with st.form("fieldlab_publish_form"):
+            title = st.text_input(tx("Study title", "Título do estudo"), max_chars=90, placeholder="Cobertura do solo e milho safrinha")
+            alias = st.text_input(tx("Public alias", "Apelido público"), max_chars=32, placeholder="Campo-07")
+            c1,c2,c3 = st.columns(3)
+            region = c1.selectbox(tx("Macroregion", "Macrorregião"), list(ALLOWED_REGIONS))
+            crop = c2.selectbox(tx("Crop", "Cultura"), list(ALLOWED_CROPS))
+            season = c3.text_input(tx("Season / year", "Safra / ano"), max_chars=20, value="2025/26")
+            hypothesis = st.text_area(tx("What do you expect to happen, and why?", "O que você espera que aconteça e por quê?"), max_chars=700, placeholder=tx("Example: soil cover may reduce exposure to high temperatures and rainfall variability.", "Exemplo: a cobertura do solo pode reduzir a exposição a temperaturas elevadas e à irregularidade das chuvas."))
+            strategy = st.text_area(tx("Strategy / treatment", "Estratégia / tratamento"), max_chars=500, placeholder=tx("Describe the management practice or intervention.", "Descreva a prática de manejo ou intervenção."))
+            comparator = st.text_area(tx("Comparator / reference", "Comparador / referência"), max_chars=500, placeholder=tx("Describe the reference condition.", "Descreva a condição de referência."))
+            c4,c5,c6 = st.columns(3)
+            metric = c4.selectbox(tx("Metric", "Indicador"), list(ALLOWED_METRICS))
+            unit = c5.text_input(tx("Unit", "Unidade"), max_chars=24, value="sacas/ha")
+            baseline = c6.text_input(tx("Reference value (optional)", "Valor de referência (opcional)"), placeholder="80")
+            alternative = st.text_input(tx("Alternative value (optional)", "Valor da estratégia (opcional)"), placeholder="84")
+            notes = st.text_area(tx("Method, period and limitations", "Método, período e limitações"), max_chars=1000)
+            consent = st.checkbox(tx("I consent to publishing this research note publicly under my alias.", "Autorizo a publicação pública desta nota de pesquisa sob meu apelido."), value=False)
+            submitted = st.form_submit_button(tx("Publish research note", "Publicar nota de pesquisa"), type="primary")
+        if submitted:
+            try:
+                record = validate_trial_record({
+                    "title":title,"display_alias":alias,"macroregion":region,"crop":crop,
+                    "season":season,"hypothesis":hypothesis,"strategy":strategy,
+                    "comparator":comparator,"metric":metric,"unit":unit,
+                    "baseline_value":baseline if baseline.strip() else None,
+                    "alternative_value":alternative if alternative.strip() else None,
+                    "notes":notes
+                })
+                if not consent:
+                    raise ValueError(tx("Explicit consent is required.", "É necessário consentimento explícito."))
+                publish_field_lab_trial(record)
+                st.success(tx("Research note published to the Field Lab.", "Nota de pesquisa publicada no Field Lab."))
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+    else:
+        st.info(tx("Sign in with your email account to publish. Public research notes can be explored below without signing in.", "Entre com sua conta de e-mail para publicar. As notas públicas podem ser exploradas abaixo sem entrar na conta."))
+    st.divider()
+    st.subheader(tx("Explore community experiments", "Explore experimentos da comunidade"))
+    try:
+        trials = fetch_field_lab_trials()
+        if not trials:
+            st.info(tx("No public field notes yet. The first contribution will open this research notebook.", "Ainda não há notas públicas de campo. A primeira contribuição abrirá este caderno de pesquisa."))
+        else:
+            frame = pd.DataFrame(trials)
+            f1,f2,f3 = st.columns(3)
+            crop_filter = f1.selectbox(tx("Crop", "Cultura"), ["All"] + sorted(frame["crop"].dropna().unique().tolist()), key="fl_crop")
+            region_filter = f2.selectbox(tx("Macroregion", "Macrorregião"), ["All"] + sorted(frame["macroregion"].dropna().unique().tolist()), key="fl_region")
+            season_filter = f3.selectbox(tx("Season", "Safra"), ["All"] + sorted(frame["season"].dropna().unique().tolist()), key="fl_season")
+            filtered = frame.copy()
+            if crop_filter != "All": filtered = filtered[filtered["crop"] == crop_filter]
+            if region_filter != "All": filtered = filtered[filtered["macroregion"] == region_filter]
+            if season_filter != "All": filtered = filtered[filtered["season"] == season_filter]
+            if filtered.empty:
+                st.info(tx("No records match these filters.", "Nenhum registro corresponde a esses filtros."))
+            else:
+                for _, trial in filtered.iterrows():
+                    with st.expander(f"{trial['title']} · {trial['crop']} · {trial['macroregion']}"):
+                        st.caption(f"{trial['display_alias']} · {trial['season']} · {trial['status']}")
+                        st.markdown("**" + tx("Hypothesis", "Hipótese") + "**")
+                        st.write(trial["hypothesis"])
+                        left,right = st.columns(2)
+                        with left:
+                            st.markdown("**" + tx("Strategy", "Estratégia") + "**")
+                            st.write(trial["strategy"])
+                        with right:
+                            st.markdown("**" + tx("Comparator", "Comparador") + "**")
+                            st.write(trial["comparator"])
+                        st.write(f"**{tx('Metric','Indicador')}:** {trial['metric']} ({trial['unit']})")
+                        base,alt = trial.get("baseline_value"),trial.get("alternative_value")
+                        if pd.notna(base) and pd.notna(alt):
+                            delta = relative_difference(base,alt)
+                            st.metric(tx("Contributor-reported difference", "Diferença informada pelo participante"), f"{delta:+.2f}%" if delta is not None else tx("Not calculable", "Não calculável"), help=tx("Descriptive arithmetic only; not a causal effect or verified result.", "Apenas cálculo descritivo; não é efeito causal nem resultado verificado."))
+                            st.caption(f"{tx('Reference','Referência')}: {base:g} · {tx('Alternative','Alternativa')}: {alt:g} {trial['unit']}")
+                        if trial.get("notes"):
+                            st.caption(trial["notes"])
+                        st.caption(tx("Community observation · unverified contributor report", "Observação comunitária · relato não verificado"))
+    except Exception as exc:
+        st.warning(tx("The Field Lab database migration is required. Run supabase/community_schema.sql in Supabase SQL Editor. Details: ", "A migração do Field Lab é necessária. Execute supabase/community_schema.sql no SQL Editor do Supabase. Detalhes: ") + str(exc))
+    st.caption(tx(
+        "Interpretation rule: comparisons are descriptive. Different soils, cultivars, dates, input rates, measurement protocols and weather can confound comparisons. Do not infer causality or recommend management from community entries alone.",
+        "Regra de interpretação: as comparações são descritivas. Solos, cultivares, datas, doses de insumos, protocolos de medição e clima diferentes podem confundir os resultados. Não infira causalidade nem recomende manejo apenas com registros comunitários."
     ))
 
 st.divider()
