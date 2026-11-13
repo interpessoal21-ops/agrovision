@@ -1474,7 +1474,10 @@ def fetch_community_snapshots():
     base_url, public_key, _ = supabase_settings()
     if not base_url or not public_key:
         return []
-    headers = {"apikey": public_key, "Authorization": f"Bearer {st.session_state.get('agrovision_access_token', public_key)}"}
+    headers = {"apikey": public_key}
+    access_token = st.session_state.get("agrovision_access_token", "")
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
     response = requests.get(
         f"{base_url}/rest/v1/community_snapshots?select=id,display_alias,macroregion,crop,season,metrics,source_metadata,created_at&published=eq.true&order=created_at.desc&limit=300",
         headers=headers, timeout=25
