@@ -10,6 +10,8 @@ class AgronomicSystemsTests(unittest.TestCase):
         self.assertIn("Plantio direto", names)
         self.assertIn("Integração lavoura-pecuária (ILP)", names)
         self.assertIn("Integração lavoura-pecuária-floresta (ILPF)", names)
+        self.assertIn("Integração lavoura-floresta (ILF)", names)
+        self.assertIn("Integração pecuária-floresta (IPF)", names)
         self.assertIn("Sistemas agroflorestais (SAF)", names)
 
     def test_catalog_has_unique_portuguese_names(self):
