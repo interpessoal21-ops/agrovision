@@ -3,6 +3,9 @@
 ## Purpose
 The Rotation Lab adds a transparent comparison of crop-sequence weather windows to AGROVISION. It is an exploratory decision-support prototype, not a calibrated crop model or a planting recommendation.
 
+## Demonstration study point
+Rio Verde, Goiás, is the proposed regional case study. The app includes an optional municipal-seat preset at approximately 17.79° S, 50.91° W (IBGE municipal map, edition 2021). The preset is a demonstration point, not a farm boundary or a claim of field-level representativeness. The municipal government reports an average municipal altitude of 748 m; use a surveyed/local elevation for an actual farm analysis.
+
 ## Scenarios
 - A: soybean main-season window; the remainder is not modeled as a cover crop.
 - B: soybean followed by a second-season maize window.
@@ -39,4 +42,6 @@ Scenario A represents one modeled soybean crop only; the remainder of the year i
 - MODIS/Terra MOD13Q1 via ORNL DAAC: https://modis.ornl.gov/data/modis_webservice.html
 - FAO-56: https://www.fao.org/4/X0490E/X0490E00.htm
 - MAPA ZARC: https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico
+- IBGE Rio Verde municipal map: https://geoftp.ibge.gov.br/cartas_e_mapas/mapas_municipais/colecao_de_mapas_municipais/2020/GO/rio_verde/5218805_MM.pdf
+- Rio Verde municipal location and climate: https://www.rioverde.go.gov.br/localizacao-e-clima/
 - Embrapa crop and production-system references: https://www.embrapa.br/
