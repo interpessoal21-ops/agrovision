@@ -58,7 +58,22 @@ def parse_gistemp_csv(text: str) -> pd.DataFrame:
 
 def parse_noaa_co2_csv(text: str) -> pd.DataFrame:
     """Parse NOAA's Mauna Loa monthly CSV, excluding missing-value sentinels."""
-    frame = pd.read_csv(StringIO(text), comment="#", skipinitialspace=True)
+    # NOAA's CSV has a long metadata preamble; depending on the published
+    # vintage, the column header may itself be prefixed with '#'.
+    lines = text.splitlines()
+    header_index = None
+    header_line = None
+    for index, line in enumerate(lines):
+        candidate = line.lstrip().lstrip("#").strip()
+        lowered = candidate.lower()
+        if all(token in lowered for token in ("year", "month", "average")) and "," in candidate:
+            header_index = index
+            header_line = candidate
+            break
+    if header_index is None:
+        raise ValueError("NOAA CO2 file has no recognizable CSV header.")
+    csv_text = "\\n".join([header_line, *lines[header_index + 1:]])
+    frame = pd.read_csv(StringIO(csv_text), skipinitialspace=True)
     frame.columns = [str(c).strip().lower() for c in frame.columns]
     required = {"year", "month", "average"}
     if not required.issubset(frame.columns):
