@@ -24,6 +24,9 @@
 
 Create a Python virtual environment, install dependencies with `pip install -r requirements.txt`, then start the app with `streamlit run app.py`.
 
+
+- **Rotation Lab (Space Apps 2026 preparation):** compares historical NASA POWER climate windows across soybean-only, soybean→maize, and soybean→maize with a Brachiaria management overlay. The Brachiaria component is not simulated; the comparison does not predict yield, soil-carbon change, profitability, or water savings. Optional MODIS NDVI is displayed only as date-overlapping vegetation context, not crop identification. See [Rotation Lab method and limitations](docs/ROTATION_LAB.md).
+
 ## Data sources
 
 - **NASA POWER Daily API:** daily near-surface temperature, daily maximum/minimum temperature, dew-point temperature, 2 m wind speed, corrected precipitation and solar radiation for the Agroclimatology community.
