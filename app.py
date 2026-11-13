@@ -869,8 +869,8 @@ with tab_climate:
                     "Carregue os dados ambientais da área escolhida na aba Painel ambiental para calcular os indicadores locais aqui."
                 ))
             st.markdown(
-                "**" + tx("Ocean system references", "Referências do sistema oceânico") + "**\\n"
-                "- [NASA Global Mean Sea Level — current indicator and methodology](https://sealevel.nasa.gov/understanding-sea-level/key-indicators/global-mean-sea-level/)\\n"
+                "**" + tx("Ocean system references", "Referências do sistema oceânico") + "**\n"
+                "- [NASA Global Mean Sea Level — current indicator and methodology](https://sealevel.nasa.gov/understanding-sea-level/key-indicators/global-mean-sea-level/)\n"
                 "- [NOAA NCEI — monthly global ocean heat content, 0–700 m and 0–2000 m](https://www.ncei.noaa.gov/access/global-ocean-heat-content/monthly_analysis.html)"
             )
             st.caption(tx(
