@@ -721,7 +721,7 @@ with tab1:
     
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_climate_watch_data():
-    from agrovision_climate import fetch_climate_watch
+    from agrovision_climate import fetch_climate_watch, summarize_local_extremes
     return fetch_climate_watch()
 
 with tab_climate:
@@ -828,6 +828,54 @@ with tab_climate:
                     "The next analytical layer is to compare regional heat and rainfall extremes with crop calendars, NASA POWER histories, MODIS vegetation signals and official Brazilian datasets.",
                     "A próxima camada analítica é cruzar extremos regionais de calor e chuva com calendários agrícolas, históricos NASA POWER, sinais de vegetação MODIS e bases oficiais brasileiras."
                 ))
+            st.divider()
+            st.subheader(tx("Brazil · Local climate extremes", "Brasil · Extremos climáticos locais"))
+            st.write(tx(
+                "A location-level screening layer based on the NASA POWER daily series already loaded for the selected study point. Thresholds below are transparent indicators, not official heatwave or drought classifications.",
+                "Uma camada de triagem para o ponto de estudo selecionado, baseada na série diária NASA POWER já carregada. Os limites abaixo são indicadores transparentes, não classificações oficiais de onda de calor ou seca."
+            ))
+            local_climate = st.session_state.get("climate")
+            local_coords = st.session_state.get("coords")
+            if local_climate is not None and local_coords == (lat, lon):
+                hcol, rcol, dcol = st.columns(3)
+                hot_threshold = hcol.number_input(tx("Hot day threshold · Tmax (°C)", "Limite de dia quente · Tmax (°C)"), min_value=25.0, max_value=45.0, value=35.0, step=1.0, key="cw_hot_threshold")
+                rain_threshold = rcol.number_input(tx("Heavy-rain day (mm/day)", "Chuva intensa (mm/dia)"), min_value=10.0, max_value=150.0, value=50.0, step=5.0, key="cw_rain_threshold")
+                dry_threshold = dcol.number_input(tx("Dry day threshold (mm/day)", "Limite de dia seco (mm/dia)"), min_value=0.0, max_value=5.0, value=1.0, step=0.5, key="cw_dry_threshold")
+                try:
+                    local_extremes = summarize_local_extremes(
+                        local_climate, hot_day_c=float(hot_threshold),
+                        heavy_rain_mm=float(rain_threshold), dry_day_mm=float(dry_threshold)
+                    )
+                    if not local_extremes.empty:
+                        latest_year = local_extremes.iloc[-1]
+                        e1, e2, e3 = st.columns(3)
+                        e1.metric(tx("Hot days in latest year", "Dias quentes no último ano"), int(latest_year["Hot days (Tmax threshold)"]))
+                        e2.metric(tx("Heavy-rain days in latest year", "Dias de chuva intensa no último ano"), int(latest_year["Heavy-rain days"]))
+                        e3.metric(tx("Longest dry spell", "Maior sequência seca"), f"{int(latest_year['Longest dry spell (days)'])} d")
+                        st.line_chart(local_extremes.set_index("Year")[[
+                            "Hot days (Tmax threshold)", "Heavy-rain days"
+                        ]], height=260)
+                        st.dataframe(local_extremes, use_container_width=True, hide_index=True)
+                        st.caption(tx(
+                            f"Selected point: {lat:.4f}, {lon:.4f}. Latest year in the loaded NASA POWER record: {int(latest_year['Year'])}. Dry days are consecutive valid daily precipitation values below the selected threshold; missing dates break a spell.",
+                            f"Ponto selecionado: {lat:.4f}, {lon:.4f}. Último ano disponível na série NASA POWER: {int(latest_year['Year'])}. Dias secos são valores diários válidos de precipitação abaixo do limite escolhido; datas ausentes interrompem a sequência."
+                        ))
+                except Exception as local_exc:
+                    st.warning(tx("Could not calculate local indicators: ", "Não foi possível calcular os indicadores locais: ") + str(local_exc))
+            else:
+                st.info(tx(
+                    "Load the environmental data for your selected study area in the Environmental dashboard tab to calculate local indicators here.",
+                    "Carregue os dados ambientais da área escolhida na aba Painel ambiental para calcular os indicadores locais aqui."
+                ))
+            st.markdown(
+                "**" + tx("Ocean system references", "Referências do sistema oceânico") + "**\\n"
+                "- [NASA Global Mean Sea Level — current indicator and methodology](https://sealevel.nasa.gov/understanding-sea-level/key-indicators/global-mean-sea-level/)\\n"
+                "- [NOAA NCEI — monthly global ocean heat content, 0–700 m and 0–2000 m](https://www.ncei.noaa.gov/access/global-ocean-heat-content/monthly_analysis.html)"
+            )
+            st.caption(tx(
+                "Sea-level and ocean-heat datasets are linked as authoritative references but are not yet ingested into AGROVISION's plotted time series. NOAA's ocean-heat product uses in-situ subsurface observations and a documented climatological reference; its monthly fields have spatial-data and sampling uncertainty.",
+                "As bases de nível do mar e calor oceânico estão indicadas como referências oficiais, mas ainda não foram ingeridas nas séries gráficas do AGROVISION. O produto de calor oceânico da NOAA usa observações subsuperficiais in situ e uma referência climatológica documentada; seus campos mensais possuem incertezas espaciais e de amostragem."
+            ))
             st.subheader(tx("Data provenance & update policy", "Proveniência dos dados e política de atualização"))
             source_rows = [
                 {"Indicator": "Global temperature anomaly", "Provider": "NASA GISS", "Dataset": "GISTEMP v4", "Baseline": "1951–1980", "Frequency": "Monthly"},
