@@ -20,4 +20,28 @@ class ClimateWatchParserTests(unittest.TestCase):
     def test_reject_unknown_gas(self):
         with self.assertRaises(ValueError): parse_noaa_global_gas_csv("header","co2")
 
+    def test_local_extremes_counts_and_dry_spell(self):
+        import pandas as pd
+        from agrovision_climate import summarize_local_extremes
+        dates = pd.date_range("2024-01-01", periods=7, freq="D")
+        frame = pd.DataFrame({
+            "PRECTOTCORR": [0.0, 0.2, 1.5, 0.0, 0.0, 55.0, 2.0],
+            "T2M_MAX": [36.0, 34.0, 37.0, 35.0, 31.0, 29.0, 40.0],
+        }, index=dates)
+        result = summarize_local_extremes(frame)
+        self.assertEqual(result.loc[0, "Hot days (Tmax threshold)"], 4)
+        self.assertEqual(result.loc[0, "Heavy-rain days"], 1)
+        self.assertEqual(result.loc[0, "Longest dry spell (days)"], 2)
+
+    def test_local_extremes_missing_day_breaks_dry_spell(self):
+        import pandas as pd
+        from agrovision_climate import summarize_local_extremes
+        dates = pd.date_range("2024-01-01", periods=4, freq="D")
+        frame = pd.DataFrame({
+            "PRECTOTCORR": [0.0, float("nan"), 0.0, 0.0],
+            "T2M_MAX": [30.0, 30.0, 30.0, 30.0],
+        }, index=dates)
+        result = summarize_local_extremes(frame)
+        self.assertEqual(result.loc[0, "Longest dry spell (days)"], 2)
+
 if __name__=="__main__": unittest.main()
