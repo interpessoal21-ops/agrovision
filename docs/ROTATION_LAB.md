@@ -15,7 +15,7 @@ The cycle lengths use rounded midpoints of the indicative ranges already documen
 
 ## Inputs and calculations
 - NASA POWER daily precipitation and near-surface air temperature for complete crop windows.
-- Optional MODIS/Terra MOD13Q1 NDVI observations overlapping each window, with the existing app's quality-screened data.
+- Optional MODIS/Terra MOD13Q1 NDVI observations overlapping each window. Reflectance fill values (`-1000`) and values outside the documented `0–10000` range are rejected; pixel-reliability classes 0 (good) and 1 (marginal) are retained, while classes 2 and 3 are excluded.
 - User-entered local context (soil texture, fertility and water regime) is displayed but is not treated as a measured hydraulic property.
 
 Only complete windows with at least 95% non-missing precipitation and temperature records are retained. Rainfall is summed over each crop window; temperature is averaged. MODIS NDVI is averaged over available overlapping composites. Sequence summaries report total modeled duration, total rainfall, and median daily rainfall (sequence rainfall divided by modeled days), alongside mean temperature. The duration-normalized rainfall rate is descriptive climate context, not crop water availability or water-use efficiency.
