@@ -1560,11 +1560,11 @@ if tab2.open:
                 "Consulte diretamente a tábua de risco do MAPA. O app baixa o CSV oficial da safra, filtra a combinação exata de município/cultura/solo/ciclo e expande os 36 decêndios. Valores 20, 30 e 40 são exibidos como níveis oficiais de risco; 0 é mantido como fora da janela recomendada."
             ))
             st.markdown("[Portal de Dados Abertos do MAPA — Tábua de Risco](https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico) · [Painel ZARC](https://mapa-indicadores.agricultura.gov.br/publico/extensions/Zarc/Zarc.html) · [SISZARC](https://sistemasweb.agricultura.gov.br/siszarc/base.action)")
-            @st.cache_data(ttl=3600, show_spinner=False)
+            @st.cache_data(ttl=3600, max_entries=1, show_spinner=False)
             def _cached_zarc_resources():
                 return list_zarc_resources()
     
-            @st.cache_data(ttl=3600, show_spinner=False)
+            @st.cache_data(ttl=3600, max_entries=1, show_spinner=False)
             def _cached_zarc_table(url):
                 return load_zarc_csv(url)
     
