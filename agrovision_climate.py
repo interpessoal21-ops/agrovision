@@ -4,6 +4,7 @@ from io import StringIO
 from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 import requests
+from agrovision_http import get_with_retries
 
 NASA_GISTEMP_URL = "https://data.giss.nasa.gov/gistemp/tabledata_v4/GLB.Ts+dSST.csv"
 NOAA_CO2_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_mm_mlo.csv"
@@ -94,7 +95,7 @@ def fetch_climate_watch(timeout: int=35) -> dict:
     urls={"temperature":NASA_GISTEMP_URL,"co2":NOAA_CO2_URL,"ch4":NOAA_CH4_URL,"n2o":NOAA_N2O_URL}
     headers={"User-Agent":"AGROVISION-ClimateWatch/1.1 (research dashboard)"}
     def get(url):
-        response=requests.get(url,timeout=timeout,headers=headers); response.raise_for_status(); return response.text
+        response=get_with_retries(url,timeout=timeout,attempts=2,backoff_seconds=1.0); response.raise_for_status(); return response.text
     with ThreadPoolExecutor(max_workers=4) as pool:
         futures={k:pool.submit(get,v) for k,v in urls.items()}
         raw={k:v.result() for k,v in futures.items()}
