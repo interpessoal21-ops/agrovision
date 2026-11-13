@@ -88,7 +88,7 @@ def compare_rotation_scenarios(
             sequence_records = []
             for phase, crop in enumerate(scenario["crops"], start=1):
                 days = CROP_CYCLES_DAYS[crop]
-                end = cursor + pd.Timedelta(days=days - 1)
+                end = cursor + pd.Timedelta(days - 1, unit="D")
                 window = climate.loc[cursor:end]
                 if len(window) < days - 2:
                     sequence_records = []
@@ -119,7 +119,7 @@ def compare_rotation_scenarios(
                     "MODIS composites": int(len(vegetation)),
                     "Management note": scenario["management_note"],
                 })
-                cursor = end + pd.Timedelta(days=1)
+                cursor = end + pd.Timedelta(1, unit="D")
             if sequence_records:
                 records.extend(sequence_records)
 
