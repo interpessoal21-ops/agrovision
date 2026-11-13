@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from agrovision_validation import paired_validation_metrics
-from agrovision_modis import parse_modis_subset
+from agrovision_modis import parse_modis_subset, calculate_ndvi_from_reflectance
 from agrovision_quality import climate_quality_report, modis_quality_report
 from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
 from agrovision_rotation import ROTATION_SCENARIOS, compare_rotation_scenarios, scenario_disclosure
@@ -312,16 +312,7 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
         nir = bands.get("250m_16_days_NIR_reflectance")
         red = bands.get("250m_16_days_red_reflectance")
         quality = bands.get("250m_16_days_pixel_reliability")
-        valid_reflectance = (
-            nir is not None and red is not None
-            and nir >= -1000 and red >= -1000
-            and nir + red != 0
-        )
-        ndvi = (
-            (nir - red) / (nir + red)
-            if valid_reflectance and quality in (0, 1)
-            else None
-        )
+        ndvi = calculate_ndvi_from_reflectance(nir, red, quality)
         rows.append({
             "Date": pd.Timestamp(day),
             "Quality": quality,
