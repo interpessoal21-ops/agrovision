@@ -843,7 +843,9 @@ with tab_climate:
             st.markdown(
                 "- [NASA GISTEMP v4 — data and methodology](https://data.giss.nasa.gov/gistemp/)\n"
                 "- [NASA GISTEMP source documentation](https://data.giss.nasa.gov/gistemp/sources/gistemp.html)\n"
-                "- [NOAA Global Monitoring Laboratory — Trends](https://gml.noaa.gov/ccgg/trends/)"
+                "- [NOAA Global Monitoring Laboratory — CO₂ trends](https://gml.noaa.gov/ccgg/trends/)\\n"
+                "- [NOAA global methane trends and methods](https://gml.noaa.gov/ccgg/trends_ch4/)\\n"
+                "- [NOAA global nitrous oxide trends and methods](https://gml.noaa.gov/ccgg/trends_n2o/)"
             )
             with st.expander(tx("Scientific interpretation and limitations", "Interpretação científica e limitações")):
                 st.markdown(tx(
