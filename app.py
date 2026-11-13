@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from agrovision_validation import paired_validation_metrics
 from agrovision_modis import parse_modis_subset, calculate_ndvi_from_reflectance
+from agrovision_http import get_with_retries
 from agrovision_quality import climate_quality_report, modis_quality_report
 from agrovision_agronomy import fao56_reference_et0, crop_coefficient_curve, simulate_root_zone_balance
 from agrovision_rotation import ROTATION_SCENARIOS, compare_rotation_scenarios, scenario_disclosure
@@ -298,10 +299,11 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
     """
     api_root = "https://modis.ornl.gov/rst/api/v1/MOD13Q1"
     common = {"latitude": lat, "longitude": lon}
-    dates_response = requests.get(
+    dates_response = get_with_retries(
         f"{api_root}/dates",
         params=common,
-        timeout=60
+        timeout=60,
+        attempts=3
     )
     dates_response.raise_for_status()
     available = dates_response.json().get("dates", [])
@@ -324,8 +326,13 @@ def get_modis(lat, lon, start_year=2020, end_year=2025):
             "kmAboveBelow": 0,
             "kmLeftRight": 0
         }
-        response = requests.get(f"{api_root}/subset", params=params, timeout=90)
-        response.raise_for_status()
+        response = get_with_retries(
+            f"{api_root}/subset",
+            params=params,
+            timeout=90,
+            attempts=4,
+            backoff_seconds=2
+        )
         for day, bands in parse_modis_subset(response.json()).items():
             records.setdefault(day, {}).update(bands)
     rows = []
