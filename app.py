@@ -869,18 +869,18 @@ with tab_partners:
     st.divider()
     st.subheader(tx("How alliances can strengthen GUMA","Como alianças podem fortalecer a GUMA"))
     st.markdown(tx(
-      "- **Data & APIs:** authoritative datasets, documented access, metadata and update cadence.
+      """- **Data & APIs:** authoritative datasets, documented access, metadata and update cadence.
 - **Scientific review:** independent review of methods, uncertainty, validation and reproducibility.
 - **Field pilots:** compare satellite and gridded products with stations, farms, watersheds and field observations.
 - **Compute & technology:** geospatial infrastructure, cloud credits, GIS, AI and engineering support.
 - **Funding & institutional support:** grants, research agreements, innovation calls and student/researcher networks.
-- **Distribution & adoption:** connect outputs to cooperatives, public managers, researchers and producers.",
-      "- **Dados e APIs:** bases confiáveis, acesso documentado, metadados e frequência de atualização.
+- **Distribution & adoption:** connect outputs to cooperatives, public managers, researchers and producers.""",
+      """- **Dados e APIs:** bases confiáveis, acesso documentado, metadados e frequência de atualização.
 - **Revisão científica:** avaliação independente de métodos, incertezas, validação e reprodutibilidade.
 - **Pilotos de campo:** comparar satélites e produtos em grade com estações, propriedades, bacias e observações de campo.
 - **Computação e tecnologia:** infraestrutura geoespacial, créditos de nuvem, SIG, IA e apoio de engenharia.
 - **Fomento e apoio institucional:** editais, acordos de pesquisa, chamadas de inovação e redes de estudantes/pesquisadores.
-- **Distribuição e adoção:** conectar resultados a cooperativas, gestores públicos, pesquisadores e produtores."
+- **Distribuição e adoção:** conectar resultados a cooperativas, gestores públicos, pesquisadores e produtores."""
     ))
     partners = [
       {"name":"INPE","kind":"Public science & data","priority":"A · Strategic","fit":"Earth observation, land-cover monitoring, fire, deforestation and satellite products.","ask":"Technical dialogue, public datasets, methodological references and possible research collaboration.","offer":"A transparent integration layer, reproducible workflows, documented use cases and feedback on data usability.","url":"https://www.gov.br/inpe/pt-br","label":"Official institute"},
