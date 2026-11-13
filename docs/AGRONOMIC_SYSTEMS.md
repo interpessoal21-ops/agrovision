@@ -32,6 +32,8 @@ Each entry describes:
 - Intercropping / mixed cropping
 - Integrated crop-livestock (ILP)
 - Integrated crop-livestock-forest (ILPF)
+- Integrated crop-forest (ILF)
+- Integrated livestock-forest (IPF)
 - Agroforestry systems (SAF)
 - Agroecological production
 - Organic production
@@ -51,7 +53,7 @@ A crop-forage mixture is not automatically ILP. Whether it constitutes integrati
 
 ### ILPF family
 
-Brazilian technical references commonly distinguish ILP (agropastoral), ILF (silviagricultural), IPF (silvopastoral) and ILPF (agrosilvopastoral). The application focuses on ILP and ILPF but should expand to ILF and IPF as separate entries in a later iteration.
+Brazilian technical references commonly distinguish ILP (agropastoral), ILF (silviagricultural), IPF (silvopastoral) and ILPF (agrosilvopastoral). The application includes ILP, ILF, IPF and ILPF as separate entries.
 
 ## Scientific and technical references
 
@@ -63,7 +65,6 @@ Brazilian technical references commonly distinguish ILP (agropastoral), ILF (sil
 
 ## Future work
 
-- Add ILF and IPF as independent entries.
 - Add diagrams for crop calendars, spatial arrangements and nutrient/water flows.
 - Add regional examples for Cerrado, Amazon, Caatinga, Atlantic Forest, Pampa and Pantanal.
 - Add crop-specific management calendars only when supported by authoritative technical sources.
