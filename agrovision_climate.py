@@ -1,106 +1,70 @@
-"""Climate Watch data access and parsing.
-
-Primary series:
-- NASA GISTEMP v4 global monthly temperature anomalies (1951-1980 baseline).
-- NOAA GML Mauna Loa monthly atmospheric CO2 observations.
-
-These are observational/research datasets with publication latency, not live telemetry.
-"""
+"""Climate Watch source access: NASA GISTEMP and NOAA GML greenhouse gases."""
 from __future__ import annotations
-
 from io import StringIO
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 import requests
 
 NASA_GISTEMP_URL = "https://data.giss.nasa.gov/gistemp/tabledata_v4/GLB.Ts+dSST.csv"
 NOAA_CO2_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_mm_mlo.csv"
+NOAA_CH4_URL = "https://gml.noaa.gov/webdata/ccgg/trends/ch4/ch4_mm_gl.csv"
+NOAA_N2O_URL = "https://gml.noaa.gov/webdata/ccgg/trends/n2o/n2o_mm_gl.csv"
 SOURCES = {
-    "temperature": {
-        "name": "NASA GISS GISTEMP v4",
-        "url": "https://data.giss.nasa.gov/gistemp/",
-        "baseline": "1951–1980",
-        "frequency": "Monthly; typically updated around the 10th",
-    },
-    "co2": {
-        "name": "NOAA Global Monitoring Laboratory — Mauna Loa",
-        "url": "https://gml.noaa.gov/ccgg/trends/",
-        "baseline": "Observed monthly mean; not a global surface average",
-        "frequency": "Monthly; subject to measurement and publication latency",
-    },
+ "temperature":{"name":"NASA GISS GISTEMP v4","url":"https://data.giss.nasa.gov/gistemp/","baseline":"1951–1980","frequency":"Monthly; publication latency"},
+ "co2":{"name":"NOAA GML — Mauna Loa","url":"https://gml.noaa.gov/ccgg/trends/","baseline":"Station monthly mean","frequency":"Monthly; publication latency"},
+ "ch4":{"name":"NOAA GML — global marine surface network","url":"https://gml.noaa.gov/ccgg/trends_ch4/","baseline":"Global marine-surface monthly mean","frequency":"Monthly; recent values preliminary"},
+ "n2o":{"name":"NOAA GML — global marine surface network","url":"https://gml.noaa.gov/ccgg/trends_n2o/","baseline":"Global marine-surface monthly mean","frequency":"Monthly; recent values preliminary"},
 }
 
-
 def parse_gistemp_csv(text: str) -> pd.DataFrame:
-    """Parse NASA's wide GISTEMP table into a monthly long-form series."""
-    frame = pd.read_csv(StringIO(text), skipinitialspace=True)
-    if "Year" not in frame.columns:
-        raise ValueError("NASA GISTEMP file has no Year column.")
-    month_columns = [m for m in
-        ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        if m in frame.columns]
-    if len(month_columns) != 12:
-        raise ValueError("NASA GISTEMP file does not contain all 12 monthly columns.")
-    long = frame[["Year", *month_columns]].melt(
-        id_vars="Year", var_name="Month", value_name="Anomaly_C"
-    )
-    long["Year"] = pd.to_numeric(long["Year"], errors="coerce")
-    long["Anomaly_C"] = pd.to_numeric(long["Anomaly_C"], errors="coerce")
-    month_numbers = {name: i for i, name in enumerate(
-        ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"), 1)}
-    long["Month_Number"] = long["Month"].map(month_numbers)
-    long = long.dropna(subset=["Year", "Month_Number", "Anomaly_C"])
-    long = long[long["Anomaly_C"] > -90].copy()
-    long["Date"] = pd.to_datetime(dict(
-        year=long["Year"].astype(int), month=long["Month_Number"], day=1
-    ))
-    return long[["Date", "Anomaly_C"]].sort_values("Date").reset_index(drop=True)
+    frame=pd.read_csv(StringIO(text),skipinitialspace=True)
+    if "Year" not in frame.columns: raise ValueError("NASA GISTEMP file has no Year column.")
+    months=("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+    cols=[m for m in months if m in frame.columns]
+    if len(cols)!=12: raise ValueError("NASA GISTEMP file does not contain all 12 monthly columns.")
+    long=frame[["Year",*cols]].melt(id_vars="Year",var_name="Month",value_name="Anomaly_C")
+    long["Year"]=pd.to_numeric(long["Year"],errors="coerce")
+    long["Anomaly_C"]=pd.to_numeric(long["Anomaly_C"],errors="coerce")
+    long["Month_Number"]=long["Month"].map({m:i for i,m in enumerate(months,1)})
+    long=long.dropna(subset=["Year","Month_Number","Anomaly_C"])
+    long=long[long["Anomaly_C"]>-90].copy()
+    long["Date"]=pd.to_datetime(dict(year=long["Year"].astype(int),month=long["Month_Number"],day=1))
+    return long[["Date","Anomaly_C"]].sort_values("Date").reset_index(drop=True)
 
+def _parse_noaa_monthly_csv(text: str,value_column: str,output_column: str) -> pd.DataFrame:
+    lines=text.splitlines(); header_index=None; header_line=None
+    for i,line in enumerate(lines):
+        candidate=line.lstrip().lstrip("#").strip(); low=candidate.lower()
+        if all(x in low for x in ("year","month",value_column.lower())) and "," in candidate:
+            header_index=i; header_line=candidate; break
+    if header_index is None: raise ValueError(f"NOAA file has no recognizable {value_column} CSV header.")
+    csv_text="\n".join([header_line,*lines[header_index+1:]])
+    frame=pd.read_csv(StringIO(csv_text),skipinitialspace=True)
+    frame.columns=[str(c).strip().lower() for c in frame.columns]
+    required={"year","month",value_column.lower()}
+    if not required.issubset(frame.columns): raise ValueError(f"NOAA file missing columns: {sorted(required)}")
+    for col in required: frame[col]=pd.to_numeric(frame[col],errors="coerce")
+    frame=frame.dropna(subset=list(required))
+    frame=frame[(frame[value_column.lower()]>0)&frame["month"].between(1,12)].copy()
+    frame["Date"]=pd.to_datetime(dict(year=frame["year"].astype(int),month=frame["month"].astype(int),day=1),errors="coerce")
+    return frame.dropna(subset=["Date"])[["Date",value_column.lower()]].rename(columns={value_column.lower():output_column}).sort_values("Date").reset_index(drop=True)
 
 def parse_noaa_co2_csv(text: str) -> pd.DataFrame:
-    """Parse NOAA's Mauna Loa monthly CSV, excluding missing-value sentinels."""
-    # NOAA's CSV has a long metadata preamble; depending on the published
-    # vintage, the column header may itself be prefixed with '#'.
-    lines = text.splitlines()
-    header_index = None
-    header_line = None
-    for index, line in enumerate(lines):
-        candidate = line.lstrip().lstrip("#").strip()
-        lowered = candidate.lower()
-        if all(token in lowered for token in ("year", "month", "average")) and "," in candidate:
-            header_index = index
-            header_line = candidate
-            break
-    if header_index is None:
-        raise ValueError("NOAA CO2 file has no recognizable CSV header.")
-    csv_text = "\\n".join([header_line, *lines[header_index + 1:]])
-    frame = pd.read_csv(StringIO(csv_text), skipinitialspace=True)
-    frame.columns = [str(c).strip().lower() for c in frame.columns]
-    required = {"year", "month", "average"}
-    if not required.issubset(frame.columns):
-        raise ValueError("NOAA CO2 file is missing year, month or average columns.")
-    frame["year"] = pd.to_numeric(frame["year"], errors="coerce")
-    frame["month"] = pd.to_numeric(frame["month"], errors="coerce")
-    frame["average"] = pd.to_numeric(frame["average"], errors="coerce")
-    frame = frame.dropna(subset=["year", "month", "average"])
-    frame = frame[frame["average"] > 0].copy()
-    frame["Date"] = pd.to_datetime(dict(
-        year=frame["year"].astype(int), month=frame["month"].astype(int), day=1
-    ), errors="coerce")
-    return frame.dropna(subset=["Date"])[["Date", "average"]].rename(
-        columns={"average": "CO2_ppm"}
-    ).sort_values("Date").reset_index(drop=True)
+    return _parse_noaa_monthly_csv(text,"average","CO2_ppm")
 
+def parse_noaa_global_gas_csv(text: str,gas: str) -> pd.DataFrame:
+    cols={"ch4":"CH4_ppb","n2o":"N2O_ppb"}; gas=gas.lower()
+    if gas not in cols: raise ValueError("gas must be 'ch4' or 'n2o'.")
+    return _parse_noaa_monthly_csv(text,"average",cols[gas])
 
-def fetch_climate_watch(timeout: int = 35) -> dict:
-    """Fetch both authoritative source files and return parsed time series."""
-    headers = {"User-Agent": "AGROVISION-ClimateWatch/1.0 (research dashboard)"}
-    temp_response = requests.get(NASA_GISTEMP_URL, timeout=timeout, headers=headers)
-    temp_response.raise_for_status()
-    co2_response = requests.get(NOAA_CO2_URL, timeout=timeout, headers=headers)
-    co2_response.raise_for_status()
-    return {
-        "temperature": parse_gistemp_csv(temp_response.text),
-        "co2": parse_noaa_co2_csv(co2_response.text),
-        "retrieved_at": pd.Timestamp.now(tz="UTC"),
-        "sources": SOURCES,
-    }
+def fetch_climate_watch(timeout: int=35) -> dict:
+    urls={"temperature":NASA_GISTEMP_URL,"co2":NOAA_CO2_URL,"ch4":NOAA_CH4_URL,"n2o":NOAA_N2O_URL}
+    headers={"User-Agent":"AGROVISION-ClimateWatch/1.1 (research dashboard)"}
+    def get(url):
+        response=requests.get(url,timeout=timeout,headers=headers); response.raise_for_status(); return response.text
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures={k:pool.submit(get,v) for k,v in urls.items()}
+        raw={k:v.result() for k,v in futures.items()}
+    return {"temperature":parse_gistemp_csv(raw["temperature"]),"co2":parse_noaa_co2_csv(raw["co2"]),
+      "ch4":parse_noaa_global_gas_csv(raw["ch4"],"ch4"),"n2o":parse_noaa_global_gas_csv(raw["n2o"],"n2o"),
+      "retrieved_at":pd.Timestamp.now(tz="UTC"),"sources":SOURCES}
