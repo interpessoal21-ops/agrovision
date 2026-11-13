@@ -8,7 +8,7 @@ from agrovision_rotation import ROTATION_SCENARIOS, compare_rotation_scenarios, 
 from agrovision_zarc import list_zarc_resources, load_zarc_csv, find_column, unique_values, filter_zarc_rows, decendio_columns, expand_decendios, crop_matches_app_crop
 from agrovision_climate import summarize_local_extremes
 from agrovision_commons import build_climate_fingerprint, comparison_distance
-from agrovision_fieldlab import ALLOWED_CROPS, ALLOWED_REGIONS, ALLOWED_METRICS, validate_trial_record, relative_difference
+from agrovision_fieldlab import ALLOWED_CROPS, ALLOWED_REGIONS, ALLOWED_METRICS, ALLOWED_STAGES, validate_trial_record, validate_trial_update, relative_difference
 import requests
 import folium
 import io
@@ -1549,6 +1549,38 @@ def publish_field_lab_trial(record):
         raise RuntimeError(f"Field Lab publication failed (HTTP {response.status_code}): {response.text[:250]}")
     return response.json()
 
+
+def fetch_field_lab_updates():
+    base_url, public_key, _ = supabase_settings()
+    if not base_url or not public_key:
+        return []
+    headers = {"apikey": public_key}
+    access_token = st.session_state.get("agrovision_access_token", "")
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    response = requests.get(
+        f"{base_url}/rest/v1/field_lab_updates?select=id,trial_id,display_alias,season,observation_date,stage,arm,observed_value,unit,method,notes,created_at&published=eq.true&order=observation_date.asc&limit=2000",
+        headers=headers, timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Field Lab timeline unavailable (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
+
+def publish_field_lab_update(record):
+    base_url, headers = supabase_rest_headers()
+    if not headers:
+        raise RuntimeError("Sign in with an email account to publish a follow-up.")
+    response = requests.post(
+        f"{base_url}/rest/v1/field_lab_updates",
+        headers=headers,
+        json=record,
+        timeout=25
+    )
+    if not response.ok:
+        raise RuntimeError(f"Field Lab follow-up failed (HTTP {response.status_code}): {response.text[:250]}")
+    return response.json()
+
 def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water_balance=None, zarc_reference=None):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
@@ -2074,6 +2106,12 @@ with tab_fieldlab:
     st.subheader(tx("Explore community experiments", "Explore experimentos da comunidade"))
     try:
         trials = fetch_field_lab_trials()
+        try:
+            updates = fetch_field_lab_updates()
+            updates_frame = pd.DataFrame(updates)
+        except Exception as update_exc:
+            updates_frame = pd.DataFrame()
+            st.warning(tx("The longitudinal timeline needs the latest Supabase migration. ", "A linha do tempo precisa da migração mais recente do Supabase.") + str(update_exc))
         if not trials:
             st.info(tx("No public field notes yet. The first contribution will open this research notebook.", "Ainda não há notas públicas de campo. A primeira contribuição abrirá este caderno de pesquisa."))
         else:
@@ -2110,6 +2148,62 @@ with tab_fieldlab:
                         if trial.get("notes"):
                             st.caption(trial["notes"])
                         st.caption(tx("Community observation · unverified contributor report", "Observação comunitária · relato não verificado"))
+
+                        st.markdown("#### " + tx("Season-by-season timeline", "Linha do tempo por safra"))
+                        if not updates_frame.empty:
+                            history = updates_frame[updates_frame["trial_id"] == trial["id"]].sort_values(["observation_date", "created_at"])
+                        else:
+                            history = pd.DataFrame()
+                        if history.empty:
+                            st.caption(tx("No follow-up observations recorded yet.", "Ainda não há observações de acompanhamento."))
+                        else:
+                            for _, item in history.iterrows():
+                                st.markdown(
+                                    f"**{item['season']} · {item['stage']} · {item['arm']}** — "
+                                    f"{item['observed_value']:g} {item['unit']}"
+                                )
+                                st.caption(
+                                    f"{item['observation_date']} · {item['display_alias']} · "
+                                    f"{item['method']}"
+                                )
+                                if item.get("notes"):
+                                    st.caption(item["notes"])
+                        if st.session_state.get("agrovision_auth_mode") == "email":
+                            with st.form(f"fieldlab_followup_{trial['id']}"):
+                                st.markdown("**" + tx("Add a follow-up observation", "Adicionar observação de acompanhamento") + "**")
+                                u1,u2,u3 = st.columns(3)
+                                follow_alias = u1.text_input(tx("Public alias", "Apelido público"), max_chars=32, key=f"fl_alias_{trial['id']}")
+                                follow_season = u2.text_input(tx("Season", "Safra"), max_chars=20, key=f"fl_season_{trial['id']}", value=str(trial["season"]))
+                                follow_date = u3.date_input(tx("Observation date", "Data da observação"), value=datetime.now().date(), key=f"fl_date_{trial['id']}", max_value=datetime.now().date())
+                                u4,u5,u6 = st.columns(3)
+                                follow_stage = u4.selectbox(tx("Stage", "Etapa"), list(ALLOWED_STAGES), key=f"fl_stage_{trial['id']}")
+                                follow_arm = u5.selectbox(tx("Comparison arm", "Grupo de comparação"), ["Estratégia", "Comparador", "Outro"], key=f"fl_arm_{trial['id']}")
+                                follow_value = u6.text_input(tx("Observed value", "Valor observado"), key=f"fl_value_{trial['id']}")
+                                follow_method = st.text_input(tx("Measurement method / protocol", "Método de medição / protocolo"), max_chars=500, key=f"fl_method_{trial['id']}")
+                                follow_notes = st.text_area(tx("Context and limitations", "Contexto e limitações"), max_chars=1000, key=f"fl_notes_{trial['id']}")
+                                follow_consent = st.checkbox(tx("I consent to publishing this follow-up publicly.", "Autorizo a publicação pública deste acompanhamento."), key=f"fl_consent_{trial['id']}")
+                                follow_submit = st.form_submit_button(tx("Add to timeline", "Adicionar à linha do tempo"))
+                            if follow_submit:
+                                try:
+                                    follow_record = validate_trial_update({
+                                        "trial_id": str(trial["id"]),
+                                        "display_alias": follow_alias,
+                                        "season": follow_season,
+                                        "observation_date": follow_date.isoformat(),
+                                        "stage": follow_stage,
+                                        "arm": follow_arm,
+                                        "observed_value": follow_value,
+                                        "unit": str(trial["unit"]),
+                                        "method": follow_method,
+                                        "notes": follow_notes
+                                    })
+                                    if not follow_consent:
+                                        raise ValueError(tx("Explicit consent is required.", "É necessário consentimento explícito."))
+                                    publish_field_lab_update(follow_record)
+                                    st.success(tx("Follow-up added to the experiment timeline.", "Acompanhamento adicionado à linha do tempo do experimento."))
+                                    st.rerun()
+                                except Exception as follow_exc:
+                                    st.error(str(follow_exc))
     except Exception as exc:
         st.warning(tx("The Field Lab database migration is required. Run supabase/community_schema.sql in Supabase SQL Editor. Details: ", "A migração do Field Lab é necessária. Execute supabase/community_schema.sql no SQL Editor do Supabase. Detalhes: ") + str(exc))
     st.caption(tx(
