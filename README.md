@@ -1,6 +1,8 @@
 # GUMA — Earth Intelligence
 
-**Early-stage agricultural climate-screening platform using NASA Earth-observation data and published crop references.** Built for the NASA Space Apps Challenge 2026; scientific validation is in progress.
+**GUMA is an Earth-intelligence platform connecting climate, Earth observation, agricultural systems and collaborative research.** Built for the NASA Space Apps Challenge 2026; scientific validation is in progress.
+
+The name is inspired by Guma, the character in Jorge Amado's *Mar Morto*. Its visual identity draws on the sea, navigation and the horizon. This is an independent cultural inspiration, not an official association with the author or publisher. See [the GUMA brand system](docs/GUMA_BRAND.md).
 
 ## Current capabilities
 
