@@ -132,4 +132,4 @@ Deploy this repository on Streamlit Community Cloud using `app.py` as the main f
 
 ## Agronomic Systems Library
 
-The GUMA app includes an educational library explaining major agricultural production and management systems, including conventional tillage, no-till, crop rotation, succession, intercropping, ILP, ILPF, agroforestry, agroecological and organic production, irrigation, protected cultivation and hydroponics. See [the technical guide](docs/AGRONOMIC_SYSTEMS.md). The library distinguishes system types and describes operating logic, potential strengths, limitations and monitoring points; it is not an agronomic prescription.
+The GUMA app includes an educational library explaining major agricultural production and management systems, including conventional tillage, no-till, crop rotation, succession, intercropping, ILP, ILF, IPF, ILPF, agroforestry, agroecological and organic production, irrigation, protected cultivation and hydroponics. See [the technical guide](docs/AGRONOMIC_SYSTEMS.md). The library distinguishes system types and describes operating logic, potential strengths, limitations and monitoring points; it is not an agronomic prescription.
