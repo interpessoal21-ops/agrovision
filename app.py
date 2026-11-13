@@ -281,7 +281,7 @@ with st.sidebar:
 def get_nasa_power(lat, lon):
     url = "https://power.larc.nasa.gov/api/temporal/daily/point"
     params = {"parameters":"T2M,T2M_MAX,T2M_MIN,T2MDEW,WS2M,PRECTOTCORR,ALLSKY_SFC_SW_DWN","community":"AG","longitude":lon,"latitude":lat,"start":"20200101","end":"20251231","format":"JSON"}
-    response = requests.get(url, params=params, timeout=90)
+    response = get_with_retries(url, params=params, timeout=90, attempts=3, backoff_seconds=1.5)
     response.raise_for_status()
     values = response.json()["properties"]["parameter"]
     frame = pd.DataFrame(values).apply(pd.to_numeric, errors="coerce")
