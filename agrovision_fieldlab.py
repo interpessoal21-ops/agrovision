@@ -1,5 +1,6 @@
-"""AGROVISION Field Lab: transparent, user-submitted experiment records."""
+"""Longitudinal Field Lab records with strict, transparent validation."""
 import math
+from datetime import date
 
 ALLOWED_CROPS = (
     "Soja", "Milho", "Feijão", "Café", "Cana-de-açúcar",
@@ -10,6 +11,7 @@ ALLOWED_METRICS = (
     "Produtividade", "Consumo de água", "Dias de estresse térmico",
     "Precipitação", "NDVI", "Custo de produção", "Outro"
 )
+ALLOWED_STAGES = ("Plantio", "Desenvolvimento", "Colheita", "Pós-colheita", "Acompanhamento")
 
 
 def validate_trial_record(record: dict) -> dict:
@@ -50,6 +52,42 @@ def validate_trial_record(record: dict) -> dict:
             cleaned[key] = None
     cleaned["notes"] = str(record.get("notes", "")).strip()[:1000]
     cleaned["status"] = "community observation"
+    cleaned["published"] = True
+    return cleaned
+
+
+def validate_trial_update(record: dict) -> dict:
+    """Validate one dated follow-up observation linked to a public hypothesis."""
+    required = ("trial_id", "display_alias", "season", "observation_date",
+                "stage", "arm", "method", "unit")
+    cleaned = {}
+    for key in required:
+        value = str(record.get(key, "")).strip()
+        if not value:
+            raise ValueError(f"Missing required field: {key}")
+        cleaned[key] = value
+    limits = {"display_alias": 32, "season": 20, "method": 500, "unit": 24}
+    for key, limit in limits.items():
+        if len(cleaned[key]) > limit:
+            raise ValueError(f"{key} exceeds {limit} characters.")
+    if cleaned["stage"] not in ALLOWED_STAGES:
+        raise ValueError("Unknown observation stage.")
+    if cleaned["arm"] not in ("Estratégia", "Comparador", "Outro"):
+        raise ValueError("Unknown comparison group.")
+    try:
+        parsed_date = date.fromisoformat(cleaned["observation_date"])
+    except ValueError:
+        raise ValueError("observation_date must use YYYY-MM-DD.") from None
+    if parsed_date > date.today():
+        raise ValueError("Observation date cannot be in the future.")
+    try:
+        value = float(record.get("observed_value"))
+    except (TypeError, ValueError):
+        raise ValueError("observed_value must be numeric.") from None
+    if not math.isfinite(value):
+        raise ValueError("observed_value must be finite.")
+    cleaned["observed_value"] = value
+    cleaned["notes"] = str(record.get("notes", "")).strip()[:1000]
     cleaned["published"] = True
     return cleaned
 
