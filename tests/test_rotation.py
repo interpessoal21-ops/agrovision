@@ -26,11 +26,13 @@ class RotationScenarioTests(unittest.TestCase):
         self.assertEqual(set(summary["Scenario"]), set(ROTATION_SCENARIOS))
         self.assertTrue((detail["Rainfall (mm)"] > 0).all())
         self.assertTrue((detail["Mean temperature (°C)"] == 24.0).all())
+        self.assertIn("Median daily rainfall (mm/day)", summary.columns)
+        self.assertIn("Median sequence duration (days)", summary.columns)
 
     def test_second_crop_adds_a_separate_window(self):
         detail, _ = compare_rotation_scenarios(self.climate, self.modis, 10)
         counts = detail.groupby("Scenario")["Phase"].nunique().to_dict()
-        self.assertEqual(counts["A · Soybean → fallow"], 1)
+        self.assertEqual(counts["A · Soybean only (single modeled crop)"], 1)
         self.assertEqual(counts["B · Soybean → second-season maize"], 2)
 
     def test_modis_is_context_not_crop_identity(self):
