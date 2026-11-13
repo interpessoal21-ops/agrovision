@@ -21,106 +21,112 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from streamlit_folium import st_folium
 
-st.set_page_config(page_title="AGROVISION", page_icon="🌱", layout="wide")
+st.set_page_config(page_title="GUMA — Earth Intelligence", page_icon="🌊", layout="wide")
 
 st.markdown("""
 <style>
     :root {
-        --agro-bg: #0b1712; --agro-panel: #14251d; --agro-panel-2: #1a3025;
-        --agro-green: #56a878; --agro-deep: #08130e; --agro-gold: #d6b36a;
-        --agro-text: #e6eee8; --agro-muted: #a8b9ae; --agro-border: #2b4436;
+        --guma-ink: #091722;
+        --guma-ocean: #15364A;
+        --guma-signal: #24C8B5;
+        --guma-lime: #B9F36B;
+        --guma-amber: #F0B66A;
+        --guma-text: #F0F5F3;
+        --guma-muted: #A9BEC5;
+        --guma-panel: #102638;
+        --guma-panel-2: #153044;
+        --guma-border: #29495A;
     }
     .stApp {
         background:
-          radial-gradient(ellipse at 85% 0%, rgba(76,139,98,.16) 0%, transparent 35%),
-          linear-gradient(180deg, #102219 0%, #0b1712 420px);
-        color: var(--agro-text);
+          radial-gradient(ellipse at 88% 0%, rgba(36,200,181,.12) 0%, transparent 34%),
+          radial-gradient(ellipse at 8% 30%, rgba(185,243,107,.055) 0%, transparent 32%),
+          linear-gradient(180deg, #0d2231 0%, var(--guma-ink) 460px);
+        color: var(--guma-text);
+        font-family: Inter, Manrope, ui-sans-serif, system-ui, sans-serif;
     }
-    [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainBlockContainer"] {
-        background: transparent;
-    }
+    [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainBlockContainer"] { background: transparent; }
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #102219 0%, #0d1b14 100%);
-        border-right: 1px solid var(--agro-border);
+        background: linear-gradient(180deg, #102638 0%, #091722 100%);
+        border-right: 1px solid var(--guma-border);
     }
-    [data-testid="stHeader"] { background: rgba(11,23,18,.88); }
+    [data-testid="stHeader"] { background: rgba(9,23,34,.88); }
     [data-testid="stToolbar"], [data-testid="stDecoration"] { background: transparent; }
-    .block-container { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1440px; }
-    h1, h2, h3, h4, h5, h6, p, li, label, .stMarkdown, [data-testid="stCaptionContainer"] {
-        color: var(--agro-text);
-    }
-    [data-testid="stCaptionContainer"], .stCaption, small { color: var(--agro-muted) !important; }
-    a { color: #86d5a5 !important; }
+    .block-container { padding-top: 1.5rem; padding-bottom: 3rem; max-width: 1480px; }
+    h1,h2,h3,h4,h5,h6,p,li,label,.stMarkdown,[data-testid="stCaptionContainer"] { color: var(--guma-text); }
+    [data-testid="stCaptionContainer"], .stCaption, small { color: var(--guma-muted) !important; }
+    a { color: var(--guma-signal) !important; }
     div.stButton > button[kind="primary"], .stFormSubmitButton > button {
-        background: linear-gradient(105deg, #20583c, #347b52);
-        color: #fff; border: 1px solid #4c9569;
-        box-shadow: 0 5px 16px rgba(0,0,0,.22);
+        background: linear-gradient(105deg, #147F7A, #24AFA5);
+        color: #071923; border: 1px solid rgba(36,200,181,.65);
+        box-shadow: 0 5px 18px rgba(0,0,0,.24); font-weight: 750;
     }
     div.stButton > button {
-        border-radius: 11px; font-weight: 650; color: var(--agro-text);
-        background: #1b3025; border: 1px solid #385542;
+        border-radius: 12px; font-weight: 650; color: var(--guma-text);
+        background: #153044; border: 1px solid #31566A;
+        transition: border-color .18s ease, transform .18s ease, background .18s ease;
     }
-    div.stButton > button:hover { border-color: #79bd91; color: #fff; }
+    div.stButton > button:hover { border-color: var(--guma-lime); color: var(--guma-lime); transform: translateY(-1px); }
     [data-testid="stMetric"], div[data-testid="stMetric"] {
-        background: #172b21; border: 1px solid var(--agro-border);
-        padding: 1rem 1.1rem; border-radius: 14px;
-        box-shadow: 0 3px 12px rgba(0,0,0,.16);
+        background: linear-gradient(145deg, #153044, #102638);
+        border: 1px solid var(--guma-border); padding: 1rem 1.1rem;
+        border-radius: 15px; box-shadow: 0 5px 18px rgba(0,0,0,.16);
     }
-    [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {
-        color: var(--agro-text) !important;
+    [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] { color: var(--guma-text) !important; }
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: var(--guma-lime); }
+    .guma-hero {
+        padding: 2.2rem 2.25rem; border-radius: 24px; color: white; position: relative; overflow: hidden;
+        background:
+          radial-gradient(circle at 84% 12%, rgba(36,200,181,.24), transparent 24%),
+          radial-gradient(circle at 100% 100%, rgba(185,243,107,.12), transparent 34%),
+          linear-gradient(118deg, #091722 0%, #123449 58%, #155568 100%);
+        margin: .25rem 0 1.4rem 0; box-shadow: 0 16px 40px rgba(0,0,0,.28);
+        border: 1px solid rgba(89,185,185,.22);
     }
-    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #c4e6cf; }
-    .hero {
-        padding: 2rem 2.1rem; border-radius: 22px; color: white; position: relative; overflow: hidden;
-        background: radial-gradient(circle at 88% 18%, rgba(214,179,106,.27), transparent 23%), linear-gradient(118deg, #081b12 0%, #174b31 58%, #286b46 100%);
-        margin: .25rem 0 1.35rem 0; box-shadow: 0 14px 34px rgba(0,0,0,.28);
-        border: 1px solid rgba(151,201,164,.18);
-    }
-    .hero h1 { color: white; font-size: 2.35rem; margin: 0 0 .35rem 0; letter-spacing: -.04em; }
-    .hero p { color: #d5e9db; font-size: 1.02rem; margin: 0; max-width: 850px; }
-    .eyebrow { color: #d6c18f; text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 700; margin-bottom: .55rem; }
-    .step-card {
-        background: #172b21; border: 1px solid var(--agro-border); border-radius: 15px;
-        padding: 1rem; min-height: 142px; box-shadow: 0 3px 12px rgba(0,0,0,.16);
-    }
-    .step-number {
-        display: inline-flex; width: 30px; height: 30px; border-radius: 50%;
-        align-items: center; justify-content: center; background: #244a34;
-        color: #bce7c9; font-weight: 800; margin-bottom: .55rem;
-    }
-    .step-card strong { display: block; color: #d4eadb; margin-bottom: .3rem; }
-    .step-card span { color: #afc2b5; font-size: .88rem; line-height: 1.4; }
-    div[data-testid="stTabs"] button { color: #b9cabe; }
-    div[data-testid="stTabs"] button[aria-selected="true"] {
-        color: #a8e0b9; border-bottom-color: #65b783;
-    }
-    .section-note {
-        padding: .8rem 1rem; border-left: 4px solid #65b783; background: #193426;
-        border-radius: 0 10px 10px 0; color: #c7dfce; margin: .5rem 0 1rem 0;
-    }
+    .guma-brandline { display:flex; align-items:center; gap:.8rem; margin-bottom:1.45rem; }
+    .guma-mark { width:52px; height:52px; flex:0 0 52px; filter: drop-shadow(0 5px 14px rgba(36,200,181,.16)); }
+    .guma-wordmark { color:#F0F5F3; font-size:1.35rem; font-weight:850; letter-spacing:.16em; line-height:1.1; }
+    .guma-descriptor { color:#24C8B5; font-size:.65rem; letter-spacing:.17em; font-weight:750; margin-top:.35rem; }
+    .guma-hero h1 { color:#F0F5F3; font-size:2.55rem; margin:0 0 .55rem 0; letter-spacing:-.045em; line-height:1.08; }
+    .guma-hero h1 span { color:#B9F36B; }
+    .guma-hero p { color:#C3D4D8; font-size:1.02rem; margin:0; max-width:860px; line-height:1.6; }
+    .eyebrow { color:#F0B66A; text-transform:uppercase; letter-spacing:.16em; font-size:.7rem; font-weight:750; margin-bottom:.55rem; }
+    .step-card { background:#102638; border:1px solid var(--guma-border); border-radius:16px; padding:1rem; min-height:142px; box-shadow:0 4px 15px rgba(0,0,0,.15); }
+    .step-number { display:inline-flex; width:30px; height:30px; border-radius:50%; align-items:center; justify-content:center; background:rgba(36,200,181,.14); color:var(--guma-signal); font-weight:800; margin-bottom:.55rem; }
+    .step-card strong { display:block; color:#E6F1EF; margin-bottom:.3rem; }
+    .step-card span { color:#A9BEC5; font-size:.88rem; line-height:1.4; }
+    div[data-testid="stTabs"] button { color:#A9BEC5; font-weight:650; }
+    div[data-testid="stTabs"] button[aria-selected="true"] { color:#B9F36B; border-bottom-color:#24C8B5; }
+    .section-note { padding:.85rem 1rem; border-left:4px solid #24C8B5; background:#102F3D; border-radius:0 11px 11px 0; color:#C9E2E0; margin:.5rem 0 1rem 0; }
     [data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div,
     [data-testid="stDateInput"] input, [data-testid="stNumberInput"] input {
-        background: #172b21 !important; color: #e6eee8 !important;
-        border-color: #385542 !important;
+        background:#102638 !important; color:#F0F5F3 !important; border-color:#31566A !important;
     }
-    input, textarea { color: #e6eee8 !important; }
-    [data-baseweb="popover"], [data-baseweb="menu"], [role="listbox"] {
-        background: #172b21 !important; color: #e6eee8 !important;
-    }
-    [data-testid="stDataFrame"], [data-testid="stTable"] {
-        background: #14251d; border: 1px solid var(--agro-border); border-radius: 12px;
-    }
-    [data-testid="stAlert"] { background: #1b3025; color: #e6eee8; border: 1px solid #385542; }
-    hr { border-color: #2b4436 !important; }
-    @media (max-width: 700px) {
-        .hero { padding: 1.2rem; border-radius: 14px; }
-        .hero h1 { font-size: 1.8rem; }
+    input,textarea { color:#F0F5F3 !important; }
+    [data-baseweb="popover"],[data-baseweb="menu"],[role="listbox"] { background:#102638 !important; color:#F0F5F3 !important; }
+    [data-testid="stDataFrame"],[data-testid="stTable"] { background:#102638; border:1px solid var(--guma-border); border-radius:13px; }
+    [data-testid="stAlert"] { background:#153044; color:#F0F5F3; border:1px solid #31566A; }
+    hr { border-color:#29495A !important; }
+    @media (max-width:700px) {
+        .guma-hero { padding:1.25rem; border-radius:16px; }
+        .guma-hero h1 { font-size:1.9rem; }
+        .guma-mark { width:42px; height:42px; flex-basis:42px; }
     }
 </style>
-<div class="hero">
-  <div class="eyebrow">NASA Earth observation · Agricultural insights</div>
-  <h1>🌱 AGROVISION</h1>
-  <p>Explore climate, vegetation and crop-water indicators for your selected study area.</p>
+<div class="guma-hero">
+  <div class="guma-brandline">
+    <svg class="guma-mark" viewBox="0 0 64 64" role="img" aria-label="GUMA mark">
+      <circle cx="32" cy="32" r="25" fill="none" stroke="#24C8B5" stroke-width="1.7" opacity=".72"/>
+      <ellipse cx="32" cy="32" rx="12" ry="25" fill="none" stroke="#B9F36B" stroke-width="1.7" transform="rotate(38 32 32)"/>
+      <path d="M8 36c8-8 14-8 22 0s14 8 26 0" fill="none" stroke="#F0F5F3" stroke-width="3" stroke-linecap="round"/>
+      <path d="M12 44c7-5 13-5 20 0s13 5 20 0" fill="none" stroke="#24C8B5" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="48" cy="15" r="3.2" fill="#F0B66A"/>
+    </svg>
+    <div><div class="guma-wordmark">GUMA</div><div class="guma-descriptor">EARTH INTELLIGENCE</div></div>
+  </div>
+  <div class="eyebrow">CLIMATE · EARTH OBSERVATION · AGRICULTURE · SCIENCE</div>
+  <h1>Beyond the <span>horizon.</span></h1>
+  <p>Explore the connections between climate, territory, vegetation and agricultural systems through Earth observation and scientific data.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -195,7 +201,7 @@ with st.sidebar:
 
 auth_mode = st.session_state.get("agrovision_auth_mode")
 if auth_mode not in ("guest", "email"):
-    st.markdown("### " + tx("Welcome to AGROVISION", "Bem-vindo ao AGROVISION"))
+    st.markdown("### " + tx("Welcome to GUMA", "Bem-vindo ao GUMA"))
     st.write(tx("Choose how you want to explore the platform.", "Escolha como deseja explorar a plataforma."))
     login_tab, signup_tab = st.tabs([tx("✉️ Sign in", "✉️ Entrar"), tx("Create account", "Criar conta")])
     supabase_url, supabase_key, _supabase_key_source = supabase_settings()
@@ -392,13 +398,13 @@ tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, t
     tx("📊 Integrated diagnosis", "📊 Diagnóstico integrado"),
     tx("🌾 Rotation Lab", "🌾 Laboratório de rotação"),
     tx("🌍 Climate Watch", "🌍 Observatório climático"),
-    tx("🧬 AGROVISION Commons", "🧬 Commons AGROVISION"),
+    tx("🧬 GUMA Commons", "🧬 Commons AGROVISION"),
     tx("🧪 Field Lab", "🧪 Laboratório de Campo")
 ])
 
 
 with tab6:
-    st.header(tx("AGROVISION Knowledge", "Conhecimento AGROVISION"))
+    st.header(tx("GUMA Knowledge", "Conhecimento AGROVISION"))
     st.write(tx(
         "A practical science library for understanding the data behind agricultural decisions.",
         "Uma biblioteca científica prática para entender os dados por trás das análises agrícolas."
@@ -1281,7 +1287,7 @@ with tab2:
                         st.download_button(
                             tx("Download daily water-balance CSV", "Baixar CSV do balanço hídrico diário"),
                             balance.to_csv(index=False).encode("utf-8"),
-                            file_name=f"agrovision_water_balance_{water_crop.lower().replace(' ','_')}_{water_year}.csv",
+                            file_name=f"guma_water_balance_{water_crop.lower().replace(' ','_')}_{water_year}.csv",
                             mime="text/csv"
                         )
                         st.warning(tx(
@@ -1586,7 +1592,7 @@ def build_pdf_report(climate_frame, vegetation_frame, latitude, longitude, water
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=38, leftMargin=38, topMargin=38, bottomMargin=38)
     styles = getSampleStyleSheet()
     story = [
-        Paragraph("AGROVISION — Environmental assessment", styles["Title"]),
+        Paragraph("GUMA — Earth intelligence assessment", styles["Title"]),
         Paragraph(f"Study coordinates: {latitude:.4f}, {longitude:.4f}", styles["Normal"]),
         Paragraph(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", styles["Normal"]),
         Spacer(1, 12),
