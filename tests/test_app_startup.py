@@ -1,11 +1,12 @@
 import unittest
+from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
 
 class AppStartupTests(unittest.TestCase):
     def test_visitor_can_open_the_full_application(self):
-        app = AppTest.from_file("app.py", default_timeout=90).run()
+        app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=90).run()
         self.assertFalse(
             app.exception,
             msg="The initial login screen raised an exception: "
