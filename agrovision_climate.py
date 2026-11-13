@@ -19,10 +19,10 @@ SOURCES = {
 def parse_gistemp_csv(text: str) -> pd.DataFrame:
     """Parse the monthly GISTEMP table even when NASA prepends metadata lines."""
     months=("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
-    cleaned = str(text).lstrip("\\ufeff")
+    cleaned = str(text).lstrip("\ufeff")
     header_index = None
     for i, line in enumerate(cleaned.splitlines()):
-        cells = [cell.strip().strip('"').lstrip("\\ufeff") for cell in line.split(",")]
+        cells = [cell.strip().strip('"').lstrip("\ufeff") for cell in line.split(",")]
         normalized = {cell.lower() for cell in cells}
         if cells and cells[0].lower() == "year" and all(month.lower() in normalized for month in months):
             header_index = i
@@ -34,8 +34,8 @@ def parse_gistemp_csv(text: str) -> pd.DataFrame:
             "(Year, Jan…Dec). The source may have returned an HTML/error page or changed format. "
             f"Response begins: {preview!r}"
         )
-    frame = pd.read_csv(StringIO("\\n".join(cleaned.splitlines()[header_index:])), skipinitialspace=True)
-    frame.columns = [str(column).strip().lstrip("\\ufeff") for column in frame.columns]
+    frame = pd.read_csv(StringIO("\n".join(cleaned.splitlines()[header_index:])), skipinitialspace=True)
+    frame.columns = [str(column).strip().lstrip("\ufeff") for column in frame.columns]
     # Normalize harmless whitespace/case differences without accepting a different schema.
     lookup = {str(column).strip().lower(): column for column in frame.columns}
     if "year" not in lookup:
