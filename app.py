@@ -1529,11 +1529,11 @@ with tab_rotation:
                 else:
                     st.subheader(tx("Scenario comparison", "Comparação dos cenários"))
                     st.dataframe(rotation_summary, use_container_width=True, hide_index=True)
-                    chart_data = rotation_summary.set_index("Scenario")[["Median sequence rainfall (mm)"]]
+                    chart_data = rotation_summary.set_index("Scenario")[["Median daily rainfall (mm/day)"]]
                     st.bar_chart(chart_data)
                     st.caption(tx(
-                        "Rainfall is summed across modeled crop windows. It is not effective rainfall, crop water requirement, or water saved by a rotation.",
-                        "A chuva é somada nas janelas de cultivo modeladas. Não representa chuva efetiva, necessidade hídrica da cultura nem economia de água pela rotação."
+                        "Daily rainfall rate helps compare sequences of different modeled durations. Total sequence rainfall and duration are also shown; neither is effective rainfall, crop water requirement, nor water saved by a rotation.",
+                        "A taxa diária de chuva ajuda a comparar sequências com durações modeladas diferentes. A chuva total e a duração também são exibidas; nenhuma delas representa chuva efetiva, necessidade hídrica da cultura ou economia de água pela rotação."
                     ))
                     st.subheader(tx("Crop-window evidence", "Evidências por janela de cultivo"))
                     st.dataframe(rotation_detail, use_container_width=True, hide_index=True)
