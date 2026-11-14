@@ -15,7 +15,7 @@ GUMA is a global Earth intelligence platform. Brazil is an important regional us
 
 ## Integrations
 - Element 84 Earth Search: global Sentinel-2 L2A STAC discovery.
-- NASA FIRMS: global NOAA-20 VIIRS rolling 7-day CSV. Static file endpoint is public; FIRMS area API is separate and requires a free MAP_KEY.
+- NASA FIRMS: global NOAA-20 VIIRS rolling 24-hour CSV. Static file endpoint is public; FIRMS area API is separate and requires a free MAP_KEY.
 - IBGE: Brazil-only localities source, explicitly scoped.
 - Firecrawl is available to the assistant, not automatically to the public Streamlit runtime; app calls public endpoints directly without connector credentials.
 
