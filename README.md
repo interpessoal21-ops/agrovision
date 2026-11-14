@@ -12,7 +12,7 @@ The [GUMA Institutional Kit](docs/GUMA_INSTITUTIONAL_KIT.md) contains the projec
 
 - Bilingual interface: English and Portuguese.
 - Interactive study-area map with OpenStreetMap, Esri satellite imagery and topographic basemap layers (visual context only; no inferred farm boundary).
-- **Earth Data Observatory:** Sentinel-2 L2A scene discovery through the public Earth Search STAC API, NASA FIRMS NOAA-20 VIIRS active-fire detections for a clearly labelled approximate Brazil bounding box, and official IBGE state-code lookup, with CSV exports and explicit data-quality limitations.
+- **Global Earth Data Observatory:** global Sentinel-2 L2A scene discovery through the public Earth Search STAC API; NASA FIRMS NOAA-20 VIIRS global rolling 7-day active-fire observations with optional WGS84 bounding-box filtering; and a separately labelled Brazil-only IBGE territorial reference. Includes CSV exports and explicit data-quality limitations.
 - NASA POWER daily climate data for 2020–2025.
 - MODIS/Terra MOD13Q1 16-day vegetation observations for a selectable year range (2020–2025), with pixel-reliability filtering.
 - Annual climate summaries and rainfall/temperature anomalies relative to the 2020–2025 baseline.
