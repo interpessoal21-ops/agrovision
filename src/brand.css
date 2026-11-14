@@ -12,3 +12,29 @@ body{background-color:var(--guma-paper);background-image:radial-gradient(ellipse
 .migration-note,.module-panel{background:var(--guma-ink);color:#fff9ef}.migration-note p,.module-panel p{color:#e4e8df}.migration-note a,.module-panel a{color:#f0c46b}
 footer{border-top:1px solid #c9bea9;color:#68716c}
 @media(max-width:760px){.brand{padding-bottom:28px}.brand-mark{width:42px;height:42px;flex-basis:42px}.hero-art{height:245px}}
+
+/* GUMA Trend Detective */
+.trend-workspace{padding:42px clamp(20px,5vw,68px) 64px;max-width:1180px;margin:auto;color:var(--guma-ink)}
+.trend-workspace h1{font-family:'Playfair Display',Georgia,serif;font-size:clamp(32px,4.5vw,54px);line-height:1.08;max-width:850px;margin:14px 0}
+.trend-lead{max-width:780px;color:#52605d;font-size:16px;line-height:1.65}
+.trend-controls,.year-controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:24px 0}
+.trend-controls .primary,.year-controls .primary{display:inline-flex;align-items:center;gap:9px}
+.trend-controls button:disabled{opacity:.6;cursor:wait}
+.upload-control{display:inline-flex;align-items:center;gap:9px;padding:13px 17px;border:1px solid #b7aa91;border-radius:4px;cursor:pointer;font-weight:600;color:var(--guma-ink)}
+.upload-control input{display:none}
+.dataset-meta,.scope-note{display:flex;gap:10px;align-items:flex-start;padding:14px 16px;background:#e6d9bf;border-left:3px solid var(--guma-blue);color:var(--guma-ink);font-size:13px}
+.analysis-panel,.results-panel{margin-top:24px;padding:24px;background:rgba(255,252,244,.7);border:1px solid #c9bea9}
+.analysis-panel h2,.results-panel h2{font-family:'Playfair Display',Georgia,serif;font-size:27px;margin:5px 0 16px}
+.year-controls label{display:grid;gap:7px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.year-controls input{width:140px;padding:12px;border:1px solid #b7aa91;background:#fffaf0;color:var(--guma-ink);border-radius:3px;font:inherit}
+.subtle{font-size:12px;color:#68716c}
+.error-panel{margin:18px 0;padding:14px 16px;border-left:3px solid var(--guma-red);background:#f5dfd2;color:#6e2b1b}
+.result-heading{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+.significance{font-size:12px;padding:8px 11px;border:1px solid #b7aa91;border-radius:3px}.significance.yes{background:#e2eadb;border-color:#81946b;color:#304a2a}
+.result-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
+.result-metrics article{display:grid;gap:5px;padding:15px;background:#e9dfcb;border-top:2px solid var(--guma-gold)}
+.result-metrics small{font-size:11px;text-transform:uppercase;letter-spacing:.06em}.result-metrics b{font-size:25px;font-variant-numeric:tabular-nums}.result-metrics span{font-size:11px;color:#68716c}
+.chart-panel{padding:16px 0}.chart-panel h3{font-size:15px}.chart-panel svg{width:100%;height:auto;overflow:visible}
+.method-details{border-top:1px solid #c9bea9;padding-top:14px;font-size:13px;line-height:1.6}.method-details summary{font-weight:700;cursor:pointer}.method-details p{color:#52605d}
+.scope-note{margin-top:20px;background:#e8dfce;border-left-color:var(--guma-gold)}
+@media(max-width:700px){.trend-workspace{padding:28px 18px}.result-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.result-heading{align-items:flex-start}.year-controls input{width:100%}}
