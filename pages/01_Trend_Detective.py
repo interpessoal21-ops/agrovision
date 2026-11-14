@@ -4,47 +4,14 @@ from datetime import datetime, timezone
 import pandas as pd
 import requests
 import streamlit as st
+from guma_brand import apply_brand, render_brand_hero
 
 from agrovision_trends import analyze_annual_series
 
 st.set_page_config(page_title="GUMA · Trend Detective", page_icon="🌍", layout="wide")
 
-st.markdown("""
-<style>
-:root{--paper:#F1E8D5;--paper2:#E6D9BF;--ink:#18272B;--blue:#2457A6;--red:#D85B3D;--leaf:#63764B;--gold:#D4A64A;--muted:#68716C}
-.stApp{background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
-[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stMainBlockContainer"]{background:transparent}
-.block-container{max-width:1440px;padding-top:2rem}
-h1,h2,h3,p,label,.stMarkdown{color:var(--ink)}
-[data-testid="stCaptionContainer"],.stCaption{color:var(--muted)!important}
-[data-testid="stMetric"]{background:#E6DDCB;border:1px solid #C9BDA7;padding:1rem;border-radius:3px;box-shadow:3px 3px 0 #D7C9B1}
-[data-testid="stMetricLabel"],[data-testid="stMetricValue"]{color:var(--ink)!important}
-[data-baseweb="input"],[data-baseweb="select"]>div,[data-testid="stFileUploader"]{background:#FFFDF7;color:var(--ink)}
-div.stButton>button{background:#E5D8C1;color:var(--ink);border:1px solid #A99D89;border-radius:2px;font-weight:800}
-div.stButton>button[kind="primary"]{background:var(--red);color:#FFF8ED;border-color:#B7472F;box-shadow:3px 3px 0 var(--ink)}
-.guma-hero{padding:2rem 2.2rem;border:1px solid var(--ink);border-radius:3px;background:var(--ink);color:var(--paper);margin-bottom:1.4rem;box-shadow:8px 8px 0 var(--red);overflow:hidden}
-.guma-eyebrow{color:#E17A5B;letter-spacing:.18em;font-size:.72rem;font-weight:900}
-.guma-title{font-size:clamp(2rem,5vw,3.7rem);font-weight:900;letter-spacing:-.05em;line-height:1.05;margin:.7rem 0}
-.guma-title span{color:#E2B75F}
-.guma-copy{color:#E3D9C8;max-width:850px;font-size:1.05rem;line-height:1.6}
-.guma-art{float:right;width:min(30%,230px);margin:-.5rem 0 0 1rem}
-.note{background:#E8DDC9;border-left:5px solid var(--red);padding:.9rem 1rem;border-radius:0;color:var(--ink)}
-hr{border-color:#C9BDA7!important}
-@media(max-width:700px){.guma-hero{padding:1.3rem;box-shadow:4px 4px 0 var(--red)}.guma-art{width:110px}}
-</style>
-<div class="guma-hero">
-<svg class="guma-art" viewBox="0 0 220 190" role="img" aria-label="Original abstract cartographic illustration">
-<path d="M18 105C38 24 105 13 150 47s58 86 27 116-95 19-127-7S5 134 18 105Z" fill="none" stroke="#D85B3D" stroke-width="2"/>
-<path d="M35 105c24-49 63-62 93-42s40 56 18 78-62 27-91 7-35-21-20-43Z" fill="none" stroke="#E2B75F" stroke-width="2"/>
-<path d="M15 132c35-23 57-22 82-2s52 21 99-11M22 151c31-19 52-17 76 0s51 14 82-7" fill="none" stroke="#F1E8D5" stroke-width="3" stroke-linecap="round"/>
-<path d="M78 25c-9 32-3 50 18 68s26 42 12 77" fill="none" stroke="#2457A6" stroke-width="2" stroke-dasharray="4 5"/>
-<circle cx="157" cy="43" r="5" fill="#2457A6"/><circle cx="49" cy="73" r="4" fill="#D85B3D"/>
-</svg>
-<div class="guma-eyebrow">NASA SPACE APPS CHALLENGE 2026 · CHALLENGE 02</div>
-<div class="guma-title">GUMA <span>Trend Detective</span></div>
-<div class="guma-copy">Read the fingerprints of a changing Earth. Explore long-term environmental signals, test monotonic trends and distinguish statistical evidence from interpretation.</div>
-</div>
-""", unsafe_allow_html=True)
+apply_brand()
+render_brand_hero()
 
 st.caption("GUMA · Earth Intelligence · Beyond the horizon.")
 st.markdown('<div class="note"><b>Scientific scope.</b> This experience currently analyzes annual global GISTEMP temperature anomalies or a user-supplied annual series. It is an analytical prototype, not an operational climate-attribution system or a local forecast.</div>', unsafe_allow_html=True)
