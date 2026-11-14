@@ -64,6 +64,26 @@ div.stButton>button[kind="primary"],.stFormSubmitButton>button{background:var(--
 div.stButton>button:hover{border-color:var(--guma-ocean);color:var(--guma-ocean);transform:translate(-1px,-1px)}
 div.stButton>button[kind="primary"]:hover{color:#FFF5E8;background:#91471E}
 hr{border-color:#C5B69F!important}
+
+/* High-contrast typography on dark GUMA surfaces. Keep light-paper surfaces unchanged. */
+.guma-dark-panel,.dark-panel,[data-guma-surface="dark"]{
+ background:#16272D!important;color:#FFF9EF!important;
+}
+.guma-dark-panel :is(h1,h2,h3,h4,h5,h6,p,span,small,strong,em,label,li,div),
+.dark-panel :is(h1,h2,h3,h4,h5,h6,p,span,small,strong,em,label,li,div),
+[data-guma-surface="dark"] :is(h1,h2,h3,h4,h5,h6,p,span,small,strong,em,label,li,div){
+ color:#FFF9EF!important;
+}
+.guma-dark-panel a,.dark-panel a,[data-guma-surface="dark"] a{
+ color:#F2C66D!important;text-decoration:underline;
+}
+.guma-dark-panel :is(input,textarea),.dark-panel :is(input,textarea),
+[data-guma-surface="dark"] :is(input,textarea){
+ background:#FFF9EF!important;color:#16272D!important;
+}
+[data-testid="stCodeBlock"]{background:#16272D!important;color:#FFF9EF!important;border:1px solid #53656A}
+[data-testid="stCodeBlock"] pre,[data-testid="stCodeBlock"] code{color:#FFF9EF!important}
+
 :focus-visible{outline:3px solid var(--guma-gold)!important;outline-offset:3px}
 [data-testid="stSidebar"] a,[data-testid="stMain"] a{font-weight:650}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
