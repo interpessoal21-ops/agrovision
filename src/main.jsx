@@ -25,7 +25,7 @@ const copy = {
     focusText: "Explore the data lineage behind every layer. GUMA does not turn unrelated indicators into an unexplained score or present screening outputs as forecasts.",
     nasa: "NASA GISS · GISTEMP", power: "NASA POWER", firms: "NASA FIRMS", sentinel: "Sentinel-2 · Earth Search",
     note: "Migration note", noteText: "This Vercel edition is the new web interface in development. The existing Streamlit application remains available while analytical workflows and account features are migrated and validated.",
-    legacy: "Open current research prototype", footer: "Independent research prototype · Not affiliated with or endorsed by NASA."
+    legacy: "Open current research prototype", footer: "From the fields to the sea, with Brazil on the horizon. · Independent research prototype; not affiliated with NASA."
   },
   pt: {
     eyebrow: "INTELIGÊNCIA DO SISTEMA TERRESTRE",
@@ -43,7 +43,7 @@ const copy = {
     focusText: "Explore a linhagem dos dados por trás de cada camada. O GUMA não transforma indicadores distintos em uma pontuação inexplicável nem apresenta triagens como previsões.",
     nasa: "NASA GISS · GISTEMP", power: "NASA POWER", firms: "NASA FIRMS", sentinel: "Sentinel-2 · Earth Search",
     note: "Nota sobre a migração", noteText: "Esta edição Vercel é a nova interface web em desenvolvimento. O aplicativo Streamlit existente continua disponível enquanto os fluxos analíticos e os recursos de conta são migrados e validados.",
-    legacy: "Abrir protótipo de pesquisa atual", footer: "Protótipo independente de pesquisa · Sem vínculo ou endosso da NASA."
+    legacy: "Abrir protótipo de pesquisa atual", footer: "Do campo ao mar, com o Brasil no horizonte. · Protótipo independente; sem vínculo com a NASA."
   }
 };
 
@@ -53,7 +53,7 @@ const nav = [
 ];
 
 function App() {
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState("pt");
   const [section, setSection] = useState("overview");
   const [mobileOpen, setMobileOpen] = useState(false);
   const t = copy[lang];
@@ -98,14 +98,7 @@ function App() {
               <button className="secondary" onClick={() => setSection("methods")}>{t.docs}<ExternalLink size={14}/></button>
             </div>
           </div>
-          <div className="hero-art" aria-hidden="true">
-            <div className="orb orb-one"/><div className="orb orb-two"/>
-            <div className="globe"><div className="latitude lat-one"/><div className="latitude lat-two"/><div className="longitude lon-one"/><div className="longitude lon-two"/><div className="land land-one"/><div className="land land-two"/></div>
-            <div className="orbit orbit-one"/><div className="orbit orbit-two"/>
-            <div className="orbit-label label-a"><Satellite size={14}/> EARTH OBSERVATION</div>
-            <div className="orbit-label label-b"><Wind size={14}/> CLIMATE SIGNALS</div>
-          </div>
-          <div className="hero-index"><span>01</span><span> / </span><span>05</span></div>
+          <div className="hero-art" aria-hidden="true"><img className="carybe-scene" src="/guma-carybe-scene.svg" alt="" /></div>\n          <div className="hero-index"><span>01</span><span> / </span><span>05</span></div>
         </section>
 
         <section className="metrics">
