@@ -18,13 +18,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from agrovision_modis import parse_modis_subset
 
 LAT, LON = 45.0, 10.0
-TIMEOUT = 45
+TIMEOUT = 25
 RETRYABLE = {429, 500, 502, 503, 504}
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": "GUMA-Earth-Intelligence/1.0 (public data integration smoke test)"})
 
 
-def get_with_retry(url, *, params=None, timeout=TIMEOUT, attempts=3):
+def get_with_retry(url, *, params=None, timeout=TIMEOUT, attempts=2):
     last = None
     for attempt in range(attempts):
         try:
@@ -48,7 +48,8 @@ def check_power():
     response = get_with_retry(
         "https://power.larc.nasa.gov/api/temporal/daily/point",
         params={"parameters": "T2M,PRECTOTCORR", "community": "AG", "longitude": LON,
-                "latitude": LAT, "start": "20250101", "end": "20250110", "format": "JSON"},
+                "latitude": LAT, "start": "20250101", "end": "20250110", "format": "JSON",
+                "time-standard": "UTC"},
     )
     if response is None:
         return False
@@ -118,7 +119,7 @@ def check_sentinel2():
 
 def check_firms_global():
     url = "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv"
-    response = get_with_retry(url, timeout=120)
+    response = get_with_retry(url, timeout=60, attempts=2)
     if response is None:
         return False
     reader = csv.reader(response.text.splitlines())
