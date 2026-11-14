@@ -2,7 +2,7 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 from guma_brand import apply_brand, render_brand_hero
-from guma_earth_data import load_ibge_states, load_nasa_firms_global_24h, search_sentinel2_scenes
+from guma_earth_data import load_ibge_states, load_nasa_firms_global_24h, load_nasa_power_global_point, search_sentinel2_scenes
 
 st.set_page_config(page_title="GUMA · Earth Data Observatory",page_icon="🌎",layout="wide")
 apply_brand()
@@ -10,7 +10,7 @@ render_brand_hero()
 st.markdown('<div class="guma-eyebrow">Earth observation · Global open data</div>',unsafe_allow_html=True)
 st.title("Earth Data Observatory")
 st.write("A planetary observatory for satellite acquisitions, active-fire observations and territorial data. Brazil is one regional lens within a global system—not the platform's geographic boundary.")
-tab_sat,tab_fire,tab_ibge,tab_method=st.tabs(["Sentinel-2 · global search","NASA FIRMS · global fire","IBGE · Brazil","Methods & sources"])
+tab_sat,tab_fire,tab_climate,tab_ibge,tab_method=st.tabs(["Sentinel-2 · global search","NASA FIRMS · global fire","NASA POWER · climate","IBGE · Brazil","Methods & sources"])
 
 with tab_sat:
     st.subheader("Global Sentinel-2 L2A scene discovery")
@@ -81,6 +81,42 @@ with tab_fire:
         st.caption("Source: "+str(st.session_state.get("guma_fires_source","")))
     st.markdown("[NASA FIRMS active-fire data](https://firms.modaps.eosdis.nasa.gov/)")
 
+
+with tab_climate:
+    st.subheader("Global daily agroclimatology · NASA POWER")
+    st.write("Retrieve daily meteorological and solar variables for any point on Earth. This is gridded satellite/model-informed data, not a local weather-station observation.")
+    c1,c2,c3=st.columns(3)
+    p_lat=c1.number_input("Climate latitude",min_value=-90.0,max_value=90.0,value=0.0,format="%.5f",key="guma_power_lat")
+    p_lon=c2.number_input("Climate longitude",min_value=-180.0,max_value=180.0,value=0.0,format="%.5f",key="guma_power_lon")
+    p_end=c3.date_input("End date",value=date.today()-timedelta(days=5),max_value=date.today(),key="guma_power_end")
+    p_start=st.date_input("Start date",value=p_end-timedelta(days=30),max_value=p_end,key="guma_power_start")
+    st.caption("Daily parameters: air temperature, maximum/minimum temperature, dew point, wind speed, corrected precipitation and all-sky surface shortwave radiation.")
+    if st.button("Retrieve global climate series",type="primary",key="guma_power_query"):
+        try:
+            with st.spinner("Querying NASA POWER…"):
+                climate,meta=load_nasa_power_global_point(p_lat,p_lon,p_start,p_end)
+            st.session_state["guma_power_frame"]=climate
+            st.session_state["guma_power_meta"]=meta
+        except Exception as exc: st.error(f"NASA POWER request failed: {exc}")
+    climate=st.session_state.get("guma_power_frame")
+    meta=st.session_state.get("guma_power_meta",{})
+    if isinstance(climate,pd.DataFrame):
+        st.caption(f"Retrieved at {meta.get('retrieved_at_utc')} · {meta.get('latitude')}, {meta.get('longitude')} · {meta.get('start')} to {meta.get('end')}")
+        st.line_chart(climate[[x for x in ["T2M","T2M_MAX","T2M_MIN"] if x in climate.columns]])
+        st.line_chart(climate[[x for x in ["PRECTOTCORR","WS2M","ALLSKY_SFC_SW_DWN"] if x in climate.columns]])
+        a,b,c=st.columns(3)
+        if "T2M" in climate:
+            a.metric("Mean air temperature",f"{climate['T2M'].mean():.1f} °C")
+        if "PRECTOTCORR" in climate:
+            b.metric("Accumulated precipitation",f"{climate['PRECTOTCORR'].sum():.1f} mm")
+        c.metric("Valid daily rows",len(climate))
+        st.dataframe(climate,use_container_width=True)
+        st.download_button("Download climate series CSV",climate.to_csv(index_label="date_utc").encode("utf-8"),file_name="guma_nasa_power_global_daily.csv",mime="text/csv")
+        with st.expander("Data provenance and units"):
+            st.json(meta)
+    st.markdown("[NASA POWER API documentation](https://power.larc.nasa.gov/docs/tutorials/service-data-request/api/)")
+    st.warning("NASA POWER meteorological grid resolution is approximately 0.5° × 0.625°; solar parameters are approximately 1° × 1°. Do not interpret these values as field-scale measurements.")
+
 with tab_ibge:
     st.subheader("Brazil national territorial reference")
     st.info("IBGE is intentionally scoped to Brazil. It complements—not replaces—global territorial sources.")
@@ -99,6 +135,7 @@ with tab_method:
     st.subheader("Provenance, coverage and limitations")
     st.markdown("""
     - **Sentinel-2:** global STAC discovery of L2A scene metadata; availability varies by acquisition and catalogue coverage.
+    - **NASA POWER:** global daily agroclimatology at a point, with parameter units and native grid resolution disclosed.
     - **NASA FIRMS:** global NOAA-20 VIIRS rolling 24-hour active-fire detections. A hotspot is not automatically a confirmed fire perimeter, burned area or identified cause.
     - **IBGE:** Brazil-only national source, explicitly labelled.
     - **Spatial filters:** bounding boxes are search windows, not administrative boundaries.
