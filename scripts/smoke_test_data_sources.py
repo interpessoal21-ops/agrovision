@@ -76,7 +76,7 @@ def check_modis():
 
 
 def check_firms_global():
-    url = "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_7d.csv"
+    url = "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv"
     response = get_with_retry(url, timeout=120)
     if response is None:
         return False
@@ -86,7 +86,7 @@ def check_firms_global():
     assert required.issubset(set(header)), "NASA FIRMS global CSV missing required columns"
     first_record = next(reader, None)
     assert first_record is not None, "NASA FIRMS global CSV contained no data rows"
-    print("NASA FIRMS OK: global NOAA-20 VIIRS rolling 7-day CSV and required fields.")
+    print("NASA FIRMS OK: global NOAA-20 VIIRS rolling 24-hour CSV and required fields.")
     return True
 
 
