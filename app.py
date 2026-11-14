@@ -152,13 +152,13 @@ with st.sidebar:
     st.markdown("""
     <div style="display:flex;align-items:center;gap:10px;padding:8px 2px 18px 2px;">
       <svg viewBox="0 0 64 64" width="42" height="42" aria-label="GUMA">
-        <circle cx="32" cy="32" r="25" fill="none" stroke="#24C8B5" stroke-width="2"/>
-        <ellipse cx="32" cy="32" rx="12" ry="25" fill="none" stroke="#B9F36B" stroke-width="2" transform="rotate(38 32 32)"/>
-        <path d="M8 36c8-8 14-8 22 0s14 8 26 0M12 44c7-5 13-5 20 0s13 5 20 0" fill="none" stroke="#F0F5F3" stroke-width="2.5" stroke-linecap="round"/>
-        <circle cx="48" cy="15" r="3" fill="#F0B66A"/>
+        <circle cx="32" cy="32" r="25" fill="none" stroke="#D85B3D" stroke-width="2"/>
+        <ellipse cx="32" cy="32" rx="12" ry="25" fill="none" stroke="#E2B75F" stroke-width="2" transform="rotate(38 32 32)"/>
+        <path d="M8 36c8-8 14-8 22 0s14 8 26 0M12 44c7-5 13-5 20 0s13 5 20 0" fill="none" stroke="#F1E8D5" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="48" cy="15" r="3" fill="#2457A6"/>
       </svg>
-      <div><div style="color:#F0F5F3;font-weight:850;letter-spacing:.18em;font-size:1.08rem;">GUMA</div>
-      <div style="color:#24C8B5;font-size:.58rem;letter-spacing:.13em;font-weight:750;">EARTH INTELLIGENCE</div></div>
+      <div><div style="color:#F1E8D5;font-weight:850;letter-spacing:.18em;font-size:1.08rem;">GUMA</div>
+      <div style="color:#D85B3D;font-size:.58rem;letter-spacing:.13em;font-weight:750;">EARTH INTELLIGENCE</div></div>
     </div>
     """, unsafe_allow_html=True)
     st.selectbox("Language / Idioma", ["English", "Português"], key="agrovision_language")
@@ -711,12 +711,12 @@ def get_climate_watch_data():
 if tab_home.open:
     with tab_home:
         st.markdown("""
-        <div style="padding:1.65rem 1.8rem;border:1px solid #29495A;border-radius:20px;
+        <div style="padding:1.65rem 1.8rem;border:1px solid #C9BDA7;border-radius:20px;
           background:radial-gradient(circle at 90% 8%,rgba(36,200,181,.18),transparent 30%),
           radial-gradient(circle at 4% 100%,rgba(185,243,107,.09),transparent 35%),
-          linear-gradient(115deg,#091722,#123449 68%,#155568);margin:.3rem 0 1rem 0">
-          <div style="color:#24C8B5;font-size:.7rem;letter-spacing:.2em;font-weight:800">GUMA · EARTH INTELLIGENCE PLATFORM</div>
-          <h1 style="color:#F0F5F3;margin:.35rem 0 .45rem 0;font-size:2.15rem">Observe the Earth. Understand the signals.</h1>
+          linear-gradient(115deg,#18272B,#2457A6 68%,#63764B);margin:.3rem 0 1rem 0">
+          <div style="color:#D85B3D;font-size:.7rem;letter-spacing:.2em;font-weight:800">GUMA · EARTH INTELLIGENCE PLATFORM</div>
+          <h1 style="color:#F1E8D5;margin:.35rem 0 .45rem 0;font-size:2.15rem">Observe the Earth. Understand the signals.</h1>
           <p style="color:#C3D4D8;margin:0;max-width:900px;line-height:1.6">A connected workspace for planetary change, territorial evidence and agricultural systems — from global climate signals to a selected study point.</p>
         </div>
         """, unsafe_allow_html=True)
@@ -741,7 +741,7 @@ if tab_home.open:
             folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community", name="Satellite imagery", overlay=False, control=True).add_to(study_map)
             folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", attr="Tiles © Esri — National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, increment P Corp.", name="Topographic map", overlay=False, control=True).add_to(study_map)
             folium.LayerControl(collapsed=True).add_to(study_map)
-            folium.CircleMarker(location=map_center, radius=8, color="#24C8B5", weight=3, fill=True, fill_color="#B9F36B", fill_opacity=.9, tooltip="Current study area").add_to(study_map)
+            folium.CircleMarker(location=map_center, radius=8, color="#D85B3D", weight=3, fill=True, fill_color="#E2B75F", fill_opacity=.9, tooltip="Current study area").add_to(study_map)
             map_event = st_folium(study_map, height=390, use_container_width=True, returned_objects=["last_clicked"], key="guma_observatory_map")
             if map_event and map_event.get("last_clicked"):
                 clicked_lat = round(float(map_event["last_clicked"]["lat"]),4)
@@ -837,11 +837,11 @@ if tab_home.open:
 if tab_partners.open:
     with tab_partners:
         st.markdown("""
-        <div style="padding:1.55rem 1.8rem;border:1px solid #29495A;border-radius:18px;
+        <div style="padding:1.55rem 1.8rem;border:1px solid #C9BDA7;border-radius:18px;
           background:radial-gradient(circle at 92% 8%,rgba(36,200,181,.18),transparent 30%),
-          linear-gradient(115deg,#091722,#15364A 70%,#155568);margin:.3rem 0 1rem 0">
-          <div style="color:#24C8B5;font-size:.7rem;letter-spacing:.2em;font-weight:800">GUMA · ECOSYSTEM DEVELOPMENT</div>
-          <h1 style="color:#F0F5F3;margin:.3rem 0">PARTNERSHIPS & ALLIANCES</h1>
+          linear-gradient(115deg,#18272B,#15364A 70%,#155568);margin:.3rem 0 1rem 0">
+          <div style="color:#D85B3D;font-size:.7rem;letter-spacing:.2em;font-weight:800">GUMA · ECOSYSTEM DEVELOPMENT</div>
+          <h1 style="color:#F1E8D5;margin:.3rem 0">PARTNERSHIPS & ALLIANCES</h1>
           <p style="color:#C3D4D8;margin:0">Build the network behind better Earth intelligence — science, public data, infrastructure, field validation and responsible innovation.</p>
         </div>
         """, unsafe_allow_html=True)
@@ -2491,7 +2491,7 @@ if tab_atlas.open:
             summary = biome["summary_pt"] if st.session_state.get("agrovision_language") == "Português" else biome["summary_en"]
             folium.CircleMarker(
                 location=[biome["lat"], biome["lon"]], radius=9,
-                color="#24C8B5", weight=2, fill=True, fill_color="#B9F36B",
+                color="#D85B3D", weight=2, fill=True, fill_color="#E2B75F",
                 fill_opacity=0.88,
                 tooltip=label,
                 popup=folium.Popup(f"<b>{label}</b><br>{summary}<br><small>Illustrative reference point · IBGE biome source linked below</small>", max_width=300)
