@@ -10,7 +10,7 @@
 - Sen's slope, the median of all pairwise slopes.
 - User-selected analysis window and visible sample size.
 
-## Statistical boundaries
+## Statistical methods — expanded implementation\n- Mann–Kendall variance can be adjusted with the Hamed–Rao rank-autocorrelation correction; the interface must expose whether the correction was applied and which lags were selected. This is an approximation, not a universal fix for all dependence structures.\n- Sen's slope uncertainty is estimated with a reproducible circular moving-block bootstrap of detrended residuals. Report confidence level, replicate count, block length and random seed. The interval is conditional on this resampling design.\n- Autocorrelation-aware mode requires consecutive annual observations; gaps are rejected rather than silently treated as equally spaced.\n\n## Statistical boundaries
 The Mann–Kendall test assumes independent observations. Serial autocorrelation can affect significance. The current implementation does not yet perform autocorrelation correction, seasonal Mann–Kendall, field significance, spatial multiple-testing correction, bootstrap confidence intervals or climate attribution. A significant monotonic trend is not proof of causation. The NASA global series is not a local or regional product.
 
 ## Data provenance
