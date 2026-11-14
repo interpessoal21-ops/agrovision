@@ -1,5 +1,9 @@
 name: Validate AGROVISION
 
+concurrency:
+  group: guma-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main, spaceapps-2026-rotation-lab]
@@ -28,6 +32,7 @@ jobs:
         run: python -m unittest tests.test_app_startup tests.test_page_import_contracts -v
 
   live-data-smoke:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
