@@ -311,7 +311,7 @@ if tab_earthdata.open:
     with tab_earthdata:
         st.markdown("### GUMA Earth Data Observatory")
         st.caption(tx("Sentinel-2 · NASA FIRMS · IBGE", "Sentinel-2 · NASA FIRMS · IBGE"))
-        st.write(tx("Explore satellite scene metadata, recent active-fire detections and official Brazilian territorial codes, with source provenance and quality limitations.", "Explore metadados de cenas de satélite, detecções recentes de fogo e códigos territoriais oficiais do Brasil, com procedência e limitações de qualidade."))
+        st.write(tx("Explore global Sentinel-2 scene metadata, NASA FIRMS active-fire detections and NASA POWER climate series, plus a separately labelled Brazil-only IBGE territorial reference.", "Explore metadados globais de cenas Sentinel-2, detecções de fogo da NASA FIRMS e séries climáticas NASA POWER, além da referência territorial do IBGE, explicitamente limitada ao Brasil."))
         if st.button(tx("Open Earth Data Observatory", "Abrir Observatório de Dados da Terra"), type="primary", key="open_guma_earth_data_page"):
             st.switch_page("pages/02_Earth_Data_Observatory.py")
 
@@ -763,7 +763,7 @@ if tab_home.open:
         st.subheader(tx("Beyond agriculture · Earth systems roadmap", "Além da agricultura · Roteiro dos sistemas terrestres"))
         roadmap = [
           ("🌊", tx("Oceans & cryosphere", "Oceanos e criosfera"), tx("Sea level, ocean heat, sea-surface conditions, glaciers and ice sheets.", "Nível do mar, calor oceânico, condições da superfície do mar, geleiras e mantos de gelo."), tx("Planned · source integration and uncertainty review", "Planejado · integração das fontes e revisão de incertezas")),
-          ("🌳", tx("Forests, biodiversity & fire", "Florestas, biodiversidade e fogo"), tx("Forest cover, restoration, habitat context, fire scars and ecosystem change.", "Cobertura florestal, restauração, contexto de habitats, cicatrizes de fogo e mudanças ecossistêmicas."), tx("Planned · Brazilian public datasets first", "Planejado · prioridade às bases públicas brasileiras")),
+          ("🌳", tx("Forests, biodiversity & fire", "Florestas, biodiversidade e fogo"), tx("Forest cover, restoration, habitat context, fire scars and ecosystem change.", "Cobertura florestal, restauração, contexto de habitats, cicatrizes de fogo e mudanças ecossistêmicas."), tx("Planned · global products with regional validation", "Planejado · produtos globais com validação regional")),
           ("🗺️", tx("Land use & territorial change", "Uso do solo e transformação territorial"), tx("Annual land-cover transitions, agriculture, pasture, mining and urban expansion.", "Transições anuais de cobertura, agricultura, pastagem, mineração e expansão urbana."), tx("Planned · MapBiomas / INPE pathways", "Planejado · integração MapBiomas / INPE")),
           ("💧", tx("Water & environmental risk", "Água e risco ambiental"), tx("River basins, water availability, floods, droughts, landslides and observation networks.", "Bacias hidrográficas, disponibilidade hídrica, enchentes, secas, deslizamentos e redes de observação."), tx("Planned · ANA / CEMADEN pathways", "Planejado · integração ANA / CEMADEN")),
         ]
@@ -2082,7 +2082,7 @@ if tab_rotation.open:
         with st.expander(tx("Method, assumptions and scientific limitations", "Método, hipóteses e limitações científicas"), expanded=True):
             st.markdown("\n".join("- " + item for item in scenario_disclosure()))
             st.markdown(
-                "[Rotation Lab methodology and validation plan](https://github.com/interpessoal21-ops/agrovision/blob/spaceapps-2026-rotation-lab/docs/ROTATION_LAB.md)"
+                "[Rotation Lab methodology and validation plan](https://github.com/interpessoal21-ops/agrovision/blob/main/docs/ROTATION_LAB.md)"
             )
     
 if tab_commons.open:
