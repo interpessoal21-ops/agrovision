@@ -6,15 +6,21 @@ import pandas as pd
 import requests
 
 EARTH_SEARCH_URL = "https://earth-search.aws.element84.com/v1/search"
-NASA_FIRMS_NOAA20_GLOBAL_7D = "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv"
+NASA_FIRMS_NOAA20_GLOBAL_24H = "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv"
+# Backward-compatible alias; the endpoint is a rolling 24-hour product, not seven days.
+NASA_FIRMS_NOAA20_GLOBAL_7D = NASA_FIRMS_NOAA20_GLOBAL_24H
 IBGE_LOCALITIES_URL = "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
 
 def _bbox_geometry(latitude: float, longitude: float, half_width: float = 0.08) -> dict:
     lat, lon = float(latitude), float(longitude)
     if not (-90 <= lat <= 90 and -180 <= lon <= 180):
         raise ValueError("Latitude or longitude is outside valid WGS84 bounds.")
-    dx, dy = min(float(half_width), 0.25), min(float(half_width), 0.25)
-    ring = [[lon-dx,lat-dy],[lon+dx,lat-dy],[lon+dx,lat+dy],[lon-dx,lat+dy],[lon-dx,lat-dy]]
+    if not (0 < float(half_width) <= 0.25):
+        raise ValueError("half_width must be greater than zero and no larger than 0.25 degrees.")
+    dx = dy = float(half_width)
+    west, east = max(-180.0, lon-dx), min(180.0, lon+dx)
+    south, north = max(-90.0, lat-dy), min(90.0, lat+dy)
+    ring = [[west,south],[east,south],[east,north],[west,north],[west,south]]
     return {"type":"Polygon","coordinates":[ring]}
 
 def search_sentinel2_scenes(latitude: float, longitude: float, start: date, end: date,
@@ -40,10 +46,10 @@ def search_sentinel2_scenes(latitude: float, longitude: float, start: date, end:
         frame=frame.sort_values("date_utc",ascending=False).reset_index(drop=True)
     return frame
 
-def load_nasa_firms_global_7d(region: str="Global",
+def load_nasa_firms_global_24h(region: str="Global",
     bbox: tuple[float,float,float,float] | None=None) -> tuple[pd.DataFrame,str]:
-    """Load the global NOAA-20 VIIRS rolling 7-day file; bbox=(west,south,east,north)."""
-    response=requests.get(NASA_FIRMS_NOAA20_GLOBAL_7D,
+    """Load the global NOAA-20 VIIRS rolling 24-hour file; bbox=(west,south,east,north)."""
+    response=requests.get(NASA_FIRMS_NOAA20_GLOBAL_24H,
         headers={"User-Agent":"GUMA-Earth-Intelligence/1.0"},timeout=120)
     response.raise_for_status()
     if not response.text.strip() or "<html" in response.text[:500].lower():
@@ -65,7 +71,12 @@ def load_nasa_firms_global_7d(region: str="Global",
         format="%Y-%m-%d %H%M",errors="coerce",utc=True)
     frame=frame.sort_values("acquired_at_utc",ascending=False).reset_index(drop=True)
     frame["query_scope"]=region
-    return frame,NASA_FIRMS_NOAA20_GLOBAL_7D
+    return frame,NASA_FIRMS_NOAA20_GLOBAL_24H
+
+# Compatibility wrapper for older internal callers; this is not a seven-day dataset.
+def load_nasa_firms_global_7d(region: str="Global",
+    bbox: tuple[float,float,float,float] | None=None) -> tuple[pd.DataFrame,str]:
+    return load_nasa_firms_global_24h(region, bbox)
 
 def load_ibge_states() -> pd.DataFrame:
     """Brazil-only national territorial reference."""
