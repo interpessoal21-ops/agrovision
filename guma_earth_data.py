@@ -2,6 +2,7 @@
 from __future__ import annotations
 from datetime import date
 from io import StringIO
+import time
 import pandas as pd
 import requests
 
@@ -79,14 +80,38 @@ def load_nasa_firms_global_7d(region: str="Global",
     return load_nasa_firms_global_24h(region, bbox)
 
 def load_ibge_states() -> pd.DataFrame:
-    """Brazil-only national territorial reference."""
-    response=requests.get(IBGE_LOCALITIES_URL,params={"orderBy":"nome"},
-        headers={"Accept":"application/json"},timeout=30)
-    response.raise_for_status()
-    rows=response.json()
-    frame=pd.DataFrame([{"ibge_state_code":x.get("id"),"state":x.get("nome"),"uf":x.get("sigla")} for x in rows])
-    if frame.empty or not {"ibge_state_code","state","uf"}.issubset(frame.columns):
+    """Brazil-only national territorial reference with one bounded retry."""
+    last_error = None
+    response = None
+    for attempt in range(2):
+        try:
+            response = requests.get(
+                IBGE_LOCALITIES_URL,
+                params={"orderBy": "nome"},
+                headers={"Accept": "application/json", "User-Agent": "GUMA-Earth-Intelligence/1.0"},
+                timeout=(12, 25),
+            )
+            response.raise_for_status()
+            break
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as exc:
+            last_error = exc
+            if attempt == 0:
+                time.sleep(1.5)
+                continue
+            raise requests.RequestException(
+                f"IBGE Localities API unavailable after 2 attempts: {exc}"
+            ) from exc
+    if response is None:
+        raise requests.RequestException(f"IBGE Localities API unavailable: {last_error}")
+    rows = response.json()
+    frame = pd.DataFrame([
+        {"ibge_state_code": x.get("id"), "state": x.get("nome"), "uf": x.get("sigla")}
+        for x in rows
+    ])
+    if frame.empty or not {"ibge_state_code", "state", "uf"}.issubset(frame.columns):
         raise ValueError("IBGE returned an unexpected state-localities schema.")
+    if len(frame) != 27:
+        raise ValueError(f"IBGE returned {len(frame)} federative units; expected 27.")
     return frame.sort_values("state").reset_index(drop=True)
 
 
@@ -108,6 +133,7 @@ def load_nasa_power_global_point(latitude: float, longitude: float,
         "start": start.strftime("%Y%m%d"),
         "end": end.strftime("%Y%m%d"),
         "format": "JSON",
+        "time-standard": "UTC",
     }
     response = requests.get(url, params=params, timeout=90)
     response.raise_for_status()
@@ -124,18 +150,25 @@ def load_nasa_power_global_point(latitude: float, longitude: float,
     frame = frame.mask(frame == -999).dropna(how="all").sort_index()
     if frame.empty:
         raise ValueError("NASA POWER returned no valid observations for this point and period.")
+    known_ag_units = {
+        "T2M": "°C", "T2M_MAX": "°C", "T2M_MIN": "°C", "T2MDEW": "°C",
+        "WS2M": "m/s", "PRECTOTCORR": "mm/day", "ALLSKY_SFC_SW_DWN": "MJ/m²/day",
+    }
+    returned_units = {
+        k: v.get("units") for k, v in units.items()
+        if isinstance(v, dict) and v.get("units")
+    }
+    parameter_units = {key: returned_units.get(key, unit) for key, unit in known_ag_units.items()
+                       if key in frame.columns}
     metadata = {
-        "source": "NASA POWER",
-        "url": response.url,
-        "latitude": float(latitude),
-        "longitude": float(longitude),
-        "community": "AG",
-        "start": start.isoformat(),
-        "end": end.isoformat(),
-        "temporal_resolution": "daily",
+        "source": "NASA POWER", "url": response.url,
+        "latitude": float(latitude), "longitude": float(longitude),
+        "community": "AG", "start": start.isoformat(), "end": end.isoformat(),
+        "temporal_resolution": "daily", "time_standard": "UTC",
         "meteorology_grid_resolution": "0.5 x 0.625 degree",
-        "solar_grid_resolution": "1 x 1 degree",
-        "units": {k: v.get("units") for k, v in units.items() if isinstance(v, dict)},
+        "solar_grid_resolution": "1 x 1 degree", "units": parameter_units,
+        "parameter_dictionary_url": "https://power.larc.nasa.gov/docs/tutorials/parameters/",
+        "time_standard_documentation": "https://power.larc.nasa.gov/docs/services/api/temporal/daily/",
         "retrieved_at_utc": pd.Timestamp.now(tz="UTC").isoformat(),
     }
     return frame, metadata
