@@ -45,39 +45,98 @@ function analyze(rows){
  const slope=slopes.length%2?slopes[(slopes.length-1)/2]:(slopes[slopes.length/2-1]+slopes[slopes.length/2])/2;
  return {data,n,tau:S/(n*(n-1)/2),slope,p,direction:slope>0?"Crescente":slope<0?"Decrescente":"Sem tendência monotônica",significant:p<0.05};
 }
+function parseCSV(text){
+ const lines=text.replace(/^\uFEFF/,"").trim().split(/\r?\n/);if(lines.length<2)throw new Error("CSV vazio ou sem linhas de dados.");
+ const split=line=>{const out=[];let value="",quoted=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'&&line[i+1]==='"'&&quoted){value+='"';i++;}else if(c==='"')quoted=!quoted;else if(c===","&&!quoted){out.push(value.trim());value="";}else value+=c;}out.push(value.trim());return out;};
+ const headers=split(lines.shift()).map(x=>x.replace(/^"|"$/g,"").trim().toLowerCase());
+ return lines.filter(x=>x.trim()).map(line=>{const cells=split(line);return Object.fromEntries(headers.map((h,i)=>[h,(cells[i]||"").replace(/^"|"$/g,"").trim()]));});
+}
+function normalP(z){return Math.max(0,Math.min(1,1-erf(Math.abs(z)/Math.SQRT2)));}
+function validateAnnual(rows){
+ const data=rows.map(r=>({year:Number(r.year??r.ano),value:Number(r.value??r.valor??r.anomaly??r.anomalia)})).filter(r=>Number.isInteger(r.year)&&Number.isFinite(r.value)).sort((a,b)=>a.year-b.year);
+ if(data.length<8)throw new Error("São necessárias pelo menos 8 observações anuais válidas.");
+ if(new Set(data.map(d=>d.year)).size!==data.length)throw new Error("Há anos duplicados na série.");
+ if(data.some((d,i)=>i&&d.year!==data[i-1].year+1))throw new Error("A série precisa ter anos consecutivos, sem lacunas, para a correção de autocorrelação.");
+ return data;
+}
+function rankValues(values){
+ const order=values.map((v,i)=>({v,i})).sort((a,b)=>a.v-b.v),ranks=Array(values.length);let i=0;
+ while(i<order.length){let j=i+1;while(j<order.length&&order[j].v===order[i].v)j++;const rank=(i+1+j)/2;for(let k=i;k<j;k++)ranks[order[k].i]=rank;i=j;}return ranks;
+}
+function median(values){const a=[...values].sort((x,y)=>x-y),m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
+function trendStats(input,{replicates=600,seed=42}={}){
+ const data=validateAnnual(input),values=data.map(d=>d.value),n=values.length;let S=0;const slopes=[];
+ for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){S+=Math.sign(values[j]-values[i]);slopes.push((values[j]-values[i])/(data[j].year-data[i].year));}
+ const counts=new Map();values.forEach(v=>counts.set(v,(counts.get(v)||0)+1));
+ const tie=[...counts.values()].reduce((a,t)=>a+(t>1?t*(t-1)*(2*t+5):0),0);
+ const variance=n*(n-1)*(2*n+5)/18-tie/18;
+ const rawZ=variance<=0||S===0?0:(S>0?S-1:S+1)/Math.sqrt(variance);
+ let factor=1,adjustedLags=[];
+ const ranks=rankValues(values),mean=(n+1)/2,centered=ranks.map(v=>v-mean),denom=centered.reduce((a,v)=>a+v*v,0),rho=[];
+ for(let lag=1;lag<n;lag++){let sum=0;for(let i=0;i<n-lag;i++)sum+=centered[i]*centered[i+lag];rho.push(denom?sum/denom:0);}
+ const cutoff=1.96/Math.sqrt(n);rho.forEach((r,i)=>{if(Math.abs(r)>cutoff)adjustedLags.push(i+1);});
+ if(adjustedLags.length){factor=1;for(const lag of adjustedLags)factor+=2*(n-lag)*(n-lag-1)*(n-lag-2)*rho[lag-1]/(n*(n-1)*(n-2));factor=Math.max(1/n,Math.min(3,factor));}
+ const correctedVariance=variance*factor,z=correctedVariance<=0?0:(S===0?0:(S>0?S-1:S+1)/Math.sqrt(correctedVariance)),p=normalP(z),slope=median(slopes);
+ const x=data.map(d=>d.year-data[0].year),intercept=median(values.map((v,i)=>v-slope*x[i])),fitted=x.map(v=>intercept+slope*v),residual=values.map((v,i)=>v-fitted[i]);
+ const blockLength=Math.max(2,Math.round(n**(1/3))),rng=(()=>{let a=seed>>>0;return()=>{a^=a<<13;a^=a>>>17;a^=a<<5;return(a>>>0)/4294967296;};})(),boot=[];
+ for(let b=0;b<replicates;b++){const sampled=[];while(sampled.length<n){const st=Math.floor(rng()*n);for(let k=0;k<blockLength&&sampled.length<n;k++)sampled.push(residual[(st+k)%n]);}boot.push(median(Array.from({length:n*(n-1)/2},(_,idx)=>0).slice(0,0).concat((()=>{const a=[];for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)a.push((fitted[j]+sampled[j]-fitted[i]-sampled[i])/(data[j].year-data[i].year));return a;})())));}
+ boot.sort((a,b)=>a-b);const lo=boot[Math.floor(.025*(replicates-1))],hi=boot[Math.ceil(.975*(replicates-1))];
+ return {data,n,S,tau:S/(n*(n-1)/2),slope,p,z,variance,correctedVariance,factor,adjustedLags,ci:{lower:lo,upper:hi,confidence:0.95,replicates,blockLength,seed},direction:slope>0?"Crescente":slope<0?"Decrescente":"Sem tendência monotônica",significant:p<.05};
+}
+function benjaminiHochberg(items){
+ const sorted=items.map((x,i)=>({...x,_i:i})).sort((a,b)=>a.p-b.p),m=sorted.length;let next=1;
+ for(let i=m-1;i>=0;i--){next=Math.min(next,sorted[i].p*m/(i+1),1);sorted[i].q=next;}
+ return sorted.sort((a,b)=>a._i-b._i);
+}
+function analyzeRegions(records){
+ const groups=new Map();for(const r of records){const region=String(r.region??r.regiao??"").trim(),year=Number(r.year??r.ano),value=Number(r.value??r.valor);if(region&&Number.isInteger(year)&&Number.isFinite(value)){if(!groups.has(region))groups.set(region,[]);groups.get(region).push({year,value});}}
+ if(groups.size<2)throw new Error("A comparação espacial exige pelo menos duas regiões.");
+ const results=[...groups].map(([region,rows])=>({region,...trendStats(rows)}));
+ return benjaminiHochberg(results.map(({region,p,n,slope,direction})=>({region,p,n,slope,direction}))).map((r,i)=>({...results[i],q:r.q}));
+}
+function pearson(a,b){
+ const ma=a.reduce((x,v)=>x+v,0)/a.length,mb=b.reduce((x,v)=>x+v,0)/b.length;let num=0,da=0,db=0;
+ for(let i=0;i<a.length;i++){const x=a[i]-ma,y=b[i]-mb;num+=x*y;da+=x*x;db+=y*y;}return da&&db?num/Math.sqrt(da*db):NaN;
+}
+function correlateVariables(records){
+ const map=new Map();for(const r of records){const region=String(r.region??r.regiao??"").trim(),year=Number(r.year??r.ano),variable=String(r.variable??r.variavel??"").trim(),value=Number(r.value??r.valor);if(region&&Number.isInteger(year)&&variable&&Number.isFinite(value))map.set([region,year,variable].join("|"),value);}
+ const regions=[...new Set([...map.keys()].map(k=>k.split("|")[0]))],out=[];
+ for(const region of regions){const vars=[...new Set([...map.keys()].filter(k=>k.startsWith(region+"|")).map(k=>k.split("|")[2]))];
+  for(let i=0;i<vars.length;i++)for(let j=i+1;j<vars.length;j++){const a=[],b=[];for(const key of map.keys()){const [reg,year,v]=key.split("|");if(reg===region&&v===vars[i]&&map.has([region,year,vars[j]].join("|"))){a.push(map.get(key));b.push(map.get([region,year,vars[j]].join("|")));}}
+   if(a.length>=8){const rp=pearson(a,b),rs=pearson(rankValues(a),rankValues(b));out.push({region,a:vars[i],b:vars[j],n:a.length,pearson:rp,spearman:rs});}
+  }
+ }
+ if(!out.length)throw new Error("Nenhum par de variáveis tem pelo menos 8 anos coincidentes na mesma região.");
+ return out;
+}
 function TrendDetective({lang}){
  const [rows,setRows]=useState([]),[source,setSource]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[result,setResult]=useState(null);
- const [start,setStart]=useState(""),[end,setEnd]=useState("");
- const t=lang==="pt";
+ const [regionRows,setRegionRows]=useState([]),[regionResults,setRegionResults]=useState([]),[regionError,setRegionError]=useState("");
+ const [variableRows,setVariableRows]=useState([]),[correlations,setCorrelations]=useState([]),[variableError,setVariableError]=useState("");
+ const [start,setStart]=useState(""),[end,setEnd]=useState("");const t=lang==="pt";
  const selected=useMemo(()=>rows.filter(r=>(!start||r.year>=Number(start))&&(!end||r.year<=Number(end))),[rows,start,end]);
  const loadNASA=async()=>{setBusy(true);setError("");setResult(null);try{const r=await fetch("/api/gistemp");const j=await r.json();if(!r.ok)throw new Error(j.error||"Falha ao consultar NASA GISTEMP.");setRows(j.rows);setSource("NASA GISS · GISTEMP v4");setStart(String(j.rows[0].year));setEnd(String(j.rows[j.rows.length-1].year));}catch(e){setError(e.message+" Você ainda pode importar uma série anual em CSV.");}finally{setBusy(false);}};
- const upload=async file=>{setError("");setResult(null);try{const raw=await file.text();const lines=raw.trim().split(/\r?\n/);const headers=lines.shift().split(",").map(x=>x.trim().replace(/^["']|["']$/g,""));const yi=headers.findIndex(x=>/^(year|ano)$/i.test(x)),vi=headers.findIndex((x,i)=>i!==yi&&/^(value|valor|anomaly|anomalia|indicator|indicador)$/i.test(x));if(yi<0||vi<0)throw new Error("O CSV precisa ter colunas chamadas year/ano e value/valor (ou anomaly/anomalia).");const parsed=lines.map(line=>{const c=line.split(",");return {year:Number(c[yi]),value:Number(c[vi])};}).filter(x=>Number.isFinite(x.year)&&Number.isFinite(x.value));if(parsed.length<8)throw new Error("O arquivo contém menos de oito linhas anuais válidas.");parsed.sort((a,b)=>a.year-b.year);setRows(parsed);setSource("Arquivo enviado · "+file.name);setStart(String(parsed[0].year));setEnd(String(parsed[parsed.length-1].year));}catch(e){setError(e.message);}};
- const run=()=>{try{setResult(analyze(selected));setError("");}catch(e){setResult(null);setError(e.message);}};
+ const upload=async file=>{setError("");setResult(null);try{const parsed=parseCSV(await file.text()).map(r=>({year:Number(r.year??r.ano),value:Number(r.value??r.valor??r.anomaly??r.anomalia)})).filter(r=>Number.isFinite(r.year)&&Number.isFinite(r.value)).sort((a,b)=>a.year-b.year);validateAnnual(parsed);setRows(parsed);setSource("Arquivo enviado · "+file.name);setStart(String(parsed[0].year));setEnd(String(parsed[parsed.length-1].year));}catch(e){setError(e.message);}};
+ const run=()=>{try{setResult(trendStats(selected));setError("");}catch(e){setResult(null);setError(e.message);}};
+ const uploadRegions=async file=>{try{const parsed=parseCSV(await file.text());setRegionRows(parsed);setRegionResults(analyzeRegions(parsed));setRegionError("");}catch(e){setRegionResults([]);setRegionError(e.message);}};
+ const uploadVariables=async file=>{try{const parsed=parseCSV(await file.text());setVariableRows(parsed);setCorrelations(correlateVariables(parsed));setVariableError("");}catch(e){setCorrelations([]);setVariableError(e.message);}};
  return <section className="trend-workspace">
-  <div className="eyebrow">GUMA / EARTH SYSTEM TREND DETECTIVE</div>
-  <h1>{t?"Investigue uma tendência ambiental.":"Investigate an Earth-system trend."}</h1>
-  <p className="trend-lead">{t?"Analise séries anuais com Mann–Kendall e inclinação de Sen. Comece pela série global de temperatura da NASA ou envie seu próprio CSV.":"Analyze annual series with Mann–Kendall and Sen's slope. Start with NASA's global temperature series or upload your own CSV."}</p>
-  <div className="trend-controls">
-   <button className="primary" onClick={loadNASA} disabled={busy}><RefreshCw size={16}/>{busy?(t?"Consultando NASA…":"Retrieving NASA…"):(t?"Carregar NASA GISTEMP":"Load NASA GISTEMP")}</button>
-   <label className="upload-control"><Upload size={16}/>{t?"Enviar CSV anual":"Upload annual CSV"}<input type="file" accept=".csv,text/csv" onChange={e=>e.target.files?.[0]&&upload(e.target.files[0])}/></label>
-  </div>
-  {source&&<div className="dataset-meta"><Database size={15}/><span><b>{t?"Fonte":"Source"}:</b> {source} · {rows.length} {t?"observações":"observations"} · {rows[0]?.year}–{rows[rows.length-1]?.year}</span></div>}
-  {rows.length>0&&<div className="analysis-panel">
-   <h2>{t?"Janela de análise":"Analysis window"}</h2>
-   <div className="year-controls"><label>{t?"Ano inicial":"First year"}<input type="number" value={start} onChange={e=>setStart(e.target.value)}/></label><label>{t?"Ano final":"Last year"}<input type="number" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="primary" onClick={run}>{t?"Analisar tendência":"Analyze trend"}</button></div>
-   <p className="subtle">{selected.length} {t?"observações no intervalo selecionado":"observations in selected interval"}</p>
-  </div>}
+  <div className="eyebrow">GUMA / EARTH SYSTEM TREND DETECTIVE</div><h1>{t?"Investigue tendências ambientais.":"Investigate Earth-system trends."}</h1>
+  <p className="trend-lead">{t?"Mann–Kendall com ajuste Hamed–Rao, inclinação de Sen e IC bootstrap. Compare regiões e explore relações entre variáveis ambientais.":"Mann–Kendall with Hamed–Rao adjustment, Sen's slope and bootstrap CI. Compare regions and explore relationships between environmental variables."}</p>
+  <div className="trend-controls"><button className="primary" onClick={loadNASA} disabled={busy}><RefreshCw size={16}/>{busy?"Consultando NASA…":(t?"Carregar NASA GISTEMP":"Load NASA GISTEMP")}</button><label className="upload-control"><Upload size={16}/>{t?"Enviar série anual CSV":"Upload annual-series CSV"}<input type="file" accept=".csv,text/csv" onChange={e=>e.target.files?.[0]&&upload(e.target.files[0])}/></label></div>
+  {source&&<div className="dataset-meta"><Database size={15}/><span><b>Fonte:</b> {source} · {rows.length} observações · {rows[0]?.year}–{rows[rows.length-1]?.year}</span></div>}
+  {rows.length>0&&<div className="analysis-panel"><h2>{t?"Análise temporal":"Time-series analysis"}</h2><div className="year-controls"><label>Ano inicial<input type="number" value={start} onChange={e=>setStart(e.target.value)}/></label><label>Ano final<input type="number" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="primary" onClick={run}>{t?"Analisar tendência":"Analyze trend"}</button></div><p className="subtle">{selected.length} observações selecionadas · mínimo 8 anos consecutivos</p></div>}
   {error&&<div className="error-panel" role="alert">{error}</div>}
-  {result&&<div className="results-panel">
-   <div className="result-heading"><div><div className="eyebrow">{t?"RESULTADO ESTATÍSTICO":"STATISTICAL RESULT"}</div><h2>{result.direction}</h2></div><span className={result.significant?"significance yes":"significance"}>{result.significant?(t?"Significativo · α = 0,05":"Significant · α = 0.05"):(t?"Não significativo · α = 0,05":"Not significant · α = 0.05")}</span></div>
-   <div className="result-metrics"><article><small>Sen's slope</small><b>{result.slope.toFixed(4)}</b><span>{t?"unidades por ano":"units per year"}</span></article><article><small>Mann–Kendall τ</small><b>{result.tau.toFixed(3)}</b><span>{t?"associação monotônica":"monotonic association"}</span></article><article><small>p-value</small><b>{result.p.toPrecision(4)}</b><span>two-sided</span></article><article><small>n</small><b>{result.n}</b><span>{t?"anos válidos":"valid years"}</span></article></div>
-   <div className="chart-panel"><h3>{t?"Série anual observada":"Observed annual series"}</h3><svg viewBox="0 0 760 260" role="img" aria-label="Annual observations line chart"><line x1="44" y1="12" x2="44" y2="220" stroke="currentColor" opacity=".35"/><line x1="44" y1="220" x2="740" y2="220" stroke="currentColor" opacity=".35"/><polyline fill="none" stroke="#17647a" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" points={result.data.map((d,i)=>{const min=Math.min(...result.data.map(x=>x.value)),max=Math.max(...result.data.map(x=>x.value)),x=44+i*696/Math.max(1,result.n-1),y=204-(d.value-min)/(max-min||1)*180;return x.toFixed(1)+","+y.toFixed(1)}).join(" ")}/><text x="44" y="245" fill="currentColor" fontSize="12">{result.data[0].year}</text><text x="740" y="245" textAnchor="end" fill="currentColor" fontSize="12">{result.data[result.n-1].year}</text></svg></div>
-   <details className="method-details"><summary>{t?"Método e limites de interpretação":"Method and interpretation limits"}</summary><p>{t?"Mann–Kendall testa associação monotônica; a inclinação de Sen é a mediana das inclinações entre todos os pares de observações. O p-valor usa aproximação normal com correção de continuidade e correção para empates.":"Mann–Kendall tests monotonic association; Sen's slope is the median of all pairwise slopes. The p-value uses a normal approximation with continuity and tie corrections."}</p><p>{t?"Limitação importante: esta versão não corrige autocorrelação serial, não calcula intervalos de confiança e não demonstra causalidade. Uma tendência estatística não identifica seu mecanismo físico.":"Important limitation: this version does not correct for serial autocorrelation, calculate confidence intervals, or establish causation. A statistical trend does not identify its physical mechanism."}</p><p>{t?"Verifique a procedência, cobertura, alterações de medição e contexto físico antes de interpretar o resultado.":"Check provenance, coverage, measurement changes and physical context before interpreting results."}</p></details>
+  {result&&<div className="results-panel"><div className="result-heading"><div><div className="eyebrow">RESULTADO ESTATÍSTICO</div><h2>{result.direction}</h2></div><span className={result.significant?"significance yes":"significance"}>{result.significant?"Significativo · p ajustado por Hamed–Rao":"Não significativo · p ajustado por Hamed–Rao"}</span></div>
+   <div className="result-metrics"><article><small>Sen's slope</small><b>{result.slope.toFixed(4)}</b><span>unidades / ano</span></article><article><small>IC 95% da inclinação</small><b>{result.ci.lower.toFixed(4)} a {result.ci.upper.toFixed(4)}</b><span>bootstrap em blocos · {result.ci.replicates} réplicas</span></article><article><small>Mann–Kendall τ</small><b>{result.tau.toFixed(3)}</b><span>p = {result.p.toPrecision(4)}</span></article><article><small>Autocorrelação</small><b>{result.factor.toFixed(3)}×</b><span>Hamed–Rao · {result.adjustedLags.length} defasagens</span></article></div>
+   <div className="chart-panel"><h3>Série anual observada</h3><svg viewBox="0 0 760 260" role="img" aria-label="Série anual"><line x1="44" y1="12" x2="44" y2="220" stroke="currentColor" opacity=".35"/><line x1="44" y1="220" x2="740" y2="220" stroke="currentColor" opacity=".35"/><polyline fill="none" stroke="#17647a" strokeWidth="3" points={result.data.map((d,i)=>{const min=Math.min(...result.data.map(x=>x.value)),max=Math.max(...result.data.map(x=>x.value)),x=44+i*696/Math.max(1,result.n-1),y=204-(d.value-min)/(max-min||1)*180;return x.toFixed(1)+","+y.toFixed(1)}).join(" ")}/><text x="44" y="245" fill="currentColor" fontSize="12">{result.data[0].year}</text><text x="740" y="245" textAnchor="end" fill="currentColor" fontSize="12">{result.data[result.n-1].year}</text></svg></div>
+   <details className="method-details"><summary>Método, parâmetros e limites</summary><p>Mann–Kendall com variância corrigida por Hamed–Rao usando autocorrelação dos postos; limiar normal 1,96/√n. A inclinação de Sen é a mediana das inclinações pareadas.</p><p>IC de 95%: bootstrap circular de blocos móveis dos resíduos após remoção da tendência, {result.ci.replicates} réplicas, comprimento do bloco {result.ci.blockLength}, semente {result.ci.seed}. A cobertura depende da estrutura temporal e do tamanho amostral; não é garantia universal.</p><p>O Hamed–Rao implementado é uma aproximação com seleção de defasagens pelo limiar nominal; séries curtas, tendência residual, mudanças estruturais e dados não estacionários exigem análise adicional. Resultado não implica causalidade.</p></details>
   </div>}
-  <div className="scope-note"><CircleHelp size={16}/><span>{t?"O módulo analisa séries anuais. A série GISTEMP é uma média global de anomalias de temperatura, não uma estimativa local.":"This module analyzes annual series. GISTEMP is a global mean temperature-anomaly series, not a local estimate."}</span></div>
+  <div className="analysis-panel"><h2>{t?"Comparação entre regiões":"Cross-region comparison"}</h2><p className="subtle">{t?"CSV longo: region, year, value. Cada região precisa ter pelo menos 8 anos consecutivos.":"Long CSV: region, year, value. Each region needs at least 8 consecutive years."}</p><label className="upload-control"><Upload size={16}/>Enviar CSV de regiões<input type="file" accept=".csv,text/csv" onChange={e=>e.target.files?.[0]&&uploadRegions(e.target.files[0])}/></label>{regionError&&<div className="error-panel">{regionError}</div>}{regionResults.length>0&&<div className="table-scroll"><table className="comparison-table"><thead><tr><th>Região</th><th>n</th><th>Sen / ano</th><th>p HR</th><th>q BH</th><th>Direção</th></tr></thead><tbody>{regionResults.map(r=><tr key={r.region}><td>{r.region}</td><td>{r.n}</td><td>{r.slope.toFixed(4)}</td><td>{r.p.toPrecision(3)}</td><td>{r.q.toPrecision(3)}</td><td>{r.direction}</td></tr>)}</tbody></table><p className="subtle">q: correção Benjamini–Hochberg para controlar taxa de falsas descobertas entre as regiões carregadas. A tabela compara regiões; não substitui análise geoespacial com coordenadas ou polígonos.</p></div>}</div>
+  <div className="analysis-panel"><h2>{t?"Cruzamento de variáveis ambientais":"Environmental-variable relationships"}</h2><p className="subtle">{t?"CSV longo: region, year, variable, value. Ex.: temperatura, precipitação, umidade, NDVI. Serão usados somente anos coincidentes.":"Long CSV: region, year, variable, value. E.g. temperature, precipitation, humidity, NDVI. Only overlapping years are used."}</p><label className="upload-control"><Upload size={16}/>Enviar CSV multivariável<input type="file" accept=".csv,text/csv" onChange={e=>e.target.files?.[0]&&uploadVariables(e.target.files[0])}/></label>{variableError&&<div className="error-panel">{variableError}</div>}{correlations.length>0&&<div className="table-scroll"><table className="comparison-table"><thead><tr><th>Região</th><th>Variáveis</th><th>n pareado</th><th>Pearson r</th><th>Spearman ρ</th></tr></thead><tbody>{correlations.map((r,i)=><tr key={i}><td>{r.region}</td><td>{r.a} × {r.b}</td><td>{r.n}</td><td>{Number.isFinite(r.pearson)?r.pearson.toFixed(3):"—"}</td><td>{Number.isFinite(r.spearman)?r.spearman.toFixed(3):"—"}</td></tr>)}</tbody></table><p className="subtle">Correlação não demonstra causalidade. São exibidas estatísticas descritivas sem inferência causal nem correção de confundidores.</p></div>}</div>
+  <div className="scope-note"><CircleHelp size={16}/><span>Use dados com fonte, unidade, método de medição e cobertura temporal documentados. A comparação regional não cria mapas nem pressupõe coordenadas que não estejam no arquivo.</span></div>
  </section>;
 }
-
 function App(){
  const [lang,setLang]=useState("pt"),[section,setSection]=useState("overview"),[mobileOpen,setMobileOpen]=useState(false);const t=copy[lang];
  const sectionTitle=t[section]||t.overview;
