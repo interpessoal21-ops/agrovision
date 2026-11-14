@@ -158,6 +158,9 @@ def load_nasa_power_global_point(latitude: float, longitude: float,
         k: v.get("units") for k, v in units.items()
         if isinstance(v, dict) and v.get("units")
     }
+    # NASA POWER reports temperature units as "C"; render the standard symbol.
+    returned_units = {key: ("°C" if value == "C" else value)
+                      for key, value in returned_units.items()}
     parameter_units = {key: returned_units.get(key, unit) for key, unit in known_ag_units.items()
                        if key in frame.columns}
     metadata = {
