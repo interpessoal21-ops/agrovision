@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 
 EARTH_SEARCH_URL = "https://earth-search.aws.element84.com/v1/search"
-NASA_FIRMS_NOAA20_GLOBAL_7D = "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_7d.csv"
+NASA_FIRMS_NOAA20_GLOBAL_7D = "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv"
 IBGE_LOCALITIES_URL = "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
 
 def _bbox_geometry(latitude: float, longitude: float, half_width: float = 0.08) -> dict:
