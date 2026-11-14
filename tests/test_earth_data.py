@@ -72,7 +72,6 @@ class GlobalFirmsTests(unittest.TestCase):
         self.assertAlmostEqual(frame.iloc[0]["latitude"], -15.0)
 
 
-    @patch("guma_earth_data.requests.get")
     def test_ibge_reference_fallback_contains_27_unique_official_uf_codes(self):
         from guma_earth_data import ibge_states_reference_fallback
         frame = ibge_states_reference_fallback()
@@ -81,6 +80,7 @@ class GlobalFirmsTests(unittest.TestCase):
         self.assertEqual(frame["ibge_state_code"].nunique(), 27)
         self.assertEqual(frame.loc[frame["uf"] == "RJ", "ibge_state_code"].iloc[0], 33)
 
+    @patch("guma_earth_data.requests.get")
     def test_nasa_power_parses_global_point_and_missing_values(self, get):
         response = Mock()
         response.url = "https://power.larc.nasa.gov/api/temporal/daily/point?latitude=45"
