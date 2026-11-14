@@ -1,13 +1,14 @@
-/* GUMA brand layer — Cartografia de Campo */
-:root{--guma-ink:#18272B;--guma-blue:#2457A6;--guma-red:#D85B3D;--guma-green:#63764B;--guma-gold:#D4A64A;--guma-paper:#F1E8D5;--guma-paper-2:#E6D9BF}
-body{background-color:var(--guma-paper);background-image:radial-gradient(ellipse at 12% 18%,rgba(212,166,74,.09),transparent 30%),radial-gradient(ellipse at 88% 76%,rgba(36,87,166,.055),transparent 32%)}
-.brand{gap:13px;padding-bottom:38px}.brand-mark{width:48px;height:48px;flex:0 0 48px;border:0;border-radius:12px;overflow:hidden;background:transparent;box-shadow:0 5px 16px #071a2033}.brand-mark img{display:block;width:100%;height:100%;object-fit:cover}.brand strong{font-family:'Playfair Display',serif;font-size:22px;letter-spacing:.17em;font-weight:700}.brand small{letter-spacing:.16em;color:#d4a64a}
-.hero{border-left:4px solid var(--guma-gold);background-color:var(--guma-ink);background-image:radial-gradient(ellipse at 78% 35%,rgba(36,87,166,.25),transparent 38%),linear-gradient(135deg,rgba(216,91,61,.08),transparent 42%)}
-.hero-grid{opacity:.18;background-size:54px 54px;mask-image:linear-gradient(90deg,black,transparent 92%)}
-.metric-card{background:rgba(246,239,223,.88);border-color:#c9bea9;box-shadow:0 5px 18px rgba(24,39,43,.035)}
+/* GUMA — identidade visual inspirada na linguagem gráfica de Carybé */
+:root{--guma-ink:#102b38;--guma-blue:#17647a;--guma-red:#c84d24;--guma-green:#596b42;--guma-gold:#d99a17;--guma-paper:#f1e8d5;--guma-paper-2:#e6d9bf}
+body{background-color:var(--guma-paper);background-image:radial-gradient(ellipse at 12% 18%,rgba(217,154,23,.12),transparent 30%),radial-gradient(ellipse at 88% 76%,rgba(23,100,122,.08),transparent 32%)}
+.brand{gap:13px;padding-bottom:38px}.brand-mark{width:48px;height:48px;flex:0 0 48px;border:0;border-radius:50%;overflow:hidden;background:var(--guma-paper);box-shadow:0 5px 16px #071a2033}.brand-mark img{display:block;width:100%;height:100%;object-fit:cover}.brand strong{font-family:'Playfair Display',serif;font-size:22px;letter-spacing:.17em;font-weight:700}.brand small{letter-spacing:.09em;color:#e8b84e;font-size:8px}
+.hero{border-left:5px solid var(--guma-gold);background-color:var(--guma-ink);background-image:radial-gradient(ellipse at 78% 35%,rgba(23,100,122,.42),transparent 38%),linear-gradient(135deg,rgba(200,77,36,.12),transparent 42%)}
+.hero-grid{opacity:.10;background-size:54px 54px;mask-image:linear-gradient(90deg,black,transparent 92%)}
+.hero-art{height:340px;min-width:0;position:relative;display:grid;place-items:center;overflow:hidden;border-radius:2px}.carybe-scene{width:100%;height:100%;object-fit:cover;filter:saturate(.88) contrast(1.04);mix-blend-mode:normal}
+.metric-card{background:rgba(246,239,223,.92);border-color:#c9bea9;box-shadow:0 5px 18px rgba(16,43,56,.05)}
 .metric-icon{background:#e6d9bf;color:var(--guma-blue)}
-.primary{background:var(--guma-red)}.primary:hover{background:#bd4d34}
+.primary{background:var(--guma-red)}.primary:hover{background:#a83e1c}
 .nav-item.active{box-shadow:inset 3px 0 var(--guma-gold)}
 .migration-note,.module-panel{background:var(--guma-ink);color:#fff9ef}.migration-note p,.module-panel p{color:#e4e8df}.migration-note a,.module-panel a{color:#f0c46b}
 footer{border-top:1px solid #c9bea9;color:#68716c}
-@media(max-width:760px){.brand{padding-bottom:28px}.brand-mark{width:42px;height:42px;flex-basis:42px}}
+@media(max-width:760px){.brand{padding-bottom:28px}.brand-mark{width:42px;height:42px;flex-basis:42px}.hero-art{height:245px}}
