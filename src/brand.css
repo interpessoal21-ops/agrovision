@@ -38,3 +38,6 @@ footer{border-top:1px solid #c9bea9;color:#68716c}
 .method-details{border-top:1px solid #c9bea9;padding-top:14px;font-size:13px;line-height:1.6}.method-details summary{font-weight:700;cursor:pointer}.method-details p{color:#52605d}
 .scope-note{margin-top:20px;background:#e8dfce;border-left-color:var(--guma-gold)}
 @media(max-width:700px){.trend-workspace{padding:28px 18px}.result-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.result-heading{align-items:flex-start}.year-controls input{width:100%}}
+
+/* GUMA scientific comparison tables */
+.table-scroll{overflow-x:auto;margin-top:16px}.comparison-table{width:100%;border-collapse:collapse;font-size:13px;min-width:620px}.comparison-table th,.comparison-table td{padding:11px 12px;text-align:left;border-bottom:1px solid #c9bea9}.comparison-table th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#596b68}.comparison-table td{font-variant-numeric:tabular-nums}.analysis-panel .upload-control{margin:10px 0}.analysis-panel .subtle{line-height:1.55}
