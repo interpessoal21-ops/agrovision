@@ -1,4 +1,5 @@
 import streamlit as st
+from guma_brand import apply_brand, render_brand_hero, sidebar_brand
 import pandas as pd
 from agrovision_validation import paired_validation_metrics
 from agrovision_modis import parse_modis_subset, calculate_ndvi_from_reflectance
@@ -24,63 +25,8 @@ from streamlit_folium import st_folium
 
 st.set_page_config(page_title="GUMA — Earth Intelligence", page_icon="🌊", layout="wide")
 
-st.markdown("""
-<style>
-:root{--guma-paper:#F1E8D5;--guma-paper-2:#E6D9BF;--guma-ink:#18272B;--guma-blue:#2457A6;--guma-red:#D85B3D;--guma-leaf:#63764B;--guma-gold:#D4A64A;--guma-muted:#68716C;--guma-panel:#F8F3E9;--guma-border:#C9BDA7}
-.stApp{background:var(--guma-paper);color:var(--guma-ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
-[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stMainBlockContainer"]{background:transparent}
-[data-testid="stSidebar"]{background:#E5D8C1;border-right:1px solid var(--guma-border)}
-[data-testid="stHeader"]{background:rgba(241,232,213,.94)}
-.block-container{padding-top:1.5rem;padding-bottom:3rem;max-width:1500px}
-h1,h2,h3,h4,h5,h6,p,li,label,.stMarkdown,[data-testid="stCaptionContainer"]{color:var(--guma-ink)}
-[data-testid="stCaptionContainer"],.stCaption,small{color:var(--guma-muted)!important}
-a{color:var(--guma-blue)!important;text-decoration-thickness:1px}
-.guma-hero{padding:2.25rem 2.4rem;border:1px solid #26363A;border-radius:4px;background:var(--guma-ink);color:var(--guma-paper);position:relative;overflow:hidden;margin:.25rem 0 1.4rem;box-shadow:8px 8px 0 var(--guma-red)}
-.guma-brandline{display:flex;align-items:center;gap:.9rem;margin-bottom:1.4rem}
-.guma-mark{width:58px;height:58px;flex:0 0 58px}
-.guma-wordmark{color:var(--guma-paper);font-size:1.45rem;font-weight:900;letter-spacing:.22em;line-height:1}
-.guma-descriptor{color:#E2B75F;font-size:.64rem;letter-spacing:.2em;font-weight:800;margin-top:.45rem}
-.guma-hero h1{color:var(--guma-paper);font-size:clamp(2rem,4vw,3.1rem);margin:0 0 .55rem;letter-spacing:-.045em;line-height:1.05}
-.guma-hero h1 span{color:#E2B75F}
-.guma-hero p{color:#E3D9C8;font-size:1.02rem;margin:0;max-width:900px;line-height:1.65}
-.eyebrow{color:#E17A5B;text-transform:uppercase;letter-spacing:.18em;font-size:.7rem;font-weight:850;margin-bottom:.65rem}
-.step-card{background:var(--guma-panel);border:1px solid var(--guma-border);border-radius:3px;padding:1rem;min-height:142px;box-shadow:3px 3px 0 var(--guma-paper-2)}
-.step-number{display:inline-flex;width:30px;height:30px;border-radius:2px;align-items:center;justify-content:center;background:#DCE2D1;color:var(--guma-leaf);font-weight:900;margin-bottom:.55rem}
-.step-card strong{display:block;color:var(--guma-ink);margin-bottom:.3rem}
-.step-card span{color:var(--guma-muted);font-size:.88rem;line-height:1.4}
-div[data-testid="stTabs"] button{color:#59645E;font-weight:750}
-div[data-testid="stTabs"] button[aria-selected="true"]{color:var(--guma-red);border-bottom-color:var(--guma-red)}
-.section-note{padding:.9rem 1rem;border-left:5px solid var(--guma-red);background:#E8DDC9;border-radius:0;color:var(--guma-ink);margin:.5rem 0 1rem}
-[data-baseweb="input"],[data-baseweb="textarea"],[data-baseweb="select"]>div,[data-testid="stDateInput"] input,[data-testid="stNumberInput"] input{background:#FFFDF7!important;color:var(--guma-ink)!important;border-color:#B9AD98!important}
-input,textarea{color:var(--guma-ink)!important}
-[data-baseweb="popover"],[data-baseweb="menu"],[role="listbox"]{background:#FFFDF7!important;color:var(--guma-ink)!important}
-[data-testid="stDataFrame"],[data-testid="stTable"]{background:#FFFDF7;border:1px solid var(--guma-border);border-radius:3px}
-[data-testid="stMetric"]{background:#E6DDCB;border:1px solid var(--guma-border);padding:1rem;border-radius:3px;box-shadow:3px 3px 0 #D7C9B1}
-[data-testid="stMetricLabel"],[data-testid="stMetricValue"],[data-testid="stMetricDelta"]{color:var(--guma-ink)!important}
-[data-testid="stAlert"]{background:#E7DDCA;color:var(--guma-ink);border:1px solid #C9BDA7}
-div.stButton>button{border-radius:2px;font-weight:800;color:var(--guma-ink);background:#E5D8C1;border:1px solid #A99D89;transition:all .16s ease}
-div.stButton>button[kind="primary"],.stFormSubmitButton>button{background:var(--guma-red);color:#FFF8ED;border:1px solid #B7472F;box-shadow:3px 3px 0 var(--guma-ink);font-weight:850}
-div.stButton>button:hover{border-color:var(--guma-blue);color:var(--guma-blue);transform:translate(-1px,-1px)}
-div.stButton>button[kind="primary"]:hover{color:#FFF8ED;background:#B94B34}
-hr{border-color:#C9BDA7!important}
-@media(max-width:700px){.guma-hero{padding:1.25rem;box-shadow:4px 4px 0 var(--guma-red)}.guma-hero h1{font-size:1.9rem}.guma-mark{width:46px;height:46px;flex-basis:46px}}
-</style>
-<div class="guma-hero">
-  <div class="guma-brandline">
-    <svg class="guma-mark" viewBox="0 0 64 64" role="img" aria-label="GUMA mark">
-      <path d="M4 45C14 13 42 5 60 23S63 55 43 60 5 61 4 45Z" fill="none" stroke="#E2B75F" stroke-width="2"/>
-      <path d="M10 43C20 23 39 19 51 31S53 50 39 54 12 54 10 43Z" fill="none" stroke="#D85B3D" stroke-width="2"/>
-      <path d="M3 52C19 42 29 43 39 50S53 57 63 48" fill="none" stroke="#6F8B57" stroke-width="3" stroke-linecap="round"/>
-      <path d="M32 2V62M2 32H62" stroke="#F1E8D5" stroke-width="1" opacity=".4"/>
-      <circle cx="48" cy="13" r="4" fill="#2457A6"/>
-    </svg>
-    <div><div class="guma-wordmark">GUMA</div><div class="guma-descriptor">EARTH INTELLIGENCE</div></div>
-  </div>
-  <div class="eyebrow">TERRITORY · CLIMATE · EARTH OBSERVATION · SCIENCE</div>
-  <h1>Beyond the <span>horizon.</span></h1>
-  <p>A living atlas of planetary change, territorial patterns and agricultural systems — built from evidence, field knowledge and open science.</p>
-</div>
-""", unsafe_allow_html=True)
+apply_brand()
+render_brand_hero()
 
 # Language preference is stored in the Streamlit session and works for visitors too.
 if "agrovision_language" not in st.session_state:
@@ -149,18 +95,7 @@ def supabase_auth(endpoint, payload):
     return data
 
 with st.sidebar:
-    st.markdown("""
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 2px 18px 2px;">
-      <svg viewBox="0 0 64 64" width="42" height="42" aria-label="GUMA">
-        <circle cx="32" cy="32" r="25" fill="none" stroke="#D85B3D" stroke-width="2"/>
-        <ellipse cx="32" cy="32" rx="12" ry="25" fill="none" stroke="#E2B75F" stroke-width="2" transform="rotate(38 32 32)"/>
-        <path d="M8 36c8-8 14-8 22 0s14 8 26 0M12 44c7-5 13-5 20 0s13 5 20 0" fill="none" stroke="#F1E8D5" stroke-width="2.5" stroke-linecap="round"/>
-        <circle cx="48" cy="15" r="3" fill="#2457A6"/>
-      </svg>
-      <div><div style="color:#F1E8D5;font-weight:850;letter-spacing:.18em;font-size:1.08rem;">GUMA</div>
-      <div style="color:#D85B3D;font-size:.58rem;letter-spacing:.13em;font-weight:750;">EARTH INTELLIGENCE</div></div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(sidebar_brand(), unsafe_allow_html=True)
     st.selectbox("Language / Idioma", ["English", "Português"], key="agrovision_language")
 
 auth_mode = st.session_state.get("agrovision_auth_mode")
