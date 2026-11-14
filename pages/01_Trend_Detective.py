@@ -11,33 +11,34 @@ st.set_page_config(page_title="GUMA · Trend Detective", page_icon="🌍", layou
 
 st.markdown("""
 <style>
-:root{--ink:#091722;--ocean:#15364A;--teal:#24C8B5;--lime:#B9F36B;--amber:#F0B66A;--paper:#F0F5F3;--muted:#A9BEC5}
-.stApp{background:radial-gradient(ellipse at 88% 0%,rgba(36,200,181,.14),transparent 32%),radial-gradient(ellipse at 4% 38%,rgba(185,243,107,.07),transparent 30%),linear-gradient(180deg,#102638 0%,#091722 620px);color:var(--paper)}
+:root{--paper:#F1E8D5;--paper2:#E6D9BF;--ink:#18272B;--blue:#2457A6;--red:#D85B3D;--leaf:#63764B;--gold:#D4A64A;--muted:#68716C}
+.stApp{background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
 [data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stMainBlockContainer"]{background:transparent}
 .block-container{max-width:1440px;padding-top:2rem}
-h1,h2,h3,p,label,.stMarkdown{color:var(--paper)}
+h1,h2,h3,p,label,.stMarkdown{color:var(--ink)}
 [data-testid="stCaptionContainer"],.stCaption{color:var(--muted)!important}
-[data-testid="stMetric"]{background:linear-gradient(145deg,#153044,#102638);border:1px solid #29495A;padding:1rem;border-radius:16px}
-[data-testid="stMetricLabel"],[data-testid="stMetricValue"]{color:var(--paper)!important}
-[data-baseweb="input"],[data-baseweb="select"]>div,[data-testid="stFileUploader"]{background:#102638;color:var(--paper)}
-div.stButton>button{background:#153044;color:var(--paper);border:1px solid #31566A;border-radius:12px}
-div.stButton>button[kind="primary"]{background:linear-gradient(105deg,#147F7A,#24AFA5);color:#071923}
-.guma-hero{padding:2rem 2.2rem;border:1px solid #31566A;border-radius:24px;background:radial-gradient(circle at 85% 15%,rgba(36,200,181,.22),transparent 25%),linear-gradient(120deg,#091722,#153D50);margin-bottom:1.4rem}
-.guma-eyebrow{color:#F0B66A;letter-spacing:.18em;font-size:.72rem;font-weight:800}
-.guma-title{font-size:clamp(2rem,5vw,3.7rem);font-weight:850;letter-spacing:-.05em;line-height:1.05;margin:.7rem 0}
-.guma-title span{color:#B9F36B}
-.guma-copy{color:#C3D4D8;max-width:850px;font-size:1.05rem;line-height:1.6}
+[data-testid="stMetric"]{background:#E6DDCB;border:1px solid #C9BDA7;padding:1rem;border-radius:3px;box-shadow:3px 3px 0 #D7C9B1}
+[data-testid="stMetricLabel"],[data-testid="stMetricValue"]{color:var(--ink)!important}
+[data-baseweb="input"],[data-baseweb="select"]>div,[data-testid="stFileUploader"]{background:#FFFDF7;color:var(--ink)}
+div.stButton>button{background:#E5D8C1;color:var(--ink);border:1px solid #A99D89;border-radius:2px;font-weight:800}
+div.stButton>button[kind="primary"]{background:var(--red);color:#FFF8ED;border-color:#B7472F;box-shadow:3px 3px 0 var(--ink)}
+.guma-hero{padding:2rem 2.2rem;border:1px solid var(--ink);border-radius:3px;background:var(--ink);color:var(--paper);margin-bottom:1.4rem;box-shadow:8px 8px 0 var(--red);overflow:hidden}
+.guma-eyebrow{color:#E17A5B;letter-spacing:.18em;font-size:.72rem;font-weight:900}
+.guma-title{font-size:clamp(2rem,5vw,3.7rem);font-weight:900;letter-spacing:-.05em;line-height:1.05;margin:.7rem 0}
+.guma-title span{color:#E2B75F}
+.guma-copy{color:#E3D9C8;max-width:850px;font-size:1.05rem;line-height:1.6}
 .guma-art{float:right;width:min(30%,230px);margin:-.5rem 0 0 1rem}
-.note{background:#102F3D;border-left:4px solid #24C8B5;padding:.9rem 1rem;border-radius:0 12px 12px 0;color:#C9E2E0}
-@media(max-width:700px){.guma-hero{padding:1.3rem}.guma-art{width:110px}}
+.note{background:#E8DDC9;border-left:5px solid var(--red);padding:.9rem 1rem;border-radius:0;color:var(--ink)}
+hr{border-color:#C9BDA7!important}
+@media(max-width:700px){.guma-hero{padding:1.3rem;box-shadow:4px 4px 0 var(--red)}.guma-art{width:110px}}
 </style>
 <div class="guma-hero">
 <svg class="guma-art" viewBox="0 0 220 190" role="img" aria-label="Original abstract cartographic illustration">
-<path d="M18 105C38 24 105 13 150 47s58 86 27 116-95 19-127-7S5 134 18 105Z" fill="none" stroke="#24C8B5" stroke-width="2"/>
-<path d="M35 105c24-49 63-62 93-42s40 56 18 78-62 27-91 7-35-21-20-43Z" fill="none" stroke="#B9F36B" stroke-width="2"/>
-<path d="M15 132c35-23 57-22 82-2s52 21 99-11M22 151c31-19 52-17 76 0s51 14 82-7" fill="none" stroke="#F0F5F3" stroke-width="3" stroke-linecap="round"/>
-<path d="M78 25c-9 32-3 50 18 68s26 42 12 77" fill="none" stroke="#F0B66A" stroke-width="2" stroke-dasharray="4 5"/>
-<circle cx="157" cy="43" r="5" fill="#F0B66A"/><circle cx="49" cy="73" r="4" fill="#24C8B5"/>
+<path d="M18 105C38 24 105 13 150 47s58 86 27 116-95 19-127-7S5 134 18 105Z" fill="none" stroke="#D85B3D" stroke-width="2"/>
+<path d="M35 105c24-49 63-62 93-42s40 56 18 78-62 27-91 7-35-21-20-43Z" fill="none" stroke="#E2B75F" stroke-width="2"/>
+<path d="M15 132c35-23 57-22 82-2s52 21 99-11M22 151c31-19 52-17 76 0s51 14 82-7" fill="none" stroke="#F1E8D5" stroke-width="3" stroke-linecap="round"/>
+<path d="M78 25c-9 32-3 50 18 68s26 42 12 77" fill="none" stroke="#2457A6" stroke-width="2" stroke-dasharray="4 5"/>
+<circle cx="157" cy="43" r="5" fill="#2457A6"/><circle cx="49" cy="73" r="4" fill="#D85B3D"/>
 </svg>
 <div class="guma-eyebrow">NASA SPACE APPS CHALLENGE 2026 · CHALLENGE 02</div>
 <div class="guma-title">GUMA <span>Trend Detective</span></div>
@@ -54,19 +55,42 @@ def load_gistemp():
     response = requests.get(url, timeout=45)
     response.raise_for_status()
     response.encoding = "utf-8"
-    frame = pd.read_csv(io.StringIO(response.text), skipinitialspace=True)
-    frame.columns = [str(c).strip().lstrip("\ufeff") for c in frame.columns]
+    if not response.text or "<html" in response.text[:500].lower():
+        raise ValueError("NASA returned an HTML page instead of the GISTEMP CSV. Check the data endpoint or network availability.")
+    # NASA's current GISTEMP CSV has a descriptive title on line 1 and
+    # the actual column header on line 2. Skip the title before parsing.
+    frame = pd.read_csv(
+        io.StringIO(response.text),
+        skiprows=1,
+        skipinitialspace=True,
+        na_values=["***", "*** "],
+    )
+    frame.columns = [str(c).strip().lstrip("\\ufeff") for c in frame.columns]
     if "Year" not in frame.columns:
-        raise ValueError("NASA GISTEMP response did not contain the expected Year column.")
-    month_columns = [m for m in ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] if m in frame.columns]
-    if len(month_columns) != 12:
-        raise ValueError("NASA GISTEMP monthly schema changed; expected all twelve month columns.")
-    for col in ["Year", *month_columns]:
-        frame[col] = pd.to_numeric(frame[col], errors="coerce")
-    annual = frame[["Year", *month_columns]].dropna(subset=["Year"]).copy()
-    annual["annual_anomaly_c"] = annual[month_columns].where(annual[month_columns] > -90).mean(axis=1)
-    annual = annual.dropna(subset=["annual_anomaly_c"])
-    return annual[["Year", "annual_anomaly_c"]].rename(columns={"Year":"year", "annual_anomaly_c":"value"})
+        preview = " | ".join(str(x) for x in frame.columns[:8])
+        raise ValueError(f"NASA GISTEMP schema not recognized after skipping its title row. Columns received: {preview}")
+    frame["Year"] = pd.to_numeric(frame["Year"], errors="coerce")
+    # J-D is NASA's published annual mean anomaly. Prefer it over averaging
+    # months, which would otherwise admit incomplete current-year records.
+    if "J-D" in frame.columns:
+        frame["J-D"] = pd.to_numeric(frame["J-D"], errors="coerce")
+        annual = frame[["Year", "J-D"]].dropna().rename(columns={"Year": "year", "J-D": "value"})
+    else:
+        month_columns = [m for m in ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] if m in frame.columns]
+        if len(month_columns) != 12:
+            raise ValueError("NASA GISTEMP data has neither the annual J-D column nor all twelve monthly columns.")
+        for col in month_columns:
+            frame[col] = pd.to_numeric(frame[col], errors="coerce")
+        annual = frame[["Year", *month_columns]].dropna(subset=["Year"]).copy()
+        annual["value"] = frame[month_columns].where(frame[month_columns] > -90).mean(axis=1)
+        annual = annual.dropna(subset=["value"]).rename(columns={"Year": "year"})
+    annual["year"] = annual["year"].astype(int)
+    annual["value"] = pd.to_numeric(annual["value"], errors="coerce")
+    annual = annual.dropna(subset=["year", "value"]).sort_values("year")
+    annual = annual[annual["value"].between(-5, 5)]
+    if len(annual) < 8:
+        raise ValueError(f"NASA GISTEMP returned only {len(annual)} usable annual observations.")
+    return annual[["year", "value"]].reset_index(drop=True)
 
 st.subheader("Choose an evidence stream")
 source = st.radio("Dataset", ["NASA GISTEMP · Global annual temperature anomaly", "Upload annual CSV"], horizontal=True)
