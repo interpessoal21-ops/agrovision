@@ -2,7 +2,7 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 from guma_brand import apply_brand, render_brand_hero
-from guma_earth_data import load_ibge_states, load_nasa_firms_global_7d, search_sentinel2_scenes
+from guma_earth_data import load_ibge_states, load_nasa_firms_global_24h, search_sentinel2_scenes
 
 st.set_page_config(page_title="GUMA · Earth Data Observatory",page_icon="🌎",layout="wide")
 apply_brand()
@@ -45,7 +45,7 @@ with tab_sat:
 
 with tab_fire:
     st.subheader("Global active-fire observations · NOAA-20 VIIRS")
-    st.write("NASA FIRMS global rolling 7-day CSV. Choose a global view or filter a WGS84 bounding box. Bounding boxes are not country borders.")
+    st.write("NASA FIRMS global rolling 24-hour CSV. Choose a global view or filter a WGS84 bounding box. Bounding boxes are not country borders.")
     scope=st.radio("Geographic scope",["Global","Custom bounding box"],horizontal=True,key="guma_firms_scope")
     bbox=None
     if scope=="Custom bounding box":
@@ -57,8 +57,8 @@ with tab_fire:
         bbox=(west,south,east,north)
     if st.button("Update global fire observations",type="primary",key="guma_firms_refresh"):
         try:
-            with st.spinner("Downloading NASA FIRMS global 7-day observations…"):
-                fires,source_url=load_nasa_firms_global_7d(scope,bbox)
+            with st.spinner("Downloading NASA FIRMS global 24-hour observations…"):
+                fires,source_url=load_nasa_firms_global_24h(scope,bbox)
             st.session_state["guma_fires"]=fires
             st.session_state["guma_fires_source"]=source_url
             st.session_state["guma_fires_scope"]=scope
@@ -77,7 +77,7 @@ with tab_fire:
             st.dataframe(fires[keep].head(1000),use_container_width=True,hide_index=True)
             st.caption("Map displays at most 10,000 detections and table at most 1,000; CSV contains all returned rows.")
         else: st.info("No detections returned for this scope and period.")
-        st.download_button("Download all returned detections CSV",fires.to_csv(index=False).encode("utf-8"),file_name="guma_nasa_firms_noaa20_global_7d.csv",mime="text/csv")
+        st.download_button("Download all returned detections CSV",fires.to_csv(index=False).encode("utf-8"),file_name="guma_nasa_firms_noaa20_global_24h.csv",mime="text/csv")
         st.caption("Source: "+str(st.session_state.get("guma_fires_source","")))
     st.markdown("[NASA FIRMS active-fire data](https://firms.modaps.eosdis.nasa.gov/)")
 
@@ -99,7 +99,7 @@ with tab_method:
     st.subheader("Provenance, coverage and limitations")
     st.markdown("""
     - **Sentinel-2:** global STAC discovery of L2A scene metadata; availability varies by acquisition and catalogue coverage.
-    - **NASA FIRMS:** global NOAA-20 VIIRS rolling 7-day active-fire detections. A hotspot is not automatically a confirmed fire perimeter, burned area or identified cause.
+    - **NASA FIRMS:** global NOAA-20 VIIRS rolling 24-hour active-fire detections. A hotspot is not automatically a confirmed fire perimeter, burned area or identified cause.
     - **IBGE:** Brazil-only national source, explicitly labelled.
     - **Spatial filters:** bounding boxes are search windows, not administrative boundaries.
     - **No causal inference:** spatial or temporal coincidence alone does not establish causality.
