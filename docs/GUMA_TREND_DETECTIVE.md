@@ -25,3 +25,18 @@ The page uses an original cartographic illustration of flowing contours, layered
 3. Add regional/spatial gridded data only with explicit grid, resolution, coverage, units and missing-data metadata.
 4. Validate calculations against published reference datasets and independent implementations.
 5. Add expert review and a reproducible validation notebook before presenting outputs as operational science.
+
+
+## Web edition: advanced analysis inputs
+
+The web Trend Detective now exposes the same analysis concepts as the Python module.
+
+- **Single annual series:** CSV columns `year,value` (Portuguese aliases `ano,valor` are accepted). At least eight consecutive annual observations are required.
+- **Regional comparison:** long-format CSV columns `region,year,value` (aliases `regiao,ano,valor`). Each region is analyzed separately with the Hamed–Rao modified Mann–Kendall test and Sen slope. The p-values are adjusted across the uploaded regions with Benjamini–Hochberg FDR.
+- **Environmental cross-variable analysis:** long-format CSV columns `region,year,variable,value` (Portuguese aliases accepted). Pearson and Spearman coefficients use only paired observations in the same region and year; at least eight pairs are required.
+
+The web Hamed–Rao implementation detrends using Sen's slope, ranks the detrended series (average ranks for ties), estimates the rank-series autocorrelation, selects lags outside the nominal 95% bounds, and applies the absolute-sum variance correction. It is aligned with the public `pyMannKendall` reference implementation and is checked in CI by a parity test.
+
+The web confidence interval is a deterministic circular moving-block bootstrap of detrended residuals (default 600 replicates; block length approximately n^(1/3); fixed seed). This is a percentile interval for Sen's slope. It is not a universal coverage guarantee: sensitivity to block length, short records, nonstationarity and structural breaks must be assessed.
+
+Regional comparison in this version is **tabular**, not a geospatial model. It does not infer coordinates, boundaries, spatial dependence, or spatial interpolation. Benjamini–Hochberg adjusts the regional p-values but does not correct spatial autocorrelation. Cross-variable output is descriptive correlation only; it does not establish causal effects, adjust confounders, or perform lagged causal analysis. All input datasets must be accompanied by source, units, spatial support, temporal resolution and quality notes before scientific interpretation.
