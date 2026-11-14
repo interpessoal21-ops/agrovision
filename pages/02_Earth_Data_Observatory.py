@@ -228,14 +228,14 @@ with tab_climate:
 with tab_ibge:
     st.subheader("Brazil national territorial reference")
     st.info("IBGE is intentionally scoped to Brazil. It complements—not replaces—global territorial sources.")
-    if st.button("Load Brazilian state codes",key="guma_ibge_states"):
+    if st.button("Load Brazilian state codes",key="guma_ibge_states_load"):
         try:
             with st.spinner("Querying IBGE…"):
-                st.session_state["guma_ibge_states"]=load_ibge_states()
+                st.session_state["guma_ibge_states_frame"]=load_ibge_states()
                 st.session_state["guma_ibge_meta"]={"source":"IBGE Localities API","url":"https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome","geographic_coverage":"Brazil · 27 federative units","retrieved_at_utc":pd.Timestamp.now(tz="UTC").isoformat()}
         except Exception as exc:
             st.session_state["guma_ibge_live_error"]=str(exc)
-            st.session_state["guma_ibge_states"]=earth_data.ibge_states_reference_fallback()
+            st.session_state["guma_ibge_states_frame"]=earth_data.ibge_states_reference_fallback()
             st.session_state["guma_ibge_meta"]={
                 "source":"IBGE official UF code reference · bundled fallback",
                 "source_url":"https://www.ibge.gov.br/explica/codigos-dos-municipios.php",
@@ -246,7 +246,7 @@ with tab_ibge:
                 "live_api_error":str(exc),
                 "retrieved_at_utc":pd.Timestamp.now(tz="UTC").isoformat()}
             st.warning(f"Live IBGE API unavailable. Showing the bundled official UF reference instead; this is not a live API response. Details: {exc}")
-    states=st.session_state.get("guma_ibge_states")
+    states=st.session_state.get("guma_ibge_states_frame")
     if isinstance(states,pd.DataFrame):
         st.metric("Brazilian federative units",len(states))
         st.dataframe(states,use_container_width=True,hide_index=True)
