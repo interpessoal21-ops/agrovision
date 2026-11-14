@@ -58,7 +58,7 @@ def load_nasa_power_global_point(latitude, longitude, start, end):
     response = requests.get("https://power.larc.nasa.gov/api/temporal/daily/point", params={
         "parameters":"T2M,T2M_MAX,T2M_MIN,T2MDEW,WS2M,PRECTOTCORR,ALLSKY_SFC_SW_DWN",
         "community":"AG","longitude":float(longitude),"latitude":float(latitude),
-        "start":start.strftime("%Y%m%d"),"end":end.strftime("%Y%m%d"),"format":"JSON"
+        "start":start.strftime("%Y%m%d"),"end":end.strftime("%Y%m%d"),"format":"JSON","time-standard":"UTC"
     }, timeout=90)
     response.raise_for_status()
     payload = response.json()
@@ -71,8 +71,10 @@ def load_nasa_power_global_point(latitude, longitude, start, end):
         raise ValueError("NASA POWER returned no valid daily observations.")
     info = payload["properties"].get("parameter_information", {})
     meta = {"source":"NASA POWER","url":response.url,"latitude":float(latitude),"longitude":float(longitude),
-            "start":start.isoformat(),"end":end.isoformat(),"temporal_resolution":"daily",
-            "units":{k:v.get("units") for k,v in info.items() if isinstance(v,dict)}}
+            "start":start.isoformat(),"end":end.isoformat(),"temporal_resolution":"daily","time_standard":"UTC",
+            "units":{"T2M":"°C","T2M_MAX":"°C","T2M_MIN":"°C","T2MDEW":"°C","WS2M":"m/s","PRECTOTCORR":"mm/day","ALLSKY_SFC_SW_DWN":"MJ/m²/day"},
+            "parameter_dictionary_url":"https://power.larc.nasa.gov/docs/tutorials/parameters/",
+            "time_standard_documentation":"https://power.larc.nasa.gov/docs/services/api/temporal/daily/"}
     return frame, meta
 
 def search_sentinel2_scenes(latitude, longitude, start, end, max_cloud_cover_pct=60, limit=20):
