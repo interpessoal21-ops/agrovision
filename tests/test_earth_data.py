@@ -31,7 +31,7 @@ class EarthDataGeometryTests(unittest.TestCase):
 
 class GlobalFirmsTests(unittest.TestCase):
     def test_uses_global_noaa20_seven_day_endpoint(self):
-        self.assertIn("Global_7d.csv", NASA_FIRMS_NOAA20_GLOBAL_7D)
+        self.assertIn("Global_24h.csv", NASA_FIRMS_NOAA20_GLOBAL_7D)
 
     @patch("guma_earth_data.requests.get")
     def test_global_file_is_not_brazil_filtered_by_default(self, get):
@@ -46,7 +46,7 @@ class GlobalFirmsTests(unittest.TestCase):
         frame, source = load_nasa_firms_global_7d()
         self.assertEqual(len(frame), 2)
         self.assertEqual(set(frame["query_scope"]), {"Global"})
-        self.assertIn("Global_7d.csv", source)
+        self.assertIn("Global_24h.csv", source)
 
     @patch("guma_earth_data.requests.get")
     def test_bbox_filter_is_explicit_and_validated(self, get):
