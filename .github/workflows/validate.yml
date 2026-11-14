@@ -21,7 +21,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Compile application and validation module
-        run: python -m py_compile scripts/smoke_test_data_sources.py app.py agrovision_validation.py agrovision_agronomy.py agrovision_zarc.py agrovision_modis.py agrovision_quality.py agrovision_rotation.py agrovision_climate.py agrovision_commons.py agrovision_fieldlab.py agrovision_atlas.py
+        run: python -m py_compile scripts/smoke_test_data_sources.py app.py guma_brand.py guma_earth_data.py pages/01_Trend_Detective.py pages/02_Earth_Data_Observatory.py agrovision_validation.py agrovision_agronomy.py agrovision_zarc.py agrovision_modis.py agrovision_quality.py agrovision_rotation.py agrovision_climate.py agrovision_commons.py agrovision_fieldlab.py agrovision_atlas.py
       - name: Run scientific-validation metric tests
         run: python -m unittest discover -s tests -v
       - name: Run Streamlit visitor startup smoke test
