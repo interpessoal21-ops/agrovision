@@ -6,6 +6,7 @@ import {
   Database, FlaskConical, Languages, Leaf, CircleHelp
 } from "lucide-react";
 import "./style.css";
+import "./brand.css";
 
 const copy = {
   en: {
@@ -61,7 +62,7 @@ function App() {
   return <div className="shell">
     <aside className={mobileOpen ? "sidebar open" : "sidebar"}>
       <a className="brand" href="#" onClick={() => setSection("overview")}>
-        <span className="brand-mark"><Waves size={24}/></span>
+        <span className="brand-mark"><img src="/guma-mark.svg" alt="" /></span>
         <span><strong>GUMA</strong><small>EARTH INTELLIGENCE</small></span>
       </a>
       <div className="side-label">WORKSPACE</div>
