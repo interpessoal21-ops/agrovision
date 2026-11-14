@@ -10,8 +10,7 @@ import "./style.css";
 const copy = {
   en: {
     eyebrow: "EARTH SYSTEM INTELLIGENCE",
-    title: "Read the signals.
-Understand the planet.",
+    title: "Read the signals.\nUnderstand the planet.",
     intro: "A global workspace connecting climate indicators, satellite observation and agricultural systems — with sources and scientific limits in view.",
     explore: "Explore the observatory",
     docs: "Project methodology",
@@ -29,8 +28,7 @@ Understand the planet.",
   },
   pt: {
     eyebrow: "INTELIGÊNCIA DO SISTEMA TERRESTRE",
-    title: "Leia os sinais.
-Compreenda o planeta.",
+    title: "Leia os sinais.\nCompreenda o planeta.",
     intro: "Um ambiente global que conecta indicadores climáticos, observação por satélite e sistemas agrícolas — mantendo fontes e limites científicos à vista.",
     explore: "Explorar o observatório",
     docs: "Metodologia do projeto",
