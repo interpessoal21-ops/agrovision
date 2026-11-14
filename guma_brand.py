@@ -64,6 +64,9 @@ div.stButton>button[kind="primary"],.stFormSubmitButton>button{background:var(--
 div.stButton>button:hover{border-color:var(--guma-ocean);color:var(--guma-ocean);transform:translate(-1px,-1px)}
 div.stButton>button[kind="primary"]:hover{color:#FFF5E8;background:#91471E}
 hr{border-color:#C5B69F!important}
+:focus-visible{outline:3px solid var(--guma-gold)!important;outline-offset:3px}
+[data-testid="stSidebar"] a,[data-testid="stMain"] a{font-weight:650}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 @media(max-width:700px){
  .guma-hero{min-height:185px;box-shadow:4px 4px 0 var(--guma-ocean)}
  .guma-hero svg{min-height:185px}
