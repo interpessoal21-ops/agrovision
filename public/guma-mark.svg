@@ -1,1 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title"><title id="title">GUMA — símbolo de território, clima e movimento</title><rect width="256" height="256" rx="44" fill="#123747"/><circle cx="171" cy="74" r="51" fill="#D4A64A"/><path d="M22 154c33-30 58-30 86-7 22 18 44 17 69-1 20-14 39-17 57-10v42H22z" fill="#245F79"/><path d="M22 178c36-19 62-17 91 1 28 17 54 16 82-2 14-9 27-13 39-12v35H22z" fill="#F1E8D5"/><path d="M22 202c35-14 61-13 91 3 30 16 56 14 85-3 14-8 25-11 36-10v42H22z" fill="#2457A6"/><path d="M44 118l28-25 35 2-8 12-30 4-13 13z" fill="#F1E8D5"/><path d="M54 111c18-16 40-18 61-11l-7 9c-17-4-33-1-46 11z" fill="#18272B"/><path d="M88 111l13 22-5 43-12-6 3-34-10-17z" fill="#18272B"/><path d="M104 97l9-53" stroke="#18272B" stroke-width="6" stroke-linecap="round"/><path d="M161 151v-37l13-13 13 13v37zm-6 0h39v7h-39z" fill="#F1E8D5"/><path d="M166 124h6v9h-6zm12 0h6v9h-6zm-6-21v-9l2-6 2 6v9z" fill="#123747"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="56" fill="#091722"/>
+  <circle cx="128" cy="128" r="91" fill="none" stroke="#24C8B5" stroke-width="7" opacity=".78"/>
+  <ellipse cx="128" cy="128" rx="43" ry="91" fill="none" stroke="#B9F36B" stroke-width="7" transform="rotate(38 128 128)"/>
+  <path d="M39 145c29-28 54-28 83 0s55 28 95 0" fill="none" stroke="#F0F5F3" stroke-width="12" stroke-linecap="round"/>
+  <path d="M52 176c25-18 48-18 72 0s49 18 80 0" fill="none" stroke="#24C8B5" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="194" cy="61" r="12" fill="#F0B66A"/>
+</svg>
