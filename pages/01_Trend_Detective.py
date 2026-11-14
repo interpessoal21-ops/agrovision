@@ -65,7 +65,7 @@ def load_gistemp():
         skipinitialspace=True,
         na_values=["***", "*** "],
     )
-    frame.columns = [str(c).strip().lstrip("\\ufeff") for c in frame.columns]
+    frame.columns = [str(c).strip().lstrip("\ufeff") for c in frame.columns]
     if "Year" not in frame.columns:
         preview = " | ".join(str(x) for x in frame.columns[:8])
         raise ValueError(f"NASA GISTEMP schema not recognized after skipping its title row. Columns received: {preview}")
