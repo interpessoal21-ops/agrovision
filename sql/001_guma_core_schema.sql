@@ -47,6 +47,6 @@ INSERT INTO guma.source_registry
 (source_id,source_name,provider,dataset_name,endpoint_url,citation_text,update_cadence,geographic_coverage,source_status)
 VALUES
 ('earth-search-sentinel2-l2a','Earth Search Sentinel-2 L2A','Element 84','Sentinel-2 Collection 1 Level-2A','https://earth-search.aws.element84.com/v1','Element 84 Earth Search STAC API','Per satellite acquisition','global','catalogued'),
-('nasa-firms-noaa20-viirs-global','NASA FIRMS NOAA-20 VIIRS C2 Global','NASA','NOAA-20 VIIRS global active fire detections','https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_7d.csv','NASA FIRMS','Rolling 7-day file','global','catalogued'),
+('nasa-firms-noaa20-viirs-global','NASA FIRMS NOAA-20 VIIRS C2 Global','NASA','NOAA-20 VIIRS global active fire detections','https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv','NASA FIRMS','Rolling 7-day file','global','catalogued'),
 ('ibge-localidades','IBGE API de Localidades','IBGE','Brazilian state and municipality geography','https://servicodados.ibge.gov.br/api/v1/localidades/estados','IBGE API de Localidades','As published by IBGE','Brazil','catalogued')
 ON CONFLICT (source_id) DO NOTHING;
