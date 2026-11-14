@@ -41,7 +41,7 @@ function analyze(rows){
  const n=data.length, tie=[...counts.values()].reduce((a,t)=>a+(t>1?t*(t-1)*(2*t+5):0),0);
  const variance=(n*(n-1)*(2*n+5)-tie)/18;
  const z=variance<=0?0:(S>0?(S-1)/Math.sqrt(variance):S<0?(S+1)/Math.sqrt(variance):0);
- const p=erf(Math.abs(z)/Math.SQRT2);slopes.sort((a,b)=>a-b);
+ const p=1-erf(Math.abs(z)/Math.SQRT2);slopes.sort((a,b)=>a-b);
  const slope=slopes.length%2?slopes[(slopes.length-1)/2]:(slopes[slopes.length/2-1]+slopes[slopes.length/2])/2;
  return {data,n,tau:S/(n*(n-1)/2),slope,p,direction:slope>0?"Crescente":slope<0?"Decrescente":"Sem tendência monotônica",significant:p<0.05};
 }
