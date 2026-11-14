@@ -1,8 +1,109 @@
 from datetime import date, timedelta
+from io import StringIO
 import pandas as pd
+import requests
 import streamlit as st
 from guma_brand import apply_brand, render_brand_hero
-from guma_earth_data import load_ibge_states, load_nasa_firms_global_24h, load_nasa_power_global_point, search_sentinel2_scenes
+import guma_earth_data as earth_data
+
+# The deployed Streamlit image can temporarily lag behind GitHub main while
+# Cloud rebuilds. Resolve capabilities independently so one missing helper
+# never prevents the entire Observatory page from rendering.
+def load_ibge_states():
+    if hasattr(earth_data, "load_ibge_states"):
+        return earth_data.load_ibge_states()
+    response = requests.get("https://servicodados.ibge.gov.br/api/v1/localidades/estados",
+                            params={"orderBy":"nome"}, timeout=30)
+    response.raise_for_status()
+    frame = pd.DataFrame([{"ibge_state_code":x.get("id"),"state":x.get("nome"),"uf":x.get("sigla")}
+                          for x in response.json()])
+    if len(frame) != 27:
+        raise ValueError("IBGE returned an unexpected number of Brazilian federative units.")
+    return frame.sort_values("state").reset_index(drop=True)
+
+def load_nasa_firms_global_24h(region="Global", bbox=None):
+    loader = getattr(earth_data, "load_nasa_firms_global_24h",
+                     getattr(earth_data, "load_nasa_firms_global_7d", None))
+    if loader:
+        return loader(region, bbox)
+    url = "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_24h.csv"
+    response = requests.get(url, timeout=120, headers={"User-Agent":"GUMA-Earth-Intelligence/1.0"})
+    response.raise_for_status()
+    if not response.text.strip() or "<html" in response.text[:500].lower():
+        raise ValueError("NASA FIRMS did not return CSV data.")
+    frame = pd.read_csv(StringIO(response.text))
+    required = {"latitude","longitude","acq_date","acq_time"}
+    if not required.issubset(frame.columns):
+        raise ValueError("NASA FIRMS response is missing required columns.")
+    for col in ("latitude","longitude"):
+        frame[col] = pd.to_numeric(frame[col], errors="coerce")
+    frame = frame.dropna(subset=["latitude","longitude"])
+    if bbox is not None:
+        west,south,east,north = map(float,bbox)
+        if not (-180 <= west < east <= 180 and -90 <= south < north <= 90):
+            raise ValueError("Invalid WGS84 bounding box.")
+        frame = frame[frame.longitude.between(west,east) & frame.latitude.between(south,north)].copy()
+    frame["acq_time"] = frame["acq_time"].astype(str).str.zfill(4)
+    frame["acquired_at_utc"] = pd.to_datetime(frame["acq_date"].astype(str)+" "+frame["acq_time"],
+                                               format="%Y-%m-%d %H%M", errors="coerce", utc=True)
+    return frame.sort_values("acquired_at_utc", ascending=False).reset_index(drop=True), url
+
+def load_nasa_power_global_point(latitude, longitude, start, end):
+    if hasattr(earth_data, "load_nasa_power_global_point"):
+        return earth_data.load_nasa_power_global_point(latitude, longitude, start, end)
+    if start > end or not (-90 <= float(latitude) <= 90 and -180 <= float(longitude) <= 180):
+        raise ValueError("Check the date range and global WGS84 coordinates.")
+    if (end-start).days > 3660:
+        raise ValueError("Select no more than ten years per request.")
+    response = requests.get("https://power.larc.nasa.gov/api/temporal/daily/point", params={
+        "parameters":"T2M,T2M_MAX,T2M_MIN,T2MDEW,WS2M,PRECTOTCORR,ALLSKY_SFC_SW_DWN",
+        "community":"AG","longitude":float(longitude),"latitude":float(latitude),
+        "start":start.strftime("%Y%m%d"),"end":end.strftime("%Y%m%d"),"format":"JSON"
+    }, timeout=90)
+    response.raise_for_status()
+    payload = response.json()
+    raw = payload["properties"]["parameter"]
+    frame = pd.DataFrame(raw).apply(pd.to_numeric, errors="coerce")
+    frame.index = pd.to_datetime(frame.index, format="%Y%m%d", errors="coerce")
+    frame.index.name = "date_utc"
+    frame = frame.mask(frame == -999).dropna(how="all").sort_index()
+    if frame.empty:
+        raise ValueError("NASA POWER returned no valid daily observations.")
+    info = payload["properties"].get("parameter_information", {})
+    meta = {"source":"NASA POWER","url":response.url,"latitude":float(latitude),"longitude":float(longitude),
+            "start":start.isoformat(),"end":end.isoformat(),"temporal_resolution":"daily",
+            "units":{k:v.get("units") for k,v in info.items() if isinstance(v,dict)}}
+    return frame, meta
+
+def search_sentinel2_scenes(latitude, longitude, start, end, max_cloud_cover_pct=60, limit=20):
+    if hasattr(earth_data, "search_sentinel2_scenes"):
+        return earth_data.search_sentinel2_scenes(latitude, longitude, start, end, max_cloud_cover_pct, limit)
+    if start > end or not (-90 <= float(latitude) <= 90 and -180 <= float(longitude) <= 180):
+        raise ValueError("Check date range and global WGS84 coordinates.")
+    h = 0.08
+    ring = [[longitude-h,latitude-h],[longitude+h,latitude-h],[longitude+h,latitude+h],
+            [longitude-h,latitude+h],[longitude-h,latitude-h]]
+    payload = {"collections":["sentinel-2-c1-l2a"],"intersects":{"type":"Polygon","coordinates":[ring]},
+               "datetime":f"{start.isoformat()}T00:00:00Z/{end.isoformat()}T23:59:59Z",
+               "limit":max(1,min(int(limit),100)),
+               "query":{"eo:cloud_cover":{"lte":float(max_cloud_cover_pct)}},
+               "sortby":[{"field":"properties.datetime","direction":"desc"}]}
+    response = requests.post("https://earth-search.aws.element84.com/v1/search",json=payload,
+                             headers={"Accept":"application/geo+json"},timeout=45)
+    response.raise_for_status()
+    rows=[]
+    for feature in response.json().get("features",[]):
+        props=feature.get("properties") or {}
+        rows.append({"scene_id":feature.get("id"),"date_utc":props.get("datetime"),
+                     "platform":props.get("platform"),"tile_cloud_cover_pct":props.get("eo:cloud_cover"),
+                     "mgrs_tile":props.get("grid:code"),"collection":feature.get("collection"),
+                     "item_url":next((x.get("href") for x in feature.get("links",[]) if x.get("rel")=="self"),None)})
+    frame=pd.DataFrame(rows)
+    if not frame.empty:
+        frame["date_utc"]=pd.to_datetime(frame["date_utc"],utc=True,errors="coerce")
+        frame=frame.sort_values("date_utc",ascending=False).reset_index(drop=True)
+    return frame
+
 
 st.set_page_config(page_title="GUMA · Earth Data Observatory",page_icon="🌎",layout="wide")
 apply_brand()
