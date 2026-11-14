@@ -1,10 +1,15 @@
 from datetime import date, timedelta
 from io import StringIO
+import importlib
 import pandas as pd
 import requests
 import streamlit as st
 from guma_brand import apply_brand, render_brand_hero
 import guma_earth_data as earth_data
+
+# Streamlit Cloud can keep a previously imported helper module alive across page reruns.
+# Reload it so fixes to request parameters and provenance are actually used by the page.
+earth_data = importlib.reload(earth_data)
 
 # The deployed Streamlit image can temporarily lag behind GitHub main while
 # Cloud rebuilds. Resolve capabilities independently so one missing helper
