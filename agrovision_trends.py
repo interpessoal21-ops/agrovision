@@ -42,23 +42,36 @@ def mann_kendall(years,values,autocorrelation="hamed-rao"):
     if autocorrelation not in ("hamed-rao","none"):
         raise ValueError("autocorrelation must be 'hamed-rao' or 'none'.")
     if autocorrelation=="hamed-rao" and var_s>0:
-        ranks=np.argsort(np.argsort(vals)).astype(float)+1
-        ranks-=ranks.mean()
-        denom=float(np.dot(ranks,ranks))
-        rho=[]
-        for lag in range(1,n):
-            rho.append(float(np.dot(ranks[:-lag],ranks[lag:])/denom) if denom else 0.0)
-        # Hamed-Rao variance correction; only statistically significant rank ACF lags.
+        # Hamed & Rao (1998): detrend with Sen's slope before ranking,
+        # then estimate the rank-series ACF and retain significant lags.
+        slope=sens_slope([y for y,_ in pairs],vals)
+        detrended=vals-np.arange(1,n+1,dtype=float)*slope
+        ordered=np.sort(detrended)
+        ranks=np.empty(n,dtype=float)
+        i=0
+        while i<n:
+            j=i+1
+            while j<n and ordered[j]==ordered[i]: j+=1
+            ranks[i:j]=(i+1+j)/2.0
+            i=j
+        # Restore the average ranks to their original observations.
+        order=np.argsort(detrended,kind="mergesort")
+        rank_by_observation=np.empty(n,dtype=float)
+        rank_by_observation[order]=ranks
+        centered=rank_by_observation-rank_by_observation.mean()
+        denom=float(np.dot(centered,centered))
+        acf=[]
+        for lag in range(n):
+            acf.append(float(np.dot(centered[:n-lag],centered[lag:])/denom) if denom else 0.0)
         cutoff=1.96/math.sqrt(n)
-        for lag,r in enumerate(rho,1):
+        correction_sum=0.0
+        for lag in range(1,n):
+            r=acf[lag]
             if abs(r)>cutoff:
                 significant_lags.append(lag)
-        if significant_lags:
-            factor=1.0
-            for lag in significant_lags:
-                factor += 2.0*(n-lag)*(n-lag-1)*(n-lag-2)*rho[lag-1]/(n*(n-1)*(n-2)) if n>2 else 0.0
-            correction=max(1.0/n,min(3.0,factor))
-            variance_corrected=var_s*correction
+                correction_sum+=(n-lag)*(n-lag-1)*(n-lag-2)*r
+        correction=1.0+(2.0/(n*(n-1)*(n-2)))*abs(correction_sum) if n>2 else 1.0
+        variance_corrected=var_s*correction
         z=0.0 if s==0 else (s-1 if s>0 else s+1)/math.sqrt(variance_corrected)
         p=math.erfc(abs(z)/math.sqrt(2))
     tau=s/(n*(n-1)/2)
