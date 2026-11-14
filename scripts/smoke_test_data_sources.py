@@ -53,8 +53,12 @@ def check_power():
 def check_modis():
     root = "https://modis.ornl.gov/rst/api/v1/MOD13Q1"
     params = {"latitude": LAT, "longitude": LON}
-    dates_response = get_with_retry(root + "/dates", params=params)
-    if dates_response is None:
+    try:
+        dates_response = get_with_retry(root + "/dates", params=params)
+        if dates_response is None:
+            return False
+    except requests.RequestException as exc:
+        print(f"MODIS temporarily unavailable after retries: {exc}")
         return False
     dates = dates_response.json().get("dates", [])
     available = sorted(item["modis_date"] for item in dates
@@ -62,8 +66,12 @@ def check_modis():
     assert available, "MODIS: no composite dates returned"
     day = available[-1]
     subset_params = {**params,"startDate":day,"endDate":day,"kmAboveBelow":0,"kmLeftRight":0}
-    subset_response = get_with_retry(root + "/subset", params=subset_params)
-    if subset_response is None:
+    try:
+        subset_response = get_with_retry(root + "/subset", params=subset_params)
+        if subset_response is None:
+            return False
+    except requests.RequestException as exc:
+        print(f"MODIS subset temporarily unavailable after retries: {exc}")
         return False
     parsed = parse_modis_subset(subset_response.json())
     assert parsed, "MODIS: subset response contained no parseable band data"
