@@ -95,6 +95,10 @@ class GlobalFirmsTests(unittest.TestCase):
         self.assertEqual(len(frame), 2)
         self.assertTrue(pd.isna(frame.iloc[1]["T2M"]))
         self.assertEqual(metadata["meteorology_grid_resolution"], "0.5 x 0.625 degree")
+        self.assertEqual(metadata["time_standard"], "UTC")
+        self.assertEqual(metadata["units"]["T2M"], "°C")
+        self.assertEqual(metadata["units"]["PRECTOTCORR"], "mm/day")
+        self.assertEqual(get.call_args.kwargs["params"]["time-standard"], "UTC")
 
     def test_nasa_power_rejects_invalid_coordinates_before_request(self):
         from datetime import date
