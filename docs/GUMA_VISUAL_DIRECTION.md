@@ -1,29 +1,42 @@
-# GUMA visual direction — Cartografia de Campo
+# GUMA visual identity — Do campo ao mar
 
-## Core idea
-GUMA's identity is a contemporary field atlas: editorial cartography, relief lines, geological strata, field annotations and bold territorial shapes. It should feel like a scientific atlas made for the present — tactile, warm and precise — rather than a generic dark technology dashboard.
+## Official reference
 
-Carybé remains a cultural reference for the relationship between people, territory and landscape. The GUMA system uses original abstract cartographic forms only; it does not reproduce paintings, signatures or protected compositions, and does not imply endorsement.
-
-## Palette
-- Cartographic ink: `#18272B`
-- Atlas blue: `#2457A6`
-- Vermilion: `#D85B3D`
-- Field green: `#63764B`
-- Survey gold: `#D4A64A`
-- Paper: `#F1E8D5`
-- Secondary paper: `#E6D9BF`
-- Muted graphite: `#68716C`
-
-## Visual rules
-- Use warm paper as the main canvas and deep cartographic ink for high-information panels.
-- Use vermilion for active states and primary actions; atlas blue for links and geographic references; field green for ecological context; survey gold for measured points and highlights.
-- Prefer original contour lines, cut-paper-like landforms, coordinate grids, field marks and layered map shapes.
-- Use square or lightly rounded corners, clear editorial hierarchy and strong but restrained shadows.
-- Charts must prioritize legibility, labeled units, uncertainty and provenance over decoration.
-- Avoid generic stock satellite imagery as a brand mark, generic leaf logos, copied signatures, or reproductions of Carybé paintings.
-- Motion, if added, should be subtle and never required to understand the data.
+The approved identity is the user-supplied GUMA brand board. It is the source of truth for the website's visual language. The implementation uses original vector artwork derived from its motifs and does not claim to reproduce the supplied raster artwork exactly.
 
 ## Brand lockup
-GUMA — Earth Intelligence
-Beyond the horizon.
+
+- **Name:** GUMA
+- **Descriptor:** Território • Clima • Futuro
+- **Tagline:** Do campo ao mar, com o Brasil no horizonte.
+- **Project descriptor:** Earth Intelligence
+- The identity connects inland agriculture, Brazilian territory, climate and the Atlantic coast.
+
+## Palette sampled from the supplied reference
+
+- Paper / parchment: `#E8D9C4`
+- Cartographic ink: `#16272D`
+- Atlantic blue: `#1D5367`
+- Deep ocean: `#0D384D`
+- Sun ochre: `#D79320`
+- Coastal sky: `#6A8F9B`
+- Terracotta: `#AC5C22`
+- Muted graphite: `#586664`
+
+## Visual language
+
+- Warm paper texture and editorial typography.
+- A round emblem with sun, human figure, staff, chapel and flowing land/water bands.
+- Coastal landscape motifs: palms, boats, church silhouettes and layered sea/land forms.
+- Maps and charts use the same palette, but data marks must remain high-contrast and accessible.
+- Avoid generic SaaS dashboards, neon gradients, generic leaf icons and unrelated stock imagery.
+- Use restrained borders and shadows; avoid excessive rounded cards.
+- Keep chart axes, units, source attribution, uncertainty and scientific caveats visually clear.
+
+## Cultural and artistic context
+
+Carybé is a cultural reference for the relationship between people, territory and landscape. GUMA uses original visual forms and does not reproduce Carybé's paintings, signatures or protected compositions, nor imply endorsement.
+
+## Application
+
+The shared implementation lives in `guma_brand.py` and is used by the main Streamlit app and the Trend Detective page. New pages should call `apply_brand()` and `render_brand_hero()` rather than creating a separate visual system.
