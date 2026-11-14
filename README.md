@@ -1,6 +1,6 @@
 # GUMA — Earth Intelligence
 
-**GUMA is an Earth-intelligence platform connecting climate, Earth observation, agricultural systems and collaborative research.** Built for the NASA Space Apps Challenge 2026; scientific validation is in progress.
+**GUMA is an Earth-intelligence platform connecting climate, Earth observation, agricultural systems and collaborative research.** Prepared for the NASA Space Apps Challenge 2026; this is an independent prototype and is not affiliated with or endorsed by NASA. Scientific validation is in progress.
 
 The name is inspired by Guma, the character in Jorge Amado's *Mar Morto*. Its visual identity draws on the sea, navigation and the horizon. This is an independent cultural inspiration, not an official association with the author or publisher. See [the GUMA brand system](docs/GUMA_BRAND.md).
 
@@ -10,10 +10,10 @@ The [GUMA Institutional Kit](docs/GUMA_INSTITUTIONAL_KIT.md) contains the projec
 
 ## Current capabilities
 
-- Bilingual interface: English and Portuguese.
+- Main dashboard language toggle: English and Portuguese. Dedicated analytical pages are currently English-first.
 - Interactive study-area map with OpenStreetMap, Esri satellite imagery and topographic basemap layers (visual context only; no inferred farm boundary).
 - **Global Earth Data Observatory:** global Sentinel-2 L2A scene discovery through the public Earth Search STAC API; NASA POWER daily global agroclimatology; NASA FIRMS NOAA-20 VIIRS global rolling 24-hour active-fire observations with optional WGS84 bounding-box filtering; and a separately labelled Brazil-only IBGE territorial reference. Includes CSV exports and explicit data-quality limitations.
-- NASA POWER daily climate data for 2020–2025.
+- NASA POWER daily climate data for the configured 2020–2025 historical analysis window, plus a separate global point-query tool with user-selected dates.
 - MODIS/Terra MOD13Q1 16-day vegetation observations for a selectable year range (2020–2025), with pixel-reliability filtering.
 - Annual climate summaries and rainfall/temperature anomalies relative to the 2020–2025 baseline.
 - Annual MODIS/NDVI summaries with quality-screened observation counts and pixel-quality breakdown.
