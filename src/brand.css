@@ -41,3 +41,5 @@ footer{border-top:1px solid #c9bea9;color:#68716c}
 
 /* GUMA scientific comparison tables */
 .table-scroll{overflow-x:auto;margin-top:16px}.comparison-table{width:100%;border-collapse:collapse;font-size:13px;min-width:620px}.comparison-table th,.comparison-table td{padding:11px 12px;text-align:left;border-bottom:1px solid #c9bea9}.comparison-table th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#596b68}.comparison-table td{font-variant-numeric:tabular-nums}.analysis-panel .upload-control{margin:10px 0}.analysis-panel .subtle{line-height:1.55}
+
+.spatial-result{display:grid;gap:5px;margin-top:14px;padding:14px 16px;background:#e6d9bf;border-left:3px solid var(--guma-blue);color:var(--guma-ink)}.spatial-result strong{font-size:14px}.spatial-result span{font-size:12px;color:#596b68}
