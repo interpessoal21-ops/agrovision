@@ -225,13 +225,17 @@ with tab_ibge:
     st.info("IBGE is intentionally scoped to Brazil. It complements—not replaces—global territorial sources.")
     if st.button("Load Brazilian state codes",key="guma_ibge_states"):
         try:
-            with st.spinner("Querying IBGE…"): st.session_state["guma_ibge_states"]=load_ibge_states()
+            with st.spinner("Querying IBGE…"):
+                st.session_state["guma_ibge_states"]=load_ibge_states()
+                st.session_state["guma_ibge_meta"]={"source":"IBGE Localities API","url":"https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome","geographic_coverage":"Brazil · 27 federative units","retrieved_at_utc":pd.Timestamp.now(tz="UTC").isoformat()}
         except Exception as exc: st.error(f"IBGE query failed: {exc}")
     states=st.session_state.get("guma_ibge_states")
     if isinstance(states,pd.DataFrame):
         st.metric("Brazilian federative units",len(states))
         st.dataframe(states,use_container_width=True,hide_index=True)
         st.download_button("Download IBGE state codes CSV",states.to_csv(index=False).encode("utf-8"),file_name="guma_ibge_uf.csv",mime="text/csv")
+        with st.expander("Data provenance"):
+            st.json(st.session_state.get("guma_ibge_meta",{}))
     st.markdown("[IBGE Localities API](https://servicodados.ibge.gov.br/api/docs/localidades)")
 
 with tab_method:
