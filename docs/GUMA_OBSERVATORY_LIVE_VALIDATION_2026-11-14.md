@@ -102,3 +102,18 @@
 4. Only then mark the Observatory accepted for the Space Apps presentation.
 
 **Scientific integrity rule:** source unavailability, empty search results, and zero detections must remain distinct states. Do not replace missing data with plausible-looking values.
+
+
+## Corrective audit addendum — 2026-11-14
+
+A subsequent review of the official NASA POWER Daily API documentation identified an important time-standard issue in the first live POWER query:
+
+- NASA POWER Daily API defaults to **Local Solar Time (LST)** unless `time-standard=UTC` is explicitly supplied.
+- The original GUMA request omitted that parameter while naming the dataframe index `date_utc`. Therefore the first 31-row result above was returned on the API default LST basis, not UTC. Its dates must not be represented as UTC.
+- Official documentation: https://power.larc.nasa.gov/docs/services/api/temporal/daily/ (see “Time Standards”).
+- Code correction committed to `guma_earth_data.py`: explicit `time-standard=UTC`, `time_standard: UTC` provenance, and an explicit parameter-unit dictionary.
+- Unit reference: https://power.larc.nasa.gov/docs/tutorials/parameters/
+- The published page has not yet shown the corrected URL/metadata at the time of this addendum; a fresh public-interface query is still required after Streamlit rebuild.
+- IBGE was also changed to make one bounded retry and to expose query provenance on successful retrieval. This is not yet verified in the deployed application.
+
+**Revised acceptance:** Sentinel-2 and FIRMS remain live-query PASS. NASA POWER is **PASS for data retrieval, pending UTC re-run**. IBGE remains **FAIL pending re-test after retry update**. The full Observatory is not yet accepted.
