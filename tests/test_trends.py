@@ -43,6 +43,22 @@ class TrendAnalysisTests(unittest.TestCase):
         self.assertGreaterEqual(result["variance_correction_factor"],1/len(years))
         self.assertTrue(0<=result["p_value"]<=1)
 
+    def test_hamed_rao_matches_pymannkendall_reference(self):
+        import pymannkendall as reference
+        years=np.arange(1980,2020)
+        rng=np.random.default_rng(2026)
+        noise=np.zeros(len(years))
+        for i in range(1,len(noise)):
+            noise[i]=0.65*noise[i-1]+rng.normal()
+        values=0.04*np.arange(len(years))+noise
+        ours=mann_kendall(years,values,autocorrelation="hamed-rao")
+        ref=reference.hamed_rao_modification_test(values)
+        self.assertAlmostEqual(ours["s"],ref.s,places=10)
+        self.assertAlmostEqual(ours["variance_corrected"],ref.var_s,places=8)
+        self.assertAlmostEqual(ours["z"],ref.z,places=8)
+        self.assertAlmostEqual(ours["p_value"],ref.p,places=8)
+        self.assertAlmostEqual(sens_slope(years,values),ref.slope,places=10)
+
     def test_bootstrap_is_reproducible(self):
         years=np.arange(2000,2020); values=.2*(years-2000)+np.sin(years)
         a=sen_slope_block_bootstrap_ci(years,values,replicates=250,seed=7)
