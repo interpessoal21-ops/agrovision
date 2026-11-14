@@ -77,3 +77,54 @@ def load_ibge_states() -> pd.DataFrame:
     if frame.empty or not {"ibge_state_code","state","uf"}.issubset(frame.columns):
         raise ValueError("IBGE returned an unexpected state-localities schema.")
     return frame.sort_values("state").reset_index(drop=True)
+
+
+def load_nasa_power_global_point(latitude: float, longitude: float,
+                                 start: date, end: date) -> tuple[pd.DataFrame, dict]:
+    """Daily NASA POWER agroclimatology at any global WGS84 point."""
+    if start > end:
+        raise ValueError("The start date must be on or before the end date.")
+    if not (-90 <= float(latitude) <= 90 and -180 <= float(longitude) <= 180):
+        raise ValueError("Coordinates must be valid WGS84 latitude/longitude.")
+    if (end - start).days > 3660:
+        raise ValueError("Select a maximum time window of ten years per request.")
+    url = "https://power.larc.nasa.gov/api/temporal/daily/point"
+    params = {
+        "parameters": "T2M,T2M_MAX,T2M_MIN,T2MDEW,WS2M,PRECTOTCORR,ALLSKY_SFC_SW_DWN",
+        "community": "AG",
+        "longitude": float(longitude),
+        "latitude": float(latitude),
+        "start": start.strftime("%Y%m%d"),
+        "end": end.strftime("%Y%m%d"),
+        "format": "JSON",
+    }
+    response = requests.get(url, params=params, timeout=90)
+    response.raise_for_status()
+    payload = response.json()
+    try:
+        props = payload["properties"]
+        raw = props["parameter"]
+        units = props.get("parameter_information", {})
+    except (KeyError, TypeError) as exc:
+        raise ValueError("NASA POWER returned an unexpected response schema.") from exc
+    frame = pd.DataFrame(raw).apply(pd.to_numeric, errors="coerce")
+    frame.index = pd.to_datetime(frame.index, format="%Y%m%d", errors="coerce")
+    frame.index.name = "date_utc"
+    frame = frame.mask(frame == -999).dropna(how="all").sort_index()
+    if frame.empty:
+        raise ValueError("NASA POWER returned no valid observations for this point and period.")
+    metadata = {
+        "source": "NASA POWER",
+        "url": response.url,
+        "latitude": float(latitude),
+        "longitude": float(longitude),
+        "community": "AG",
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "temporal_resolution": "daily",
+        "meteorology_grid_resolution": "0.5 x 0.625 degree",
+        "solar_grid_resolution": "1 x 1 degree",
+        "units": {k: v.get("units") for k, v in units.items() if isinstance(v, dict)},
+        "retrieved_at_utc": pd.Timestamp.now(tz="UTC").isoformat(),
+    }
+    return frame, metadata
