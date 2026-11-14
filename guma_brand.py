@@ -65,6 +65,16 @@ div.stButton>button:hover{border-color:var(--guma-ocean);color:var(--guma-ocean)
 div.stButton>button[kind="primary"]:hover{color:#FFF5E8;background:#91471E}
 hr{border-color:#C5B69F!important}
 
+/* Catch dark inline-styled panels used by individual analytical pages. */
+[style*="#16272D"] *,[style*="#18272B"] *,[style*="#0D384D"] *,
+[style*="#1D5367"] *,[style*="#2457A6"] *,
+.guma-dark-panel *,.dark-panel *,.panel-dark *,.dark-card *,[data-guma-surface="dark"] *{
+ color:#FFF9EF!important;
+}
+[style*="#16272D"],[style*="#18272B"],[style*="#0D384D"],
+[style*="#1D5367"],[style*="#2457A6"]{
+ color:#FFF9EF!important;
+}
 /* High-contrast typography on dark GUMA surfaces. Keep light-paper surfaces unchanged. */
 .guma-dark-panel,.dark-panel,[data-guma-surface="dark"]{
  background:#16272D!important;color:#FFF9EF!important;
