@@ -145,3 +145,12 @@ Deploy this repository on Streamlit Community Cloud using `app.py` as the main f
 ## Agronomic Systems Library
 
 The GUMA app includes an educational library explaining major agricultural production and management systems, including conventional tillage, no-till, crop rotation, succession, intercropping, ILP, ILF, IPF, ILPF, agroforestry, agroecological and organic production, irrigation, protected cultivation and hydroponics. See [the technical guide](docs/AGRONOMIC_SYSTEMS.md). The library distinguishes system types and describes operating logic, potential strengths, limitations and monitoring points; it is not an agronomic prescription.
+
+
+## NASA Space Apps Challenge 2026 — primary direction
+
+GUMA's primary challenge direction is **Challenge 02: Be An Earth System Trend Detective!** The dedicated [GUMA Trend Detective page](pages/01_Trend_Detective.py) introduces a transparent statistical workflow using NASA GISS GISTEMP v4 annual global temperature anomalies and user-supplied annual CSV series. The analysis uses Mann–Kendall and Sen's slope; see [the methodology and limitations](docs/GUMA_TREND_DETECTIVE.md).
+
+Challenge 14, **The Earth Information Jukebox**, remains a possible complementary communication direction, not the primary product scope. GUMA is an independent project and does not claim NASA affiliation or endorsement.
+
+The new page's original cartographic visual language is documented in [the GUMA visual direction](docs/GUMA_VISUAL_DIRECTION.md). It takes broad inspiration from Carybé's organic relationship between people and territory without copying any protected artwork.
