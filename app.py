@@ -392,7 +392,7 @@ with st.sidebar:
     st.caption(tx("Soil and management inputs are supplied by the user, not measured by NASA.", "Os dados de solo e manejo são informados pelo usuário, não medidos pela NASA."))
     st.info(tx("First visit? Open the Start here tab for a short walkthrough.", "Primeira visita? Abra a aba Comece aqui para ver um guia rápido."))
 
-tab_home, tab_atlas, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab, tab_partners, tab_systems = st.tabs([
+tab_home, tab_atlas, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rotation, tab_climate, tab_commons, tab_fieldlab, tab_partners, tab_systems, tab_trend = st.tabs([
     tx("🌐 00 · Earth Observatory", "🌐 00 · Observatório da Terra"),
     tx("🗺️ 01 · GUMA Atlas", "🗺️ 01 · Atlas GUMA"),
     tx("👋 02 · Start here", "👋 02 · Comece aqui"),
@@ -408,8 +408,17 @@ tab_home, tab_atlas, tab_help, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_rot
     tx("🧬 12 · Commons", "🧬 12 · Comunidade"),
     tx("🔬 13 · Field Lab", "🔬 13 · Laboratório de Campo"),
     tx("🤝 14 · Partnerships", "🤝 14 · Alianças"),
-    tx("🌾 15 · Agronomic Systems", "🌾 15 · Sistemas agronômicos")
+    tx("🌾 15 · Agronomic Systems", "🌾 15 · Sistemas agronômicos"),
+    tx("📈 16 · Trend Detective", "📈 16 · Detetive de Tendências")
 ], on_change="rerun", key="guma_main_tabs")
+
+if tab_trend.open:
+    with tab_trend:
+        st.markdown("### GUMA Trend Detective")
+        st.caption(tx("NASA Space Apps Challenge 2026 · Challenge 02", "NASA Space Apps Challenge 2026 · Desafio 02"))
+        st.write(tx("Open the dedicated trend-analysis workspace to test long-term environmental signals with the Mann–Kendall test and Sen’s slope.", "Abra o ambiente dedicado de análise de tendências para testar sinais ambientais de longo prazo com o teste de Mann–Kendall e a inclinação de Sen."))
+        if st.button(tx("Open Trend Detective", "Abrir Detetive de Tendências"), type="primary", key="open_guma_trend_page"):
+            st.switch_page("pages/01_Trend_Detective.py")
 
 
 if tab6.open:
