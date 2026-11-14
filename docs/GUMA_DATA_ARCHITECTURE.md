@@ -15,6 +15,8 @@ GUMA is a global Earth intelligence platform. Brazil is an important regional us
 
 ## Integrations
 - Element 84 Earth Search: global Sentinel-2 L2A STAC discovery.
+- NASA POWER: global daily point agroclimatology with meteorological and solar parameters; native grid resolution is disclosed.
+- Copernicus ERA5 / ERA5-Land: global reanalysis sources catalogued in MotherDuck for a later authenticated/batch ingestion workflow; not yet queried by the public app.
 - NASA FIRMS: global NOAA-20 VIIRS rolling 24-hour CSV. Static file endpoint is public; FIRMS area API is separate and requires a free MAP_KEY.
 - IBGE: Brazil-only localities source, explicitly scoped.
 - Firecrawl is available to the assistant, not automatically to the public Streamlit runtime; app calls public endpoints directly without connector credentials.
@@ -23,8 +25,8 @@ GUMA is a global Earth intelligence platform. Brazil is an important regional us
 The connected account database contains schema guma with source registry, global geographic units, indicator observations, satellite scenes, fire detections, scientific evidence and ingestion logs. Seeded sources distinguish global Sentinel-2 and FIRMS from Brazil-only IBGE.
 
 ## App integrations
-- guma_earth_data.py: global Sentinel-2 scene search, global FIRMS 7-day observations with optional WGS84 bounding-box filtering, Brazil-only IBGE state lookup.
-- pages/02_Earth_Data_Observatory.py: global satellite scene search, global fire map/table/download, custom spatial window and explicitly national IBGE tab.
+- guma_earth_data.py: global Sentinel-2 scene search, global FIRMS 24-hour observations with optional WGS84 bounding-box filtering, global NASA POWER daily climate point retrieval, Brazil-only IBGE state lookup.
+- pages/02_Earth_Data_Observatory.py: global satellite scene search, global fire map/table/download, NASA POWER climate explorer, custom spatial window and explicitly national IBGE tab.
 
 ## Scientific limitations
 - Sentinel-2 currently returns scene metadata, not pixel-derived vegetation indices.
