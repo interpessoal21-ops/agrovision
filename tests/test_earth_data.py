@@ -4,7 +4,9 @@ from unittest.mock import Mock, patch
 import pandas as pd
 
 from guma_earth_data import (
+    NASA_FIRMS_NOAA20_GLOBAL_24H,
     NASA_FIRMS_NOAA20_GLOBAL_7D,
+    load_nasa_firms_global_24h,
     _bbox_geometry,
     load_nasa_firms_global_7d,
     load_nasa_power_global_point,
@@ -29,10 +31,16 @@ class EarthDataGeometryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _bbox_geometry(-15.785, 190)
 
+    def test_bbox_clips_at_dateline_and_poles(self):
+        ring = _bbox_geometry(89.99, 179.99)["coordinates"][0]
+        self.assertTrue(all(-180 <= p[0] <= 180 and -90 <= p[1] <= 90 for p in ring))
+        self.assertEqual(ring[0], ring[-1])
+
 
 class GlobalFirmsTests(unittest.TestCase):
-    def test_uses_global_noaa20_seven_day_endpoint(self):
-        self.assertIn("Global_24h.csv", NASA_FIRMS_NOAA20_GLOBAL_7D)
+    def test_uses_global_noaa20_24_hour_endpoint(self):
+        self.assertIn("Global_24h.csv", NASA_FIRMS_NOAA20_GLOBAL_24H)
+        self.assertEqual(NASA_FIRMS_NOAA20_GLOBAL_7D, NASA_FIRMS_NOAA20_GLOBAL_24H)
 
     @patch("guma_earth_data.requests.get")
     def test_global_file_is_not_brazil_filtered_by_default(self, get):
@@ -44,7 +52,7 @@ class GlobalFirmsTests(unittest.TestCase):
         )
         response.raise_for_status.return_value = None
         get.return_value = response
-        frame, source = load_nasa_firms_global_7d()
+        frame, source = load_nasa_firms_global_24h()
         self.assertEqual(len(frame), 2)
         self.assertEqual(set(frame["query_scope"]), {"Global"})
         self.assertIn("Global_24h.csv", source)
@@ -59,7 +67,7 @@ class GlobalFirmsTests(unittest.TestCase):
         )
         response.raise_for_status.return_value = None
         get.return_value = response
-        frame, _ = load_nasa_firms_global_7d("Custom bbox", (-50,-20,-40,-10))
+        frame, _ = load_nasa_firms_global_24h("Custom bbox", (-50,-20,-40,-10))
         self.assertEqual(len(frame), 1)
         self.assertAlmostEqual(frame.iloc[0]["latitude"], -15.0)
 
