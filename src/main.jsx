@@ -72,14 +72,14 @@ function trendStats(input,{replicates=600,seed=42}={}){
  const variance=n*(n-1)*(2*n+5)/18-tie/18;
  const rawZ=variance<=0||S===0?0:(S>0?S-1:S+1)/Math.sqrt(variance);
  let factor=1,adjustedLags=[];
- const ranks=rankValues(values),mean=(n+1)/2,centered=ranks.map(v=>v-mean),denom=centered.reduce((a,v)=>a+v*v,0),rho=[];
+ const detrended=values.map((v,i)=>v-(i+1)*slope),ranks=rankValues(detrended),mean=(n+1)/2,centered=ranks.map(v=>v-mean),denom=centered.reduce((a,v)=>a+v*v,0),rho=[];
  for(let lag=1;lag<n;lag++){let sum=0;for(let i=0;i<n-lag;i++)sum+=centered[i]*centered[i+lag];rho.push(denom?sum/denom:0);}
- const cutoff=1.96/Math.sqrt(n);rho.forEach((r,i)=>{if(Math.abs(r)>cutoff)adjustedLags.push(i+1);});
- if(adjustedLags.length){factor=1;for(const lag of adjustedLags)factor+=2*(n-lag)*(n-lag-1)*(n-lag-2)*rho[lag-1]/(n*(n-1)*(n-2));factor=Math.max(1/n,Math.min(3,factor));}
+ const cutoff=1.96/Math.sqrt(n);let correctionSum=0;rho.forEach((r,i)=>{if(Math.abs(r)>cutoff){const lag=i+1;adjustedLags.push(lag);correctionSum+=(n-lag)*(n-lag-1)*(n-lag-2)*r;}});
+ if(adjustedLags.length)factor=1+2*Math.abs(correctionSum)/(n*(n-1)*(n-2));
  const correctedVariance=variance*factor,z=correctedVariance<=0?0:(S===0?0:(S>0?S-1:S+1)/Math.sqrt(correctedVariance)),p=normalP(z),slope=median(slopes);
  const x=data.map(d=>d.year-data[0].year),intercept=median(values.map((v,i)=>v-slope*x[i])),fitted=x.map(v=>intercept+slope*v),residual=values.map((v,i)=>v-fitted[i]);
  const blockLength=Math.max(2,Math.round(n**(1/3))),rng=(()=>{let a=seed>>>0;return()=>{a^=a<<13;a^=a>>>17;a^=a<<5;return(a>>>0)/4294967296;};})(),boot=[];
- for(let b=0;b<replicates;b++){const sampled=[];while(sampled.length<n){const st=Math.floor(rng()*n);for(let k=0;k<blockLength&&sampled.length<n;k++)sampled.push(residual[(st+k)%n]);}boot.push(median(Array.from({length:n*(n-1)/2},(_,idx)=>0).slice(0,0).concat((()=>{const a=[];for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)a.push((fitted[j]+sampled[j]-fitted[i]-sampled[i])/(data[j].year-data[i].year));return a;})())));}
+ for(let b=0;b<replicates;b++){const sampled=[];while(sampled.length<n){const st=Math.floor(rng()*n);for(let k=0;k<blockLength&&sampled.length<n;k++)sampled.push(residual[(st+k)%n]);}const slopesBoot=[];for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)slopesBoot.push((fitted[j]+sampled[j]-fitted[i]-sampled[i])/(data[j].year-data[i].year));boot.push(median(slopesBoot));}
  boot.sort((a,b)=>a-b);const lo=boot[Math.floor(.025*(replicates-1))],hi=boot[Math.ceil(.975*(replicates-1))];
  return {data,n,S,tau:S/(n*(n-1)/2),slope,p,z,variance,correctedVariance,factor,adjustedLags,ci:{lower:lo,upper:hi,confidence:0.95,replicates,blockLength,seed},direction:slope>0?"Crescente":slope<0?"Decrescente":"Sem tendência monotônica",significant:p<.05};
 }
