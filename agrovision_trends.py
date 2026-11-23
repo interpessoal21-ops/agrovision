@@ -16,11 +16,14 @@ def _clean_pairs(years, values):
     if len(years)!=len(values): raise ValueError("Years and values must have equal lengths.")
     pairs=[]
     for year,value in zip(years,values):
-        try: y,v=float(year),float(value)
-        except (TypeError,ValueError): continue
-        if math.isfinite(y) and math.isfinite(v):
-            if not y.is_integer(): raise ValueError("Annual years must be integer values.")
-            pairs.append((y,v))
+        try: y=float(year)
+        except (TypeError,ValueError): raise ValueError("Annual years must be numeric.")
+        if not math.isfinite(y): raise ValueError("Annual years must be finite.")
+        if not y.is_integer(): raise ValueError("Annual years must be integer values.")
+        try: v=float(value)
+        except (TypeError,ValueError): raise ValueError(f"Missing or invalid value for year {y:.0f}.")
+        if not math.isfinite(v): raise ValueError(f"Missing or invalid value for year {y:.0f}.")
+        pairs.append((y,v))
     pairs.sort(key=lambda item:item[0])
     if len({y for y,_ in pairs})!=len(pairs): raise ValueError("Each year must occur only once.")
     if len(pairs)<8: raise ValueError("At least eight valid annual observations are required.")
