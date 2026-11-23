@@ -25,3 +25,13 @@ test('rejects duplicate regional-variable-year rows rather than silently overwri
  const records=[];for(let y=2000;y<2008;y++){records.push({region:'R',year:y,variable:'x',value:y},{region:'R',year:y,variable:'y',value:2*y});}
  records.push({region:'R',year:2000,variable:'x',value:999});assert.throws(()=>correlateVariables(records),/Duplicate observation/);
 });
+
+test('blank values are omitted from paired correlations, not treated as zero',()=>{
+ const records=[];for(let y=2000;y<2009;y++)records.push({region:'R',year:y,variable:'x',value:y-1999});
+ for(let y=2000;y<2009;y++)records.push({region:'R',year:y,variable:'y',value:y===2001?'':3+2*(y-1999)});
+ const [r]=correlateVariables(records);assert.equal(r.n,8);assert.equal(r.pearson,1);assert.equal(r.spearman,1);
+});
+test('regional trend CSV rejects blank numeric values instead of zero filling',()=>{
+ const records=[];for(let y=2000;y<2008;y++)for(let r=0;r<2;r++)records.push({region:`R${r}`,year:y,value:r===0&&y===2003?'':y,latitude:r,longitude:r+1});
+ assert.throws(()=>analyzeRegions(records,{replicates:200}),/Valor ausente ou inválido/);
+});

@@ -45,3 +45,8 @@ Regional comparison is tabular. If at least four regions include latitude/longit
 ## Web regression tests
 
 The Vite build workflow runs Node's built-in test runner against the web statistical modules: annual trend analysis, tied ranks, input-gap validation, bootstrap reproducibility, Benjamini–Hochberg, regional Moran's I against a complete-graph analytical result, and paired-year Pearson/Spearman alignment. These are implementation regression checks, not full empirical coverage or scientific validation.
+
+
+## Missing-value policy
+
+Annual-series web uploads reject missing or nonnumeric year/value cells; they are not converted to numeric zero. Regional trend inputs likewise reject missing annual values, while cross-variable correlations omit incomplete observations and use only exact common region-year pairs. Duplicate region-year-variable rows are rejected.

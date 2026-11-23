@@ -16,3 +16,8 @@ test('bootstrap interval is reproducible for fixed seed',()=>{
  const a=trendStats(noisy,{replicates:250,seed:19}),b=trendStats(noisy,{replicates:250,seed:19});
  assert.deepEqual(a.ci,b.ci);
 });
+
+test('blank annual values are rejected instead of converted to zero',()=>{
+ const incomplete=rows([1,2,3,4,5,6,7,8]);incomplete[4].value='';
+ assert.throws(()=>trendStats(incomplete),/Valor anual ausente ou inválido/);
+});

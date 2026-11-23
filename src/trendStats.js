@@ -1,7 +1,14 @@
 export function erf(x){const sign=x<0?-1:1;x=Math.abs(x);const t=1/(1+0.3275911*x);const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return sign*y;}
 function normalP(z){return Math.max(0,Math.min(1,1-erf(Math.abs(z)/Math.SQRT2)));}
 function validateAnnual(rows){
- const data=rows.map(r=>({year:Number(r.year??r.ano),value:Number(r.value??r.valor??r.anomaly??r.anomalia)})).filter(r=>Number.isInteger(r.year)&&Number.isFinite(r.value)).sort((a,b)=>a.year-b.year);
+ const data=rows.map((r,i)=>{
+  const rawYear=r.year??r.ano,rawValue=r.value??r.valor??r.anomaly??r.anomalia,
+   year=rawYear===undefined||rawYear===null||String(rawYear).trim()===""?NaN:Number(rawYear),
+   value=rawValue===undefined||rawValue===null||String(rawValue).trim()===""?NaN:Number(rawValue);
+  if(!Number.isInteger(year))throw new Error(`Ano inválido ou ausente na linha ${i+1}.`);
+  if(!Number.isFinite(value))throw new Error(`Valor anual ausente ou inválido em ${year}.`);
+  return {year,value};
+ }).sort((a,b)=>a.year-b.year);
  if(data.length<8)throw new Error("São necessárias pelo menos 8 observações anuais válidas.");
  if(new Set(data.map(d=>d.year)).size!==data.length)throw new Error("Há anos duplicados. Cada ano deve aparecer uma única vez.");
  if(data.some((d,i)=>i&&d.year!==data[i-1].year+1))throw new Error("A série precisa ter anos consecutivos, sem lacunas, para a correção de autocorrelação.");

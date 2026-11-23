@@ -12,9 +12,11 @@ function haversineKm(a,b){
 export function analyzeRegions(records,{replicates=600,seed=42}={}){
  const groups=new Map(),coords=new Map();
  for(const r of records){
-  const region=String(r.region??r.regiao??'').trim(),year=Number(r.year??r.ano),value=Number(r.value??r.valor),rawLat=r.latitude??r.lat,rawLon=r.longitude??r.lon??r.lng,
+  const region=String(r.region??r.regiao??'').trim(),rawYear=r.year??r.ano,rawValue=r.value??r.valor,year=rawYear===undefined||rawYear===null||String(rawYear).trim()===''?NaN:Number(rawYear),value=rawValue===undefined||rawValue===null||String(rawValue).trim()===''?NaN:Number(rawValue),rawLat=r.latitude??r.lat,rawLon=r.longitude??r.lon??r.lng,
    hasLat=rawLat!==undefined&&rawLat!==null&&String(rawLat).trim()!=='',hasLon=rawLon!==undefined&&rawLon!==null&&String(rawLon).trim()!=='',lat=hasLat?Number(rawLat):NaN,lon=hasLon?Number(rawLon):NaN;
-  if(region&&Number.isInteger(year)&&Number.isFinite(value)){
+  if(region){
+   if(!Number.isInteger(year))throw new Error(`Ano inválido ou ausente na região ${region}.`);
+   if(!Number.isFinite(value))throw new Error(`Valor ausente ou inválido na região ${region}, ano ${year}.`);
    if(!groups.has(region))groups.set(region,[]);groups.get(region).push({year,value});
    if(hasLat!==hasLon)throw new Error('Informe latitude e longitude juntas para cada região.');
    if(hasLat&&hasLon){
@@ -47,7 +49,7 @@ function pearson(a,b){
 export function correlateVariables(records){
  const byRegion=new Map();
  for(const r of records){
-  const region=String(r.region??r.regiao??'').trim(),year=Number(r.year??r.ano),variable=String(r.variable??r.variavel??'').trim(),value=Number(r.value??r.valor);
+  const region=String(r.region??r.regiao??'').trim(),rawYear=r.year??r.ano,rawValue=r.value??r.valor,year=rawYear===undefined||rawYear===null||String(rawYear).trim()===''?NaN:Number(rawYear),variable=String(r.variable??r.variavel??'').trim(),value=rawValue===undefined||rawValue===null||String(rawValue).trim()===''?NaN:Number(rawValue);
   if(region&&Number.isInteger(year)&&variable&&Number.isFinite(value)){
    if(!byRegion.has(region))byRegion.set(region,new Map());const vars=byRegion.get(region);
    if(!vars.has(variable))vars.set(variable,new Map());const series=vars.get(variable);
