@@ -73,10 +73,10 @@ class TrendAnalysisTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"integer values"):
             sens_slope([2000.5+i for i in range(8)],range(8))
 
-
-if __name__=="__main__": unittest.main()
-
     def test_blank_internal_value_is_not_treated_as_zero(self):
         years=range(2000,2009); values=[1,2,3,4,"",6,7,8,9]
         with self.assertRaisesRegex(ValueError,"consecutive annual"):
             sens_slope(years,values)
+
+
+if __name__=="__main__": unittest.main()
