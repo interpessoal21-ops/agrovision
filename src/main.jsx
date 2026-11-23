@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from "react";
+import { erf, rankValues, trendStats } from "./trendStats.js";
+import { analyzeRegions, correlateVariables } from "./regionalStats.js";
 import { createRoot } from "react-dom/client";
 import { Activity, ArrowUpRight, Globe2, Layers3, Menu, Satellite, Sprout, Wind, Flame, ExternalLink, Compass, Database, FlaskConical, Languages, CircleHelp, Upload, RefreshCw } from "lucide-react";
 import "./style.css";
@@ -30,7 +32,6 @@ const copy = {
 };
 const nav=[["overview",Globe2],["climate",Activity],["observatory",Satellite],["agriculture",Sprout],["methods",FlaskConical]];
 
-function erf(x){const sign=x<0?-1:1;x=Math.abs(x);const t=1/(1+0.3275911*x);const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return sign*y;}
 function analyze(rows){
  const data=rows.filter(d=>Number.isFinite(d.year)&&Number.isFinite(d.value)).sort((a,b)=>a.year-b.year);
  if(data.length<8)throw new Error("São necessárias pelo menos oito observações anuais válidas.");
@@ -50,78 +51,6 @@ function parseCSV(text){
  const split=line=>{const out=[];let value="",quoted=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'&&line[i+1]==='"'&&quoted){value+='"';i++;}else if(c==='"')quoted=!quoted;else if(c===","&&!quoted){out.push(value.trim());value="";}else value+=c;}out.push(value.trim());return out;};
  const headers=split(lines.shift()).map(x=>x.replace(/^"|"$/g,"").trim().toLowerCase());
  return lines.filter(x=>x.trim()).map(line=>{const cells=split(line);return Object.fromEntries(headers.map((h,i)=>[h,(cells[i]||"").replace(/^"|"$/g,"").trim()]));});
-}
-function normalP(z){return Math.max(0,Math.min(1,1-erf(Math.abs(z)/Math.SQRT2)));}
-function validateAnnual(rows){
- const data=rows.map(r=>({year:Number(r.year??r.ano),value:Number(r.value??r.valor??r.anomaly??r.anomalia)})).filter(r=>Number.isInteger(r.year)&&Number.isFinite(r.value)).sort((a,b)=>a.year-b.year);
- if(data.length<8)throw new Error("São necessárias pelo menos 8 observações anuais válidas.");
- if(new Set(data.map(d=>d.year)).size!==data.length)throw new Error("Há anos duplicados na série.");
- if(data.some((d,i)=>i&&d.year!==data[i-1].year+1))throw new Error("A série precisa ter anos consecutivos, sem lacunas, para a correção de autocorrelação.");
- return data;
-}
-function rankValues(values){
- const order=values.map((v,i)=>({v,i})).sort((a,b)=>a.v-b.v),ranks=Array(values.length);let i=0;
- while(i<order.length){let j=i+1;while(j<order.length&&order[j].v===order[i].v)j++;const rank=(i+1+j)/2;for(let k=i;k<j;k++)ranks[order[k].i]=rank;i=j;}return ranks;
-}
-function median(values){const a=[...values].sort((x,y)=>x-y),m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
-function trendStats(input,{replicates=600,seed=42}={}){
- const data=validateAnnual(input),values=data.map(d=>d.value),n=values.length;let S=0;const slopes=[];
- for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){S+=Math.sign(values[j]-values[i]);slopes.push((values[j]-values[i])/(data[j].year-data[i].year));}
- const counts=new Map();values.forEach(v=>counts.set(v,(counts.get(v)||0)+1));
- const tie=[...counts.values()].reduce((a,t)=>a+(t>1?t*(t-1)*(2*t+5):0),0);
- const variance=n*(n-1)*(2*n+5)/18-tie/18;
- const rawZ=variance<=0||S===0?0:(S>0?S-1:S+1)/Math.sqrt(variance);
- let factor=1,adjustedLags=[];
- const detrended=values.map((v,i)=>v-(i+1)*slope),ranks=rankValues(detrended),mean=(n+1)/2,centered=ranks.map(v=>v-mean),denom=centered.reduce((a,v)=>a+v*v,0),rho=[];
- for(let lag=1;lag<n;lag++){let sum=0;for(let i=0;i<n-lag;i++)sum+=centered[i]*centered[i+lag];rho.push(denom?sum/denom:0);}
- const cutoff=1.96/Math.sqrt(n);let correctionSum=0;rho.forEach((r,i)=>{if(Math.abs(r)>cutoff){const lag=i+1;adjustedLags.push(lag);correctionSum+=(n-lag)*(n-lag-1)*(n-lag-2)*r;}});
- if(adjustedLags.length)factor=1+2*Math.abs(correctionSum)/(n*(n-1)*(n-2));
- const correctedVariance=variance*factor,z=correctedVariance<=0?0:(S===0?0:(S>0?S-1:S+1)/Math.sqrt(correctedVariance)),p=normalP(z),slope=median(slopes);
- const x=data.map(d=>d.year-data[0].year),intercept=median(values.map((v,i)=>v-slope*x[i])),fitted=x.map(v=>intercept+slope*v),residual=values.map((v,i)=>v-fitted[i]);
- const blockLength=Math.max(2,Math.round(n**(1/3))),rng=(()=>{let a=seed>>>0;return()=>{a^=a<<13;a^=a>>>17;a^=a<<5;return(a>>>0)/4294967296;};})(),boot=[];
- for(let b=0;b<replicates;b++){const sampled=[];while(sampled.length<n){const st=Math.floor(rng()*n);for(let k=0;k<blockLength&&sampled.length<n;k++)sampled.push(residual[(st+k)%n]);}const slopesBoot=[];for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)slopesBoot.push((fitted[j]+sampled[j]-fitted[i]-sampled[i])/(data[j].year-data[i].year));boot.push(median(slopesBoot));}
- boot.sort((a,b)=>a-b);const lo=boot[Math.floor(.025*(replicates-1))],hi=boot[Math.ceil(.975*(replicates-1))];
- return {data,n,S,tau:S/(n*(n-1)/2),slope,p,z,variance,correctedVariance,factor,adjustedLags,ci:{lower:lo,upper:hi,confidence:0.95,replicates,blockLength,seed},direction:slope>0?"Crescente":slope<0?"Decrescente":"Sem tendência monotônica",significant:p<.05};
-}
-function benjaminiHochberg(items){
- const sorted=items.map((x,i)=>({...x,_i:i})).sort((a,b)=>a.p-b.p),m=sorted.length;let next=1;
- for(let i=m-1;i>=0;i--){next=Math.min(next,sorted[i].p*m/(i+1),1);sorted[i].q=next;}
- return sorted.sort((a,b)=>a._i-b._i);
-}
-function analyzeRegions(records){
- const groups=new Map(),coords=new Map();for(const r of records){const region=String(r.region??r.regiao??"").trim(),year=Number(r.year??r.ano),value=Number(r.value??r.valor),rawLat=r.latitude??r.lat,rawLon=r.longitude??r.lon??r.lng,hasLat=rawLat!==undefined&&rawLat!==null&&String(rawLat).trim()!=="",hasLon=rawLon!==undefined&&rawLon!==null&&String(rawLon).trim()!=="",lat=hasLat?Number(rawLat):NaN,lon=hasLon?Number(rawLon):NaN;if(region&&Number.isInteger(year)&&Number.isFinite(value)){if(!groups.has(region))groups.set(region,[]);groups.get(region).push({year,value});if(hasLat!==hasLon)throw new Error("Informe latitude e longitude juntas para cada região.");if(hasLat&&hasLon){if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat < -90||lat>90||lon < -180||lon>180)throw new Error("Coordenadas fora dos limites geográficos.");const previous=coords.get(region);if(previous&&(Math.abs(previous.lat-lat)>1e-6||Math.abs(previous.lon-lon)>1e-6))throw new Error("Cada região deve usar coordenadas consistentes em todas as observações.");if(!previous)coords.set(region,{lat,lon});}}}
- if(groups.size<2)throw new Error("A comparação espacial exige pelo menos duas regiões.");
- const regions=[...groups].map(([region,rows])=>({region,...trendStats(rows)}));
- const adjusted=benjaminiHochberg(regions.map(({region,p,n,slope,direction})=>({region,p,n,slope,direction})));
- adjusted.forEach((r,i)=>{regions[i].q=r.q;});
- let moran=null;
- const spatial=regions.filter(r=>coords.has(r.region));
- if(spatial.length>=4){
-  const n=spatial.length,points=spatial.map(r=>({region:r.region,lat:coords.get(r.region).lat,lon:coords.get(r.region).lon,value:r.slope}));
-  const dist=(a,b)=>{const rad=Math.PI/180,dlat=(b.lat-a.lat)*rad,dlon=(b.lon-a.lon)*rad,h=Math.sin(dlat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dlon/2)**2;return 6371*2*Math.asin(Math.sqrt(h));};
-  const weights=Array.from({length:n},()=>Array(n).fill(0)),k=Math.min(4,n-1);
-  for(let i=0;i<n;i++){const near=points.map((p,j)=>({j,d:j===i?Infinity:dist(points[i],p)})).sort((a,b)=>a.d-b.d).slice(0,k);for(const v of near)weights[i][v.j]=1;}
-  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)if(weights[i][j]||weights[j][i])weights[i][j]=weights[j][i]=1;
-  const mean=points.reduce((a,p)=>a+p.value,0)/n,dev=points.map(p=>p.value-mean),den=dev.reduce((a,v)=>a+v*v,0);let num=0,s0=0;
-  for(let i=0;i<n;i++)for(let j=0;j<n;j++){num+=weights[i][j]*dev[i]*dev[j];s0+=weights[i][j];}
-  if(den>0&&s0>0)moran={I:(n/s0)*(num/den),n,k,regions:points};
- }
- return {regions,moran};
-}
-function pearson(a,b){
- const ma=a.reduce((x,v)=>x+v,0)/a.length,mb=b.reduce((x,v)=>x+v,0)/b.length;let num=0,da=0,db=0;
- for(let i=0;i<a.length;i++){const x=a[i]-ma,y=b[i]-mb;num+=x*y;da+=x*x;db+=y*y;}return da&&db?num/Math.sqrt(da*db):NaN;
-}
-function correlateVariables(records){
- const map=new Map();for(const r of records){const region=String(r.region??r.regiao??"").trim(),year=Number(r.year??r.ano),variable=String(r.variable??r.variavel??"").trim(),value=Number(r.value??r.valor);if(region&&Number.isInteger(year)&&variable&&Number.isFinite(value))map.set([region,year,variable].join("|"),value);}
- const regions=[...new Set([...map.keys()].map(k=>k.split("|")[0]))],out=[];
- for(const region of regions){const vars=[...new Set([...map.keys()].filter(k=>k.startsWith(region+"|")).map(k=>k.split("|")[2]))];
-  for(let i=0;i<vars.length;i++)for(let j=i+1;j<vars.length;j++){const a=[],b=[];for(const key of map.keys()){const [reg,year,v]=key.split("|");if(reg===region&&v===vars[i]&&map.has([region,year,vars[j]].join("|"))){a.push(map.get(key));b.push(map.get([region,year,vars[j]].join("|")));}}
-   if(a.length>=8){const rp=pearson(a,b),rs=pearson(rankValues(a),rankValues(b));out.push({region,a:vars[i],b:vars[j],n:a.length,pearson:rp,spearman:rs});}
-  }
- }
- if(!out.length)throw new Error("Nenhum par de variáveis tem pelo menos 8 anos coincidentes na mesma região.");
- return out;
 }
 function TrendDetective({lang}){
  const [rows,setRows]=useState([]),[source,setSource]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[result,setResult]=useState(null);

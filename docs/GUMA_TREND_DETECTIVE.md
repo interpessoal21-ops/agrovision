@@ -40,3 +40,8 @@ The web Hamed–Rao implementation detrends using Sen's slope, ranks the detrend
 The web confidence interval is a deterministic circular moving-block bootstrap of detrended residuals (default 600 replicates; block length approximately n^(1/3); fixed seed). This is a percentile interval for Sen's slope. It is not a universal coverage guarantee: sensitivity to block length, short records, nonstationarity and structural breaks must be assessed.
 
 Regional comparison is tabular. If at least four regions include latitude/longitude, the web edition also calculates exploratory global Moran's I on the regional Sen slopes, using a symmetrized binary k-nearest-neighbor graph (k up to 4) and haversine distances. This descriptive statistic has no permutation p-value and does not replace expert-specified spatial weights, boundary-based areal analysis, local cluster diagnostics, or spatial interpolation. Benjamini–Hochberg adjusts regional trend p-values but does not correct spatial autocorrelation. Cross-variable output is descriptive correlation only; it does not establish causal effects, adjust confounders, or perform lagged causal analysis. All input datasets must be accompanied by source, units, spatial support, temporal resolution and quality notes before scientific interpretation.
+
+
+## Web regression tests
+
+The Vite build workflow runs Node's built-in test runner against the web statistical modules: annual trend analysis, tied ranks, input-gap validation, bootstrap reproducibility, Benjamini–Hochberg, regional Moran's I against a complete-graph analytical result, and paired-year Pearson/Spearman alignment. These are implementation regression checks, not full empirical coverage or scientific validation.

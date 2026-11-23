@@ -65,5 +65,13 @@ class TrendAnalysisTests(unittest.TestCase):
         b=sen_slope_block_bootstrap_ci(years,values,replicates=250,seed=7)
         self.assertEqual(a,b)
 
+    def test_mismatched_year_value_lengths_rejected(self):
+        with self.assertRaisesRegex(ValueError,"equal lengths"):
+            sens_slope(range(2000,2010),range(8))
+
+    def test_noninteger_annual_year_rejected(self):
+        with self.assertRaisesRegex(ValueError,"integer values"):
+            sens_slope([2000.5+i for i in range(8)],range(8))
+
 
 if __name__=="__main__": unittest.main()

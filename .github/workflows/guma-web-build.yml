@@ -34,5 +34,7 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
+      - name: Run web statistical regression tests
+        run: npm run test:web
       - name: Build web edition
         run: npm run build
